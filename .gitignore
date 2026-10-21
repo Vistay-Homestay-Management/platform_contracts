@@ -1,0 +1,9 @@
+.idea/
+.vscode/
+build/
+dist/
+node_modules/
+*.iml
+*.log
+.DS_Store
+Thumbs.db
