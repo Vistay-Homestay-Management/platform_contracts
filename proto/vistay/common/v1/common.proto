@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package vistay.common.v1;
+
+option java_multiple_files = true;
+option java_package = "com.vistay.contracts.common.v1";
+
+message AccountRef {
+  string account_id = 1;
+  AccountType account_type = 2;
+}
+
+enum AccountType {
+  ACCOUNT_TYPE_UNSPECIFIED = 0;
+  ACCOUNT_TYPE_CUSTOMER = 1;
+  ACCOUNT_TYPE_ADMIN = 2;
+  ACCOUNT_TYPE_HOST = 3;
+}
+
+message ActorContext {
+  AccountRef account = 1;
+  optional string profile_id = 2;
+  repeated string roles = 3;
+  repeated string permissions = 4;
+  int64 authorization_version = 5;
+  string correlation_id = 6;
+}
+
+message Money {
+  int64 minor_units = 1;
+  string currency = 2;
+}
+
+message PageCursor {
+  optional string after = 1;
+  int32 limit = 2;
+}
+
+message ErrorDetail {
+  string code = 1;
+  string message = 2;
+  map<string, string> metadata = 3;
+}

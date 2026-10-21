@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package vistay.user.v1;
+
+import "vistay/common/v1/common.proto";
+
+option java_multiple_files = true;
+option java_package = "com.vistay.contracts.user.v1";
+
+service UserAuthorizationService {
+  rpc GetAuthorizationSnapshot(GetAuthorizationSnapshotRequest)
+      returns (GetAuthorizationSnapshotResponse);
+}
+
+message GetAuthorizationSnapshotRequest {
+  vistay.common.v1.AccountRef account = 1;
+}
+
+message GetAuthorizationSnapshotResponse {
+  bool active = 1;
+  optional string profile_id = 2;
+  repeated string roles = 3;
+  repeated string permissions = 4;
+  int64 authorization_version = 5;
+}

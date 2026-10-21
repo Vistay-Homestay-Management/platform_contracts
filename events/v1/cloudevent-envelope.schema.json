@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/events/v1/cloudevent-envelope.schema.json",
+  "title": "ViStay CloudEvent envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "specversion",
+    "id",
+    "source",
+    "type",
+    "subject",
+    "time",
+    "datacontenttype",
+    "dataschema",
+    "correlationId",
+    "aggregateType",
+    "aggregateId",
+    "aggregateVersion",
+    "data"
+  ],
+  "properties": {
+    "specversion": { "const": "1.0" },
+    "id": { "type": "string", "format": "uuid" },
+    "source": { "type": "string", "pattern": "^urn:vistay:service:[a-z-]+$" },
+    "type": { "type": "string", "pattern": "^vn\\.vistay\\.[a-z0-9.-]+\\.v[1-9][0-9]*$" },
+    "subject": { "type": "string", "minLength": 1, "maxLength": 255 },
+    "time": { "type": "string", "format": "date-time" },
+    "datacontenttype": { "const": "application/json" },
+    "dataschema": { "type": "string", "format": "uri" },
+    "correlationId": { "type": "string", "format": "uuid" },
+    "causationId": { "type": ["string", "null"], "format": "uuid" },
+    "traceparent": { "type": ["string", "null"], "maxLength": 128 },
+    "aggregateType": { "type": "string", "minLength": 1, "maxLength": 100 },
+    "aggregateId": { "type": "string", "format": "uuid" },
+    "aggregateVersion": { "type": "integer", "minimum": 1 },
+    "data": { "type": "object" }
+  }
+}

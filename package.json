@@ -1,0 +1,16 @@
+{
+  "name": "@vistay/platform-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node scripts/validate-schemas.mjs"
+  },
+  "devDependencies": {
+    "ajv": "8.17.1",
+    "ajv-formats": "3.0.1"
+  },
+  "engines": {
+    "node": ">=24.3"
+  }
+}

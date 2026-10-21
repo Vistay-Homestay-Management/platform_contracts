@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/events/v1/auth.session-revoked.schema.json",
+  "title": "Authentication session revoked payload",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["sessionId", "accountId", "accountType", "revokedAt", "reason"],
+  "properties": {
+    "sessionId": { "type": "string", "format": "uuid" },
+    "accountId": { "type": "string", "format": "uuid" },
+    "accountType": { "enum": ["CUSTOMER", "ADMIN", "HOST"] },
+    "revokedAt": { "type": "string", "format": "date-time" },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 100 }
+  }
+}

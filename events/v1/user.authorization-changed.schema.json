@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/events/v1/user.authorization-changed.schema.json",
+  "title": "User authorization changed payload",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["accountId", "accountType", "authorizationVersion", "changedAt"],
+  "properties": {
+    "accountId": { "type": "string", "format": "uuid" },
+    "accountType": { "enum": ["CUSTOMER", "ADMIN", "HOST"] },
+    "authorizationVersion": { "type": "integer", "minimum": 1 },
+    "changedAt": { "type": "string", "format": "date-time" }
+  }
+}
