@@ -1,0 +1,19 @@
+{
+  "eventId": "55555555-5555-4555-8555-555555555555",
+  "type": "vistay.notification.notification-created",
+  "version": 1,
+  "aggregateId": "66666666-6666-4666-8666-666666666666",
+  "aggregateVersion": 1,
+  "correlationId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  "causationId": "33333333-3333-4333-8333-333333333333",
+  "occurredAt": "2026-10-23T03:00:02Z",
+  "data": {
+    "notificationId": "66666666-6666-4666-8666-666666666666",
+    "recipientAccountId": "22222222-2222-4222-8222-222222222222",
+    "category": "SECURITY",
+    "templateKey": "backoffice.account.welcome",
+    "channels": ["IN_APP", "EMAIL"],
+    "cursor": "MjAyNi0xMC0yM1QwMzowMDowMlo6NjY2NjY2NjY=",
+    "createdAt": "2026-10-23T03:00:02Z"
+  }
+}

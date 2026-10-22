@@ -7,7 +7,20 @@ import "vistay/common/v1/common.proto";
 option java_multiple_files = true;
 option java_package = "com.vistay.contracts.user.v1";
 
+// Internal authorization reads for trusted ViStay services.
+//
+// Transport contract:
+// - clients MUST use mTLS and the server MUST authorize the caller from the
+//   authenticated certificate identity (for example, a URI SAN); caller
+//   identity MUST NOT be accepted from request fields or caller-set metadata;
+// - clients MUST set a deadline no longer than two seconds;
+// - clients SHOULD propagate the request correlation ID as gRPC metadata;
+// - the operation is idempotent and may be retried only within that deadline.
 service UserAuthorizationService {
+  // Returns the latest authorization snapshot for one account. Servers SHOULD
+  // fail requests without an authenticated/allow-listed service identity with
+  // UNAUTHENTICATED or PERMISSION_DENIED, and expired calls with
+  // DEADLINE_EXCEEDED.
   rpc GetAuthorizationSnapshot(GetAuthorizationSnapshotRequest)
       returns (GetAuthorizationSnapshotResponse);
 }
