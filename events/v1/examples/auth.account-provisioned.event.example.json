@@ -9,7 +9,6 @@
   "occurredAt": "2026-10-23T03:00:00Z",
   "data": {
     "accountId": "22222222-2222-4222-8222-222222222222",
-    "identitySubject": "77777777-7777-4777-8777-777777777777",
     "realm": "BACKOFFICE",
     "email": "operator@vistay.vn",
     "displayName": "ViStay Operator",

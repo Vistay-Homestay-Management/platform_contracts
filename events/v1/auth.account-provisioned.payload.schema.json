@@ -6,7 +6,6 @@
   "additionalProperties": false,
   "required": [
     "accountId",
-    "identitySubject",
     "realm",
     "email",
     "displayName",
@@ -14,7 +13,6 @@
   ],
   "properties": {
     "accountId": { "type": "string", "format": "uuid" },
-    "identitySubject": { "type": "string", "minLength": 1, "maxLength": 255 },
     "realm": { "const": "BACKOFFICE" },
     "email": { "type": "string", "format": "email", "maxLength": 320 },
     "displayName": { "type": "string", "minLength": 1, "maxLength": 200 },
