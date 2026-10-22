@@ -19,12 +19,12 @@
 
 ## Kafka events
 
-- Topics use `vistay.<domain>.events.v1`; the aggregate UUID is the record key.
-- `aggregateVersion` is ordering state. It is separate from the schema version in `type` and `dataschema`.
+- Topics are derived as `<type>.v<version>`, for example `vistay.auth.account-provisioned.v1`; the aggregate UUID is the record key.
+- `aggregateVersion` is ordering state. It is separate from the integer schema `version`.
 - Producers use a transactional outbox. Consumers validate the envelope and payload before durable inbox deduplication.
 - Event IDs are globally unique UUIDs. A repeated ID with a different payload hash is a collision and must be rejected.
 - Per-event signatures are intentionally not part of v1. Transport authentication is TLS plus SASL/SCRAM and broker ACLs.
-- Product `eventId` and `occurredAt` map to CloudEvents `id` and `time`. `correlationId` follows the originating flow; `causationId` identifies the direct cause when one exists.
+- The canonical envelope fields are `eventId`, `type`, `version`, `aggregateId`, `aggregateVersion`, `correlationId`, nullable `causationId`, `occurredAt`, and `data`. `correlationId` follows the originating flow; `causationId` identifies the direct cause when one exists.
 - Consumers must define duplicate and out-of-order handling. Arrival time is not aggregate ordering.
 
 ## External webhooks

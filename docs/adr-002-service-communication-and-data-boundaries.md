@@ -24,16 +24,18 @@ Kafka is not used as a request/reply substitute for a user waiting on a synchron
 
 ### Event envelope
 
-The canonical wire envelope is CloudEvents 1.0. Product terminology maps to the schema as follows:
+The canonical wire envelope is the ViStay v1 common event envelope. It is deliberately a single contract rather than a ViStay envelope nested inside CloudEvents:
 
-| Product term | CloudEvents/schema field |
+| Product term | Canonical field |
 | --- | --- |
-| `eventId` | `id` |
-| `occurredAt` | `time` |
-| event name and major schema version | `type` and `dataschema` |
-| source aggregate | `aggregateType`, `aggregateId`, `aggregateVersion` |
-| request/workflow trace | `correlationId`, optional `causationId`, optional `traceparent` |
+| event identity | `eventId` |
+| occurrence time | `occurredAt` |
+| event name and schema version | `type`, `version` |
+| source aggregate | `aggregateId`, `aggregateVersion` |
+| request/workflow trace | `correlationId`, nullable `causationId` |
 | payload | `data` |
+
+The Kafka topic is derived as `<type>.v<version>` and the record key is `aggregateId`. The deprecated `cloudevent-envelope.schema.json` filename is only a compatibility alias to this same schema; it does not define a second wire shape.
 
 The producer writes its state and outbox record in one local transaction. A consumer validates the envelope and payload before committing a durable inbox/deduplication record with its local effects. A repeated event ID with a different payload hash is a collision and is rejected and alerted. Out-of-order behavior is decided using the aggregate version, not arrival time.
 
