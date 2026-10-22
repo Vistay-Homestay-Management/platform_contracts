@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/events/v1/user.profile-provisioned.payload.schema.json",
+  "title": "Backoffice profile provisioned payload",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "profileId",
+    "accountId",
+    "realm",
+    "email",
+    "displayName",
+    "authorizationVersion",
+    "provisionedAt"
+  ],
+  "properties": {
+    "profileId": { "type": "string", "format": "uuid" },
+    "accountId": { "type": "string", "format": "uuid" },
+    "realm": { "const": "BACKOFFICE" },
+    "email": { "type": "string", "format": "email", "maxLength": 320 },
+    "displayName": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "authorizationVersion": { "type": "integer", "minimum": 1 },
+    "provisionedAt": { "type": "string", "format": "date-time" }
+  }
+}

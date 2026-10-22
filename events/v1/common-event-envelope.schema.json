@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/events/v1/common-event-envelope.schema.json",
+  "title": "ViStay common event envelope",
+  "description": "Canonical application envelope. Kafka topics are derived as <type>.v<version>.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "eventId",
+    "type",
+    "version",
+    "aggregateId",
+    "aggregateVersion",
+    "correlationId",
+    "causationId",
+    "occurredAt",
+    "data"
+  ],
+  "properties": {
+    "eventId": { "type": "string", "format": "uuid" },
+    "type": {
+      "type": "string",
+      "pattern": "^vistay\\.[a-z][a-z0-9-]*\\.[a-z][a-z0-9-]*$"
+    },
+    "version": { "type": "integer", "minimum": 1 },
+    "aggregateId": { "type": "string", "format": "uuid" },
+    "aggregateVersion": { "type": "integer", "minimum": 1 },
+    "correlationId": { "type": "string", "format": "uuid" },
+    "causationId": {
+      "anyOf": [
+        { "type": "string", "format": "uuid" },
+        { "type": "null" }
+      ]
+    },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "data": { "type": "object" }
+  }
+}
