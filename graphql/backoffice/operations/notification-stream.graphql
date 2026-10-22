@@ -1,0 +1,14 @@
+subscription NotificationStream($afterCursor: Cursor) {
+  notificationStream(afterCursor: $afterCursor) {
+    cursor
+    notification {
+      id
+      category
+      title
+      body
+      channels
+      createdAt
+      readAt
+    }
+  }
+}
