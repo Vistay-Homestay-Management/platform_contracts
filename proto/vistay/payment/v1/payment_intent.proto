@@ -10,9 +10,9 @@ option java_package = "com.vistay.contracts.payment.v1";
 // Internal payment-intent commands for trusted ViStay services.
 // Clients MUST use mTLS, propagate correlation ID and set a deadline <= 2s.
 service PaymentIntentService {
-  rpc CreateVietQrIntent(CreateVietQrIntentRequest) returns (PaymentIntentResponse);
-  rpc GetPaymentIntent(GetPaymentIntentRequest) returns (PaymentIntentResponse);
-  rpc CancelPaymentIntent(CancelPaymentIntentRequest) returns (PaymentIntentResponse);
+  rpc CreateVietQrIntent(CreateVietQrIntentRequest) returns (CreateVietQrIntentResponse);
+  rpc GetPaymentIntent(GetPaymentIntentRequest) returns (GetPaymentIntentResponse);
+  rpc CancelPaymentIntent(CancelPaymentIntentRequest) returns (CancelPaymentIntentResponse);
 }
 
 message CreateVietQrIntentRequest {
@@ -30,7 +30,19 @@ message CancelPaymentIntentRequest {
   string reason = 3;
 }
 
-message PaymentIntentResponse {
+message CreateVietQrIntentResponse {
+  PaymentIntent payment_intent = 1;
+}
+
+message GetPaymentIntentResponse {
+  PaymentIntent payment_intent = 1;
+}
+
+message CancelPaymentIntentResponse {
+  PaymentIntent payment_intent = 1;
+}
+
+message PaymentIntent {
   string payment_intent_id = 1;
   string intent_code = 2;
   string finance_payment_request_id = 3;
