@@ -1,12 +1,12 @@
 # ADR-002: Service communication and data boundaries
 
 - Status: Accepted
-- Date: 2026-10-23
+- Date: 2026-10-26
 - Decision owners: Architecture and domain service owners
 
 ## Context
 
-ViStay keeps ten logical services but activates them in phases. Without explicit protocol and ownership rules, a feature could bypass a service through its database, turn Kafka into synchronous RPC, or place authorization and retry behavior in inconsistent layers. The pilot needs a small number of repeatable patterns that preserve correctness for inventory, money, identity, and guest data.
+ViStay keeps eleven logical services, including Payment, but activates them in phases. Without explicit protocol and ownership rules, a feature could bypass a service through its database, turn Kafka into synchronous RPC, or place authorization and retry behavior in inconsistent layers. The pilot needs a small number of repeatable patterns that preserve correctness for inventory, money, identity, and guest data.
 
 ## Decision
 
@@ -17,7 +17,7 @@ ViStay keeps ten logical services but activates them in phases. Without explicit
 | Portal query, mutation, subscription | GraphQL Federation through the portal's Hive Router | Service-level authorization; idempotency key for retryable commands; optimistic version for concurrent updates. |
 | Internal synchronous read or command | gRPC | mTLS, authenticated caller identity, explicit deadline, bounded retries only for idempotent operations. |
 | Domain fact and asynchronous workflow | Kafka | TLS plus SASL and ACLs, transactional outbox, durable inbox deduplication, partition key by aggregate ID. |
-| External callback/webhook | HTTPS via Caddy | HMAC signature or mTLS, timestamp/nonce replay check, inbox deduplication, rate limit and reconciliation. |
+| External callback/webhook | HTTPS via Nginx | Provider-specific authenticated contract, timestamp/nonce replay check, inbox deduplication, rate limit and reconciliation. |
 | Client realtime notification | GraphQL subscription over SSE | Durable cursor, authorization per recipient, reconnect and resynchronization behavior. |
 
 Kafka is not used as a request/reply substitute for a user waiting on a synchronous answer. gRPC is not used to distribute domain facts. An external webhook is never trusted merely because its source IP looks familiar.
@@ -50,7 +50,7 @@ Key invariants are:
 - Property owns the exact-unit and asset master plus supply contracts and effective terms.
 - Operations owns inspections, incidents, condition history, work orders, and readiness.
 - Booking is the sole writer of inventory blocks and owns quote, hold, reservation, and stay state. Other services request block or unblock; they do not mutate availability tables.
-- Finance owns charges, deposits, payments, allocation, reversals, settlements, and the financial audit trail.
+- Payment owns payment intent, provider generation/callback/transaction and technical reconciliation. Finance owns charges, deposits, verified financial transactions, allocation, refunds, settlements, and the financial audit trail.
 - Authentication/Keycloak owns credential and session concerns; User owns profile and contact data.
 - Media owns object metadata and lifecycle; the relevant domain owns the purpose, business reference, and access decision.
 - Notification owns notification inbox, delivery attempts, read state, and subscription cursors. It consumes facts; it does not become the fact owner.

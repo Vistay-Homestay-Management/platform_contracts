@@ -13,7 +13,8 @@ Service implementations own their business logic. This repository owns only wire
 - `proto/vistay`: protobuf packages, versioned by directory.
 - `events`: CloudEvents envelope and event payload schemas.
 - `docs/evolution.md`: compatibility and evolution rules.
-- `docs/adr-001-edge-identity-and-portal-federation.md`: Caddy, per-portal Hive Router, Keycloak realms, and edge retirement decision.
+- `docs/adr-001-edge-identity-and-portal-federation.md`: Nginx, per-portal Hive Router, Keycloak realms, and edge retirement decision.
+- `openapi/vietqr-callback.v1.yaml`: provider-facing callback contract owned by ViStay.
 - `docs/adr-002-service-communication-and-data-boundaries.md`: GraphQL, gRPC, Kafka, webhook, SSE, Redis, and data ownership boundaries.
 - `docs/epic-00-01-delivery-gates.md`: executable walking-skeleton, database rebaseline, and recovery gates.
 - `docs/roadmap-traceability.md`: final Epic 00–22 index and mapping from the historical backlog.

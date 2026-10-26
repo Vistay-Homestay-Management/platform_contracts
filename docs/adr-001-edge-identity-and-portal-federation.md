@@ -1,7 +1,7 @@
 # ADR-001: Edge, identity, and portal federation
 
 - Status: Accepted
-- Date: 2026-10-23
+- Date: 2026-10-26
 - Decision owners: Platform, Security, and Product
 - Supersedes: the planned Apollo Router plus Spring Cloud Gateway stack
 
@@ -15,7 +15,7 @@ The Backoffice portal is the first release target. Host and Customer portals hav
 
 ### Public edge
 
-Caddy is the only public ingress. It terminates TLS and performs explicit host/path routing and basic transport controls. It does not contain business logic or make final authorization decisions.
+Nginx is the only HTTP(S) ingress. It performs explicit host/path routing and basic transport controls and terminates TLS when public exposure is enabled. It does not contain business logic or make final authorization decisions. The Tailscale pilot may run tailnet-only HTTP until a trusted public certificate/domain gate is satisfied; provider callbacks remain disabled in that mode.
 
 The permitted public route classes are:
 
@@ -25,6 +25,7 @@ The permitted public route classes are:
 | OIDC/OAuth2 | Keycloak | Only the endpoints required by the supported identity flows are exposed. Administrative access stays on the protected management network. |
 | Presigned media object path | Object storage or the Media boundary | The application authorizes issuance of a short-lived URL; binary content does not traverse GraphQL. |
 | Channel Manager webhook | OTA service | Enabled only after vendor proof, with signature or mTLS validation and replay protection. |
+| VietQR callback | Payment service | Enabled only after merchant onboarding, UAT, public HTTPS, bearer-token authentication, replay protection and reconciliation tests. |
 
 Subgraphs, gRPC servers, Kafka, Redis, databases, Keycloak administration, and infrastructure administration are not public routes.
 
@@ -60,7 +61,7 @@ Client realtime notification delivery uses GraphQL subscription over SSE through
 
 ## Consequences
 
-- Spring Cloud Gateway is removed from the target runtime, and Apollo Router is not part of the target runtime.
+- Spring Cloud Gateway is removed from the target runtime, and Apollo Router is not part of the target runtime. `gateway_api` is permanently deleted after a verified git bundle and the replacement gate.
 - Edge configuration, portal router configuration, supergraph artifacts, and image pins belong in `platform_infrastructure`.
 - Service-owned GraphQL SDL stays with its provider; shared protobuf and event wire contracts stay in this repository.
 - There is a small operational cost for separate portal routers, accepted in exchange for smaller security and schema blast radii.
@@ -68,13 +69,14 @@ Client realtime notification delivery uses GraphQL subscription over SSE through
 
 ## Replacement and rollback gate
 
-The existing `gateway_api` repository is deprecated and archived only after all of the following pass:
+The existing `gateway_api` repository is deprecated and deleted only after a complete `git bundle --all` plus checksum is verified and all of the following pass:
 
-1. Caddy routes only the approved public surfaces and cannot reach private subgraphs directly.
+1. Nginx routes only the approved public surfaces and cannot reach private subgraphs directly.
 2. Backoffice PKCE login and `viewer` query work through Hive Router.
 3. Wrong issuer, audience, signature, role, and object scope are rejected at the expected layer.
-4. Subscription reconnect from a cursor is tested through Caddy and Hive Router.
+4. Subscription reconnect from a cursor is tested through Nginx and Hive Router.
 5. Trace/correlation context reaches the responsible service.
-6. A pinned previous Hive Router image can be restored using the documented rollback procedure.
+6. A pinned previous Nginx/Hive Router image set can be restored using the documented rollback procedure.
+7. The gateway bundle restores into an isolated repository and its default-branch head checksum matches the deletion manifest.
 
-Until that gate passes, the old gateway may remain available only as a rollback path; no new business capability is added to it.
+Until that gate passes, the old gateway repository is retained only as a rollback artifact; it is not present in runtime topology and receives no new business capability.

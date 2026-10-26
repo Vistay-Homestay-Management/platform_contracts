@@ -11,7 +11,7 @@ Epic 00 exits only when the following artifacts are versioned, named owners have
 - A shared glossary and state diagrams exist for property/supply term, quote, hold, reservation, stay, payment, settlement, work order, and notification.
 - Decision tables cover exact-unit inventory, pricing precedence, cancellation, deposit, manual payment verification/reversal, and settlement for `OWNED`, `LEASED_BY_VISTAY`, and `MANAGEMENT`.
 - The account and permission matrix identifies who may provision, approve, override, reverse, view sensitive data, and use break-glass access.
-- Property, Booking, Operations, Finance, User, Media, Notification, OTA, and Warehouse source-of-truth boundaries are approved.
+- Property, Booking, Operations, Finance, Payment, User, Media, Notification, OTA, and Warehouse source-of-truth boundaries are approved.
 
 ### Compliance gate
 
@@ -25,6 +25,7 @@ Epic 00 exits only when the following artifacts are versioned, named owners have
 - API and webhook capabilities are proven against vendor documentation or sandbox behavior for property/rate/availability mapping and reservation create/change/cancel.
 - Authentication, signature/replay behavior, rate limits, ordering, retry, reconciliation, support, and sandbox/production differences are recorded.
 - The unknown external employee system has only a draft contract and source-of-truth boundary; no production adapter is estimated as ready.
+- VietQR QR generation and Payment Callback are treated as separate capabilities. Merchant onboarding, callback authentication, UAT and public HTTPS readiness are recorded before auto-confirm can be enabled.
 
 ### Pilot gate
 
@@ -40,7 +41,7 @@ The acceptance test is one correlated, observable sequence—not a collection of
 1. A privileged operator provisions a bootstrap Backoffice identity through the Authentication facade and Keycloak.
 2. The User profile is created idempotently; retrying the provision command returns the same outcome without a duplicate profile or identity.
 3. Admin Web and Admin Mobile sign in with Authorization Code plus PKCE against the Backoffice realm.
-4. Each client queries `viewer` through Caddy, Backoffice Hive Router, and the User subgraph.
+4. Each client queries `viewer` through Nginx, Backoffice Hive Router, and the User subgraph.
 5. The committed account/profile action writes a transactional outbox event.
 6. Notification validates and commits a durable inbox record, then creates one welcome or security notification.
 7. Each client observes the notification through `notificationStream(afterCursor)` over GraphQL SSE.
@@ -52,14 +53,14 @@ The User authorization snapshot gRPC path is exercised with mTLS, authenticated 
 
 | Gate | Required evidence |
 | --- | --- |
-| Edge replacement | Caddy exposes only approved routes; Backoffice traffic uses a digest-pinned Hive Router; private subgraphs are unreachable publicly. |
+| Edge replacement | Nginx exposes only approved routes; Backoffice traffic uses a digest-pinned Hive Router; private subgraphs are unreachable publicly. |
 | Identity | Three realm configurations are isolated; only Backoffice is active for MVP; wrong issuer, audience, signature, disabled account, and expired token tests pass. |
 | Defense in depth | Router rejects invalid tokens and each called service independently rejects invalid caller context or insufficient object/operation permission. |
 | Contracts | Supergraph composition, protobuf lint/breaking check, event schema validation, and provider/consumer tests run in CI. |
 | Kafka | TLS/SASL/ACL configuration is enforced; outbox publication and inbox duplicate/collision/out-of-order tests pass. |
 | gRPC | mTLS, caller identity, deadline, and idempotent-read retry rules have automated positive and negative tests. |
 | Realtime | SSE authorization, cursor reconnect, duplicate suppression, slow consumer, and resynchronization behavior are tested through the public edge. |
-| Observability | One correlation/trace can be followed across Caddy, router, service, gRPC, outbox, Kafka, consumer, and subscription; sensitive values are redacted. |
+| Observability | One correlation/trace can be followed across Nginx, router, service, gRPC, outbox, Kafka, consumer, and subscription; sensitive values are redacted. |
 | Operations | Health/readiness, backup configuration, secret rotation, image rollback, incident, and restore runbooks exist and name an owner. |
 | UX | The same walking outcome is demonstrated in Admin Web and Admin Mobile with loading, error, retry, and expired-session behavior. |
 
@@ -74,6 +75,7 @@ The scoped databases are:
 - `vistay_property_db`
 - `vistay_booking_db`
 - `vistay_finance_db`
+- `vistay_payment_db`
 - `vistay_operations_db`
 - `vistay_ota_db`
 - `vistay_notification_db`
@@ -93,7 +95,7 @@ If business data is found, ownership is unclear, the backup cannot be verified, 
 
 ### Gateway retirement gate
 
-`gateway_api` may be marked deprecated in documentation while replacement work proceeds. Archive it on GitHub only after the edge, identity, authorization, SSE, observability, and rollback gates in this document pass. Preserve history and a pointer to the new edge configuration; do not delete the repository.
+`gateway_api` remains untouched while replacement work proceeds. Delete it from GitHub/local only after the edge, identity, authorization, SSE, observability, rollback, and verified-git-bundle gates in this document pass. Store the bundle/checksum outside Git and verify an isolated restore before deletion.
 
 ### Recovery target placement
 
