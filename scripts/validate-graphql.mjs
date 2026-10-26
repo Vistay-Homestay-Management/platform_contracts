@@ -4,7 +4,7 @@ import { composeServices } from "@apollo/composition";
 import { parse, validate } from "graphql";
 
 const root = new URL("../graphql/backoffice/", import.meta.url);
-const subgraphFiles = ["user.graphql", "notification.graphql"];
+const subgraphFiles = ["user.graphql", "notification.graphql", "payment.graphql"];
 
 const services = await Promise.all(
   subgraphFiles.map(async (file) => ({
@@ -37,11 +37,15 @@ assert.match(
   composition.supergraphSdl,
   /http:\/\/service-notification:8080\/graphql/,
 );
+assert.match(
+  composition.supergraphSdl,
+  /http:\/\/service-payment:8080\/graphql/,
+);
 const apiSchema = composition.schema
   .toAPISchema()
   .toGraphQLJSSchema();
 
-const operationFiles = ["viewer.graphql", "notification-stream.graphql"];
+const operationFiles = ["viewer.graphql", "notification-stream.graphql", "payment-intent.graphql"];
 for (const file of operationFiles) {
   const operation = parse(
     await readFile(new URL(`operations/${file}`, root), "utf8"),
