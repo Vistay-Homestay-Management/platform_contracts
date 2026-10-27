@@ -1,0 +1,11 @@
+query Viewer {
+  viewer {
+    accountId
+    profileId
+    displayName
+    email
+    roles
+    permissions
+    authorizationVersion
+  }
+}

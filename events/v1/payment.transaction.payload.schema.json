@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/events/v1/payment.transaction.payload.schema.json",
+  "title": "Payment provider transaction payload",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["providerTransactionId", "referenceNumber", "amount", "currency", "matchStatus", "occurredAt"],
+  "properties": {
+    "providerTransactionId": { "type": "string", "format": "uuid" },
+    "paymentIntentId": { "type": ["string", "null"], "format": "uuid" },
+    "financePaymentRequestId": { "type": ["string", "null"], "format": "uuid" },
+    "referenceNumber": { "type": "string", "minLength": 1, "maxLength": 180 },
+    "amount": { "type": "string", "pattern": "^[0-9]+(\\.[0-9]{1,4})?$" },
+    "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+    "matchStatus": { "enum": ["MATCHED", "UNMATCHED", "REJECTED", "DUPLICATE"] },
+    "mismatchReason": { "type": ["string", "null"], "maxLength": 500 },
+    "occurredAt": { "type": "string", "format": "date-time" }
+  }
+}

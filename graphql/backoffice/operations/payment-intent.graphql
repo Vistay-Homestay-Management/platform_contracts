@@ -1,0 +1,29 @@
+mutation CreateVietQrPaymentIntent($input: CreateVietQrPaymentIntentInput!) {
+  createVietQrPaymentIntent(input: $input) {
+    id
+    intentCode
+    financePaymentRequestId
+    amount
+    currency
+    status
+    qrPayload
+    qrImageDataUri
+    expiresAt
+    version
+  }
+}
+
+query PaymentIntent($id: ID!) {
+  paymentIntent(id: $id) {
+    id
+    intentCode
+    financePaymentRequestId
+    amount
+    currency
+    status
+    qrPayload
+    qrImageDataUri
+    expiresAt
+    version
+  }
+}
