@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "endpoint": "/graphql",
+  "authorization": {
+    "accessToken": "BACKOFFICE_REALM_JWT",
+    "notificationStreamRequiredScope": "notifications:read"
+  },
+  "queryTransport": {
+    "protocol": "GRAPHQL_OVER_HTTP",
+    "method": "POST",
+    "requestContentType": "application/json",
+    "responseContentType": "application/json"
+  },
+  "subscriptionTransport": {
+    "protocol": "GRAPHQL_OVER_SSE",
+    "method": "POST",
+    "requestContentType": "application/json",
+    "accept": "text/event-stream",
+    "responseContentType": "text/event-stream",
+    "operation": "NotificationStream",
+    "resumeArgument": "afterCursor",
+    "cursorEncoding": "NON_NEGATIVE_DECIMAL_STRING",
+    "cursorPattern": "^(0|[1-9][0-9]*)$",
+    "cursorSemantics": "EXCLUSIVE",
+    "nullCursorBehavior": "FROM_EARLIEST_RETAINED",
+    "deliveryGuarantee": "AT_LEAST_ONCE"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/events/v1/payment.intent-status.payload.schema.json",
+  "title": "Payment intent status payload",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["paymentIntentId", "financePaymentRequestId", "amount", "currency", "status", "expiresAt"],
+  "properties": {
+    "paymentIntentId": { "type": "string", "format": "uuid" },
+    "financePaymentRequestId": { "type": "string", "format": "uuid" },
+    "bookingId": { "type": ["string", "null"], "format": "uuid" },
+    "amount": { "type": "string", "pattern": "^[0-9]+(\\.[0-9]{1,4})?$" },
+    "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+    "status": { "enum": ["CREATED", "QR_READY", "PENDING", "SUCCEEDED", "FAILED", "EXPIRED", "CANCELLED"] },
+    "providerOrderId": { "type": "string", "maxLength": 13 },
+    "expiresAt": { "type": "string", "format": "date-time" }
+  }
+}

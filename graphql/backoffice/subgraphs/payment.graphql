@@ -1,0 +1,48 @@
+extend schema
+  @link(
+    url: "https://specs.apollo.dev/federation/v2.7"
+    import: ["@authenticated", "@key"]
+  )
+
+type Query {
+  paymentIntent(id: ID!): PaymentIntent! @authenticated
+}
+
+type Mutation {
+  createVietQrPaymentIntent(input: CreateVietQrPaymentIntentInput!): PaymentIntent! @authenticated
+  cancelPaymentIntent(input: CancelPaymentIntentInput!): PaymentIntent! @authenticated
+}
+
+input CreateVietQrPaymentIntentInput {
+  financePaymentRequestId: ID!
+  idempotencyKey: String!
+}
+
+input CancelPaymentIntentInput {
+  paymentIntentId: ID!
+  expectedVersion: Int!
+  reason: String!
+}
+
+type PaymentIntent @key(fields: "id") {
+  id: ID!
+  intentCode: String!
+  financePaymentRequestId: ID!
+  amount: String!
+  currency: String!
+  status: PaymentIntentStatus!
+  qrPayload: String
+  qrImageDataUri: String
+  expiresAt: String!
+  version: Int!
+}
+
+enum PaymentIntentStatus {
+  CREATED
+  QR_READY
+  PENDING
+  SUCCEEDED
+  FAILED
+  EXPIRED
+  CANCELLED
+}
