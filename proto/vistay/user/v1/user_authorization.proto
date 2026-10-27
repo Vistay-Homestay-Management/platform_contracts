@@ -27,6 +27,7 @@ service UserAuthorizationService {
 
 message GetAuthorizationSnapshotRequest {
   vistay.common.v1.AccountRef account = 1;
+  int64 minimum_authorization_version = 2;
 }
 
 message GetAuthorizationSnapshotResponse {
@@ -35,4 +36,5 @@ message GetAuthorizationSnapshotResponse {
   repeated string roles = 3;
   repeated string permissions = 4;
   int64 authorization_version = 5;
+  repeated vistay.common.v1.PermissionGrant grants = 6;
 }
