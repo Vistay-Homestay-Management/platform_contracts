@@ -17,6 +17,19 @@ enum AccountType {
   ACCOUNT_TYPE_HOST = 3;
 }
 
+enum DataScopeType {
+  DATA_SCOPE_TYPE_UNSPECIFIED = 0;
+  DATA_SCOPE_TYPE_SELF = 1;
+  DATA_SCOPE_TYPE_OWN = 2;
+  DATA_SCOPE_TYPE_ASSIGNED = 3;
+  DATA_SCOPE_TYPE_ALL = 4;
+}
+
+message PermissionGrant {
+  string permission_code = 1;
+  repeated DataScopeType scopes = 2;
+}
+
 message ActorContext {
   AccountRef account = 1;
   optional string profile_id = 2;
@@ -24,6 +37,7 @@ message ActorContext {
   repeated string permissions = 4;
   int64 authorization_version = 5;
   string correlation_id = 6;
+  repeated PermissionGrant grants = 7;
 }
 
 message Money {
