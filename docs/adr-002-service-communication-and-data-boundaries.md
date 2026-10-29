@@ -1,8 +1,13 @@
 # ADR-002: Service communication and data boundaries
 
+- Artifact-ID: ADR-002
+- Version: 1.0.0
 - Status: Accepted
 - Date: 2026-10-26
+- Last reviewed: 2026-10-29
+- Review due: 2027-04-29
 - Decision owners: Architecture and domain service owners
+- Threat model: TM-002
 
 ## Context
 
@@ -81,3 +86,9 @@ Redis is limited to short-lived security and coordination data: token/session de
 ## Consequences
 
 This design accepts eventual consistency for projections and downstream effects. Product flows must display pending and reconciliation states rather than pretending every service changed atomically. Cross-service features require provider/consumer contract tests and end-to-end tests for duplicates, ordering, timeouts, and authorization.
+
+## Change history
+
+| Version | Date | Change |
+| --- | --- | --- |
+| 1.0.0 | 2026-10-29 | Accepted baseline registered with TM-002 and a scheduled review. |

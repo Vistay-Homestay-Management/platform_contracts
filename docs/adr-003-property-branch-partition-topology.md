@@ -1,7 +1,14 @@
 # ADR-003: Property Service owns Property-to-Branch partition topology
 
-Status: Accepted  
-Decision: SCRUM-528
+- Artifact-ID: ADR-003
+- Version: 1.0.0
+- Status: Accepted
+- Date: 2026-10-29
+- Last reviewed: 2026-10-29
+- Review due: 2027-04-29
+- Decision owners: Property, User, Booking, Payment, Finance, and Security
+- Threat model: TM-003
+- Decision: SCRUM-528
 
 ## Context
 
@@ -30,3 +37,9 @@ Property Service is the system of record for operating branches and effective-da
 ## Security boundary
 
 Property gRPC requires an explicit bounded deadline and a client certificate whose URI SAN is either `spiffe://vistay/service/booking` or `spiffe://vistay/service/finance`. Payment consumes the Booking projection; Finance calls Property only for Property-owned Settlement records.
+
+## Change history
+
+| Version | Date | Change |
+| --- | --- | --- |
+| 1.0.0 | 2026-10-29 | Accepted topology baseline registered with TM-003. |

@@ -1,8 +1,13 @@
 # ADR-001: Edge, identity, and portal federation
 
+- Artifact-ID: ADR-001
+- Version: 1.0.0
 - Status: Accepted
 - Date: 2026-10-26
+- Last reviewed: 2026-10-29
+- Review due: 2027-04-29
 - Decision owners: Platform, Security, and Product
+- Threat model: TM-001
 - Supersedes: the planned Apollo Router plus Spring Cloud Gateway stack
 
 ## Context
@@ -80,3 +85,9 @@ The existing `gateway_api` repository is deprecated and deleted only after a com
 7. The gateway bundle restores into an isolated repository and its default-branch head checksum matches the deletion manifest.
 
 Until that gate passes, the old gateway repository is retained only as a rollback artifact; it is not present in runtime topology and receives no new business capability.
+
+## Change history
+
+| Version | Date | Change |
+| --- | --- | --- |
+| 1.0.0 | 2026-10-29 | Accepted baseline registered with TM-001 and a scheduled review. |
