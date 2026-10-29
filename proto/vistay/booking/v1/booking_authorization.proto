@@ -8,14 +8,14 @@ option java_outer_classname = "BookingAuthorizationProto";
 
 service BookingAuthorizationService {
   rpc GetBookingAuthorizationRecord(GetBookingAuthorizationRecordRequest)
-      returns (BookingAuthorizationRecord);
+      returns (GetBookingAuthorizationRecordResponse);
 }
 
 message GetBookingAuthorizationRecordRequest {
   string booking_id = 1;
 }
 
-message BookingAuthorizationRecord {
+message GetBookingAuthorizationRecordResponse {
   string booking_id = 1;
   optional string customer_id = 2;
   string property_id = 3;
