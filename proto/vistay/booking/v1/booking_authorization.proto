@@ -11,6 +11,13 @@ service BookingAuthorizationService {
       returns (GetBookingAuthorizationRecordResponse);
 }
 
+enum BookingPartitionResolutionStatus {
+  BOOKING_PARTITION_RESOLUTION_STATUS_UNSPECIFIED = 0;
+  BOOKING_PARTITION_RESOLUTION_STATUS_MAPPED = 1;
+  BOOKING_PARTITION_RESOLUTION_STATUS_MISSING = 2;
+  BOOKING_PARTITION_RESOLUTION_STATUS_UNAVAILABLE = 3;
+}
+
 message GetBookingAuthorizationRecordRequest {
   string booking_id = 1;
 }
@@ -21,4 +28,7 @@ message GetBookingAuthorizationRecordResponse {
   string property_id = 3;
   optional string assigned_admin_user_id = 4;
   repeated string active_attributed_admin_user_ids = 5;
+  optional string branch_id = 6;
+  BookingPartitionResolutionStatus partition_resolution_status = 7;
+  int64 partition_membership_version = 8;
 }
