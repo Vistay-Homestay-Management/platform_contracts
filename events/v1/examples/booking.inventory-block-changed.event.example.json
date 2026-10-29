@@ -1,0 +1,24 @@
+{
+  "eventId": "a3b79fe8-bbeb-4e28-8099-d10ec73b5cd3",
+  "type": "vistay.booking.inventory-block-changed",
+  "version": 1,
+  "aggregateId": "20000000-0000-4000-8000-000000000002",
+  "aggregateVersion": 12,
+  "correlationId": "8e3ac907-60b1-4652-9ea7-1c3ca23eaa0b",
+  "causationId": "9e10cb8c-45df-4ba9-a4bb-3577584c7898",
+  "occurredAt": "2026-10-30T09:42:18.123456Z",
+  "data": {
+    "commandId": "9e10cb8c-45df-4ba9-a4bb-3577584c7898",
+    "inventoryBlockId": "cd4cf1ca-4e0a-4c93-952c-afed7b869bd7",
+    "propertyId": "20000000-0000-4000-8000-000000000002",
+    "action": "RELEASED",
+    "blockType": "MAINTENANCE",
+    "status": "RELEASED",
+    "startDate": "2026-11-03",
+    "endDateExclusive": "2026-11-06",
+    "blockVersion": 1,
+    "inventoryRevision": 12,
+    "occurredAt": "2026-10-30T09:42:18.123456Z"
+  }
+}
+

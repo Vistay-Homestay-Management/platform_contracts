@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/events/v1/booking.inventory-block-changed.payload.schema.json",
+  "title": "Booking inventory block changed payload",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "commandId",
+    "inventoryBlockId",
+    "propertyId",
+    "action",
+    "blockType",
+    "status",
+    "startDate",
+    "endDateExclusive",
+    "blockVersion",
+    "inventoryRevision",
+    "occurredAt"
+  ],
+  "properties": {
+    "commandId": { "type": "string", "format": "uuid" },
+    "inventoryBlockId": { "type": "string", "format": "uuid" },
+    "propertyId": { "type": "string", "format": "uuid" },
+    "action": { "enum": ["CREATED", "RELEASED"] },
+    "blockType": {
+      "enum": ["MAINTENANCE", "CLEANING", "OWNER_USE", "MANUAL"]
+    },
+    "status": { "enum": ["ACTIVE", "RELEASED"] },
+    "startDate": { "type": "string", "format": "date" },
+    "endDateExclusive": { "type": "string", "format": "date" },
+    "blockVersion": { "type": "integer", "minimum": 0 },
+    "inventoryRevision": { "type": "integer", "minimum": 1 },
+    "occurredAt": { "type": "string", "format": "date-time" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "action": { "const": "CREATED" } },
+        "required": ["action"]
+      },
+      "then": {
+        "properties": { "status": { "const": "ACTIVE" } }
+      }
+    },
+    {
+      "if": {
+        "properties": { "action": { "const": "RELEASED" } },
+        "required": ["action"]
+      },
+      "then": {
+        "properties": { "status": { "const": "RELEASED" } }
+      }
+    }
+  ]
+}
+
