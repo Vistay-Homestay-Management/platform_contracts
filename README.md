@@ -23,6 +23,7 @@ Service implementations own their business logic. This repository owns only wire
 - `fixtures/pricing-v1-publication-fingerprint.v1.json`: cross-language canonical `PRICING_PUBLICATION_V1` fingerprint test vector.
 - `docs/inventory-v1-availability-observation.md`: SCRUM-358 exact-unit, half-open availability observation, revision, privacy, and fail-closed authorization contract.
 - `docs/inventory-v1-block-commands.md`: SCRUM-359 create/release command, optimistic revision, durable idempotency, audit, and inventory-block event contract.
+- `docs/inventory-v1-reconciliation.md`: SCRUM-361 internal revision-pinned inventory snapshot and fail-closed SYSTEM repair policy.
 - `docs/adr-001-edge-identity-and-portal-federation.md`: Nginx, per-portal Hive Router, Keycloak realms, and edge retirement decision.
 - `openapi/vietqr-callback.v1.yaml`: provider-facing callback contract owned by ViStay.
 - `docs/adr-002-service-communication-and-data-boundaries.md`: GraphQL, gRPC, Kafka, webhook, SSE, Redis, and data ownership boundaries.
