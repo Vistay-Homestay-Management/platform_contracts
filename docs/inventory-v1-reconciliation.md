@@ -12,7 +12,7 @@ Booking's database and never treats Kafka arrival time as aggregate order.
 The provider requires an authenticated mTLS workload identity and an explicit
 inventory-reconciliation caller allow-list. An absent identity is
 `UNAUTHENTICATED`; a non-allow-listed identity is `PERMISSION_DENIED`; malformed
-input is `INVALID_ARGUMENT`; storage failure is sanitized `INTERNAL`.
+input is `INVALID_ARGUMENT`; storage unavailability is sanitized `UNAVAILABLE`.
 
 ## Revision-pinned snapshot
 
