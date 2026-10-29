@@ -17,6 +17,7 @@ Property Service is the system of record for operating branches and effective-da
 - A missing active membership is a valid fail-closed state, not an inferred default.
 - Property exposes `vistay.property.v1.PropertyPartitionService` over mTLS. Consumers never read the Property database.
 - Booking resolves the property membership and publishes the exact `BRANCH` ID and resolution status in its authorization record.
+- Finance resolves Property membership directly for Settlement records, because Settlement already owns `property_id` and has no Booking relationship to proxy through.
 - Payment consumes only the Booking authorization record. It never trusts a client-provided branch or a local payment projection as the partition authority.
 
 ## Failure semantics
@@ -28,4 +29,4 @@ Property Service is the system of record for operating branches and effective-da
 
 ## Security boundary
 
-Property gRPC requires an explicit bounded deadline and a client certificate whose URI SAN is `spiffe://vistay/service/booking`. Booking gRPC remains the only partition projection consumed by Payment and Finance.
+Property gRPC requires an explicit bounded deadline and a client certificate whose URI SAN is either `spiffe://vistay/service/booking` or `spiffe://vistay/service/finance`. Payment consumes the Booking projection; Finance calls Property only for Property-owned Settlement records.
