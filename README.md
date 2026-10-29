@@ -21,6 +21,7 @@ Service implementations own their business logic. This repository owns only wire
 - `docs/pricing-v1-publication-and-snapshots.md`: SCRUM-357 publication CAS, effective active selection, and immutable pricing-backed quote snapshot contract.
 - `docs/pricing-v1-rate-profile-published-event.md`: Booking publication event topic, ordering, delivery, and reconciliation contract.
 - `fixtures/pricing-v1-publication-fingerprint.v1.json`: cross-language canonical `PRICING_PUBLICATION_V1` fingerprint test vector.
+- `docs/inventory-v1-availability-observation.md`: SCRUM-358 exact-unit, half-open availability observation, revision, privacy, and fail-closed authorization contract.
 - `docs/adr-001-edge-identity-and-portal-federation.md`: Nginx, per-portal Hive Router, Keycloak realms, and edge retirement decision.
 - `openapi/vietqr-callback.v1.yaml`: provider-facing callback contract owned by ViStay.
 - `docs/adr-002-service-communication-and-data-boundaries.md`: GraphQL, gRPC, Kafka, webhook, SSE, Redis, and data ownership boundaries.
