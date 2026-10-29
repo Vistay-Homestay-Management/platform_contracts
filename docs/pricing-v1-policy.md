@@ -15,10 +15,10 @@ Booking owns the bookable check-in, check-out, and turnover policy because those
 | Product | Duration | Daily price basis | Customer due schedule |
 | --- | --- | --- | --- |
 | `SHORT` | 1–29 days | 100% base daily rate before applicable short-stay rules | checkout |
-| `MEDIUM` | at least one calendar month and less than one year | 70% base daily rate | monthly; residual days use the same adjusted daily rate |
-| `LONG` | at least one year | 55% base daily rate | monthly; residual days use the same adjusted daily rate |
+| `MEDIUM` | 30 days through the day before the check-in anniversary one year later | 70% base daily rate | monthly; residual days use the same adjusted daily rate |
+| `LONG` | checkout on or after the check-in anniversary one year later | 55% base daily rate | monthly; residual days use the same adjusted daily rate |
 
-There is no hourly product. Calendar-month boundaries are not converted to a fixed 30-day duration. Promotional, seasonal, weekday, holiday, channel, guest-count, and minimum-stay adjustments apply only to `SHORT` in v1. The MEDIUM and LONG percentages are versioned rate-profile factors, not promotions.
+There is no hourly product. Duration is the count of charge dates in the half-open stay interval `[checkInDate, checkOutDate)`. The one-year boundary is the calendar anniversary computed from the check-in date; a leap-day anniversary follows the platform date library's `plusYears(1)` result. Promotional, seasonal, weekday, holiday, channel, guest-count, and minimum-stay adjustments apply only to `SHORT` in v1. The MEDIUM and LONG percentages are versioned rate-profile factors, not promotions.
 
 ## Versioned defaults
 
@@ -42,6 +42,9 @@ These are product defaults rather than source-code assumptions: every value is s
 Rules use inclusive start and exclusive end dates. Empty weekday/channel conditions mean all values. Supported v1 actions are fixed daily price, percentage/fixed discount, and percentage/fixed surcharge. Percentage values use basis points.
 
 The authoring boundary rejects invalid ranges, a discount over 100%, duplicate rule codes, and ambiguous same-priority fixed-price rules whose conditions can overlap. Detailed calculation/explanation, manual override, and publication belong to SCRUM-355, SCRUM-356, and SCRUM-357 respectively.
+
+The normative SCRUM-355 calculation and explanation contract is
+[`pricing-v1-quote-calculation.md`](pricing-v1-quote-calculation.md). It calculates a deterministic preview against one explicitly selected immutable profile version. It does not select an active version, publish a version, persist a quote, apply a manual override, or create a booking snapshot.
 
 ## Receivable and employee accountability
 
