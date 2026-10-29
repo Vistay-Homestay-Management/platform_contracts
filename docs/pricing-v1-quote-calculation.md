@@ -21,6 +21,9 @@ The calculation performs no database write and has no wall-clock input. In parti
 
 Those lifecycle responsibilities remain with SCRUM-356 and SCRUM-357. A later booking command must calculate or validate from its authoritative inputs and must not trust a total submitted by a frontend.
 
+An authorized reduction based on this result follows the separate normative
+[`pricing-v1-manual-override.md`](pricing-v1-manual-override.md) contract. That artifact preserves this base calculation and does not change the deterministic SCRUM-355 result.
+
 ## Normalized input
 
 The calculation input contains:

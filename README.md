@@ -17,6 +17,7 @@ Service implementations own their business logic. This repository owns only wire
 - `docs/architecture-artifact-versioning.md`: lifecycle, versioning, review, and supersession rules.
 - `docs/pricing-v1-policy.md`: approved ownership, stay-product, rate-version, and collection-accountability baseline.
 - `docs/pricing-v1-quote-calculation.md`: deterministic SCRUM-355 quote-calculation and explanation contract.
+- `docs/pricing-v1-manual-override.md`: immutable SCRUM-356 manual-reduction authorization and evidence contract.
 - `docs/adr-001-edge-identity-and-portal-federation.md`: Nginx, per-portal Hive Router, Keycloak realms, and edge retirement decision.
 - `openapi/vietqr-callback.v1.yaml`: provider-facing callback contract owned by ViStay.
 - `docs/adr-002-service-communication-and-data-boundaries.md`: GraphQL, gRPC, Kafka, webhook, SSE, Redis, and data ownership boundaries.

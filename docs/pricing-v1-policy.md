@@ -46,6 +46,9 @@ The authoring boundary rejects invalid ranges, a discount over 100%, duplicate r
 The normative SCRUM-355 calculation and explanation contract is
 [`pricing-v1-quote-calculation.md`](pricing-v1-quote-calculation.md). It calculates a deterministic preview against one explicitly selected immutable profile version. It does not select an active version, publish a version, persist a quote, apply a manual override, or create a booking snapshot.
 
+The normative SCRUM-356 manual-override contract is
+[`pricing-v1-manual-override.md`](pricing-v1-manual-override.md). It records an authorized, expiring, immutable whole-stay lodging reduction against one exact SCRUM-355 result. It does not publish pricing or persist/consume a quote or booking.
+
 ## Receivable and employee accountability
 
 An unpaid customer amount remains a customer receivable. Booking snapshots the creator and collection owner; Finance records the customer receivable and a separate employee collection-accountability entry. Employee personal liability is created only by an explicit, authorized recovery decision and never replaces or hides the original customer receivable.
