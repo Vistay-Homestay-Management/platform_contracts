@@ -23,11 +23,21 @@ enum DataScopeType {
   DATA_SCOPE_TYPE_OWN = 2;
   DATA_SCOPE_TYPE_ASSIGNED = 3;
   DATA_SCOPE_TYPE_ALL = 4;
+  DATA_SCOPE_TYPE_PARTITION = 5;
+}
+
+message PartitionGrant {
+  // Stable uppercase dimension owned by the resource service, for example
+  // PROPERTY, BUILDING, BRANCH, AREA, CITY or ORGANIZATION.
+  string partition_type = 1;
+  // Opaque UUID of the partition. Consumers must not infer its owning table.
+  string partition_id = 2;
 }
 
 message PermissionGrant {
   string permission_code = 1;
   repeated DataScopeType scopes = 2;
+  repeated PartitionGrant partitions = 3;
 }
 
 message ActorContext {
