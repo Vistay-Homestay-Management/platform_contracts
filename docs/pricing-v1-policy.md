@@ -6,7 +6,7 @@ Change policy: versioned; never reinterpret an existing quote or booking snapsho
 
 ## Ownership
 
-Booking is the system of record for commercial unit pricing. A rate profile is keyed by the authoritative Property `unit_id` and carries the `property_id` needed for authorization. Property remains the owner of unit identity and physical attributes; Booking may keep only the explicitly versioned attributes needed to evaluate pricing.
+Booking is the system of record for commercial unit pricing. In the current Property model, one `properties.id` is one exact physical apartment/unit, so a rate profile is keyed only by that authoritative `property_id`; a second `unit_id` must not be invented. Property remains the owner of unit identity and physical attributes; Booking may keep only the explicitly versioned attributes needed to evaluate pricing. The legacy `properties.base_price_per_night` column is not an authoritative pricing input and must be retired by a forward migration when the Property API is implemented.
 
 Booking owns the bookable check-in, check-out, and turnover policy because those values define the inventory interval. Finance owns receivables, installments, collections, employee commission earnings, and collection-accountability reporting. Neither service reads the other's database.
 
