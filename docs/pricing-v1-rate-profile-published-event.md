@@ -37,6 +37,26 @@ All events for one property use `propertyId` as the record key. Envelope
 Out-of-order arrival is expected. Arrival time and `publishedAt` do not replace
 aggregate-version ordering.
 
+## Gap reconciliation API
+
+An internal consumer that observes a revision gap calls the versioned
+`PricingPublicationReconciliationService.ReconcilePricingPublications` gRPC API.
+The request is scoped to one `propertyId` and supplies the last durably applied
+publication revision. The response returns the current property head and the next
+ascending revision page, including the immutable profile evidence used to create
+each publication. Consumers advance their cursor only through the returned
+`nextAfterPublicationRevision` and continue while `hasMore` is true.
+
+Page size zero selects the server default of 50; positive sizes are bounded at 100.
+The head and page are read from one repeatable database snapshot. An empty history
+returns head revision zero rather than conflating an unpublished property with a
+transport failure.
+
+This API is service-to-service only. Booking requires an explicit bounded deadline,
+mutual TLS with an allow-listed SPIFFE URI, and a pricing-reconciliation caller
+allow-list. It does not accept an end-user identity or widen a caller to another
+property within a response.
+
 ## Payload semantics
 
 `publicationId` identifies immutable approval evidence. `previousPublicationId` is

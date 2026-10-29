@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+package vistay.booking.v1;
+
+option java_multiple_files = true;
+option java_package = "com.vistay.contracts.booking.v1";
+option java_outer_classname = "PricingPublicationReconciliationProto";
+
+// Internal, mTLS-authenticated recovery API for consumers of
+// vistay.booking.rate-profile-published.v1. Results are scoped to one property
+// and ordered by the authoritative publication revision.
+service PricingPublicationReconciliationService {
+  rpc ReconcilePricingPublications(ReconcilePricingPublicationsRequest)
+      returns (ReconcilePricingPublicationsResponse);
+}
+
+message ReconcilePricingPublicationsRequest {
+  string property_id = 1;
+  int64 after_publication_revision = 2;
+  // Zero selects the server default. Positive values must not exceed 100.
+  int32 page_size = 3;
+}
+
+message ReconcilePricingPublicationsResponse {
+  string property_id = 1;
+  // Zero and an absent ID mean that the property has no publication yet.
+  int64 current_head_publication_revision = 2;
+  optional string current_head_publication_id = 3;
+  repeated PricingPublicationRecord publications = 4;
+  int64 next_after_publication_revision = 5;
+  bool has_more = 6;
+}
+
+message PricingPublicationRecord {
+  string publication_id = 1;
+  string property_id = 2;
+  string rate_profile_version_id = 3;
+  optional string previous_publication_id = 4;
+  int64 publication_revision = 5;
+  string profile_fingerprint = 6;
+  string snapshot_schema_version = 7;
+  string published_at = 8;
+  PricingRateProfileSnapshot profile = 9;
+}
+
+message PricingRateProfileSnapshot {
+  string rate_profile_version_id = 1;
+  string property_id = 2;
+  int32 profile_version = 3;
+  string effective_from = 4;
+  optional string effective_to_exclusive = 5;
+  string base_daily_rate = 6;
+  int32 medium_daily_factor_bps = 7;
+  int32 long_daily_factor_bps = 8;
+  string currency = 9;
+  string check_in_time = 10;
+  string check_out_time = 11;
+  int32 turnover_minutes = 12;
+  int32 quote_ttl_minutes = 13;
+  int32 commission_default_bps = 14;
+  int32 commission_max_bps = 15;
+  string authoring_reason = 16;
+  string authored_by_admin_account_id = 17;
+  string authoring_correlation_id = 18;
+  string authored_at = 19;
+  repeated PricingRuleSnapshot rules = 20;
+}
+
+message PricingRuleSnapshot {
+  string rule_version_id = 1;
+  string code = 2;
+  string name = 3;
+  string effective_from = 4;
+  optional string effective_to_exclusive = 5;
+  int32 priority = 6;
+  repeated int32 days_of_week = 7;
+  repeated string channels = 8;
+  optional int32 minimum_stay_days = 9;
+  optional int32 maximum_stay_days = 10;
+  optional int32 minimum_guests = 11;
+  optional int32 maximum_guests = 12;
+  string action_type = 13;
+  string action_value = 14;
+}
