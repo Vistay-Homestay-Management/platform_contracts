@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/events/v1/booking.rate-profile-published.payload.schema.json",
+  "title": "Booking rate profile published payload",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "publicationId",
+    "propertyId",
+    "rateProfileVersionId",
+    "profileVersion",
+    "publicationRevision",
+    "previousPublicationId",
+    "snapshotSchemaVersion",
+    "profileFingerprint",
+    "effectiveFrom",
+    "effectiveToExclusive",
+    "publishedAt"
+  ],
+  "properties": {
+    "publicationId": { "type": "string", "format": "uuid" },
+    "propertyId": { "type": "string", "format": "uuid" },
+    "rateProfileVersionId": { "type": "string", "format": "uuid" },
+    "profileVersion": { "type": "integer", "minimum": 1 },
+    "publicationRevision": { "type": "integer", "minimum": 1 },
+    "previousPublicationId": {
+      "anyOf": [
+        { "type": "string", "format": "uuid" },
+        { "type": "null" }
+      ]
+    },
+    "snapshotSchemaVersion": { "const": "PRICING_PUBLICATION_V1" },
+    "profileFingerprint": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "effectiveFrom": { "type": "string", "format": "date" },
+    "effectiveToExclusive": {
+      "anyOf": [
+        { "type": "string", "format": "date" },
+        { "type": "null" }
+      ]
+    },
+    "publishedAt": { "type": "string", "format": "date-time" }
+  }
+}

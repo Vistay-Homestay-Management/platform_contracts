@@ -1,0 +1,59 @@
+{
+  "schemaVersion": "PRICING_PUBLICATION_V1",
+  "profile": {
+    "id": "11111111-1111-4111-8111-111111111111",
+    "propertyId": "22222222-2222-4222-8222-222222222222",
+    "version": 3,
+    "effectiveFrom": "2026-11-01",
+    "effectiveToExclusive": null,
+    "baseDailyRate": "1250000",
+    "mediumDailyFactorBps": 7000,
+    "longDailyFactorBps": 5500,
+    "currency": "VND",
+    "checkInTime": "14:00",
+    "checkOutTime": "12:00",
+    "turnoverMinutes": 120,
+    "quoteTtlMinutes": 15,
+    "commissionDefaultBps": 500,
+    "commissionMaxBps": 2000,
+    "reason": "Dieu chinh gia mùa hè",
+    "authoredByAdminAccountId": "33333333-3333-4333-8333-333333333333",
+    "correlationId": "44444444-4444-4444-8444-444444444444",
+    "authoredAt": "2026-10-30T01:00:00.123456Z",
+    "rules": [
+      {
+        "id": "66666666-6666-4666-8666-666666666666",
+        "code": "weekend-surcharge",
+        "name": "Phu thu cuối tuần",
+        "effectiveFrom": "2026-11-01",
+        "effectiveToExclusive": null,
+        "priority": 200,
+        "daysOfWeek": [6, 7],
+        "channels": ["ADMIN_PORTAL", "CUSTOMER_WEB"],
+        "minimumStayDays": 1,
+        "maximumStayDays": 29,
+        "minimumGuests": null,
+        "maximumGuests": null,
+        "actionType": "PERCENT_SURCHARGE",
+        "actionValue": "750"
+      },
+      {
+        "id": "55555555-5555-4555-8555-555555555555",
+        "code": "early-week-discount",
+        "name": "Early week discount",
+        "effectiveFrom": "2026-11-01",
+        "effectiveToExclusive": "2027-03-01",
+        "priority": 100,
+        "daysOfWeek": [1, 2, 3],
+        "channels": [],
+        "minimumStayDays": null,
+        "maximumStayDays": 5,
+        "minimumGuests": 1,
+        "maximumGuests": 4,
+        "actionType": "PERCENT_DISCOUNT",
+        "actionValue": "500"
+      }
+    ]
+  },
+  "sha256": "e2ab35abe171acefcda508315784660185af825603688bd6122e98b87829b9e4"
+}

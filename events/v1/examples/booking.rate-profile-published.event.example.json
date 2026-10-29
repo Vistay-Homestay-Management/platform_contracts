@@ -1,0 +1,23 @@
+{
+  "eventId": "57de836c-6b48-4d0c-bc17-e9871b81af17",
+  "type": "vistay.booking.rate-profile-published",
+  "version": 1,
+  "aggregateId": "20000000-0000-4000-8000-000000000002",
+  "aggregateVersion": 4,
+  "correlationId": "cb8659ab-65ef-44db-b33e-afd923ee78e5",
+  "causationId": "d318166d-ac86-4199-a97b-c73ff84ca94a",
+  "occurredAt": "2026-10-30T01:25:45.123456Z",
+  "data": {
+    "publicationId": "08fc7a3e-c3cd-48e2-8bf4-03664e744495",
+    "propertyId": "20000000-0000-4000-8000-000000000002",
+    "rateProfileVersionId": "84fb6723-28b0-4cbc-af91-43b579416659",
+    "profileVersion": 7,
+    "publicationRevision": 4,
+    "previousPublicationId": "8a8202bd-d00f-475a-a717-9ad283064cf9",
+    "snapshotSchemaVersion": "PRICING_PUBLICATION_V1",
+    "profileFingerprint": "e86f6c513aa46365ee426907dd9cda8ea7f7c923992e58fab88543bd0f62e994",
+    "effectiveFrom": "2026-11-01",
+    "effectiveToExclusive": null,
+    "publishedAt": "2026-10-30T01:25:45.123456Z"
+  }
+}

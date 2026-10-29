@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/events/v1/booking.rate-profile-published.event.schema.json",
+  "title": "Booking rate profile published event v1",
+  "allOf": [
+    { "$ref": "https://contracts.vistay.vn/events/v1/common-event-envelope.schema.json" },
+    {
+      "type": "object",
+      "properties": {
+        "type": { "const": "vistay.booking.rate-profile-published" },
+        "version": { "const": 1 },
+        "data": {
+          "$ref": "https://contracts.vistay.vn/events/v1/booking.rate-profile-published.payload.schema.json"
+        }
+      }
+    }
+  ]
+}

@@ -49,6 +49,15 @@ The normative SCRUM-355 calculation and explanation contract is
 The normative SCRUM-356 manual-override contract is
 [`pricing-v1-manual-override.md`](pricing-v1-manual-override.md). It records an authorized, expiring, immutable whole-stay lodging reduction against one exact SCRUM-355 result. It does not publish pricing or persist/consume a quote or booking.
 
+The normative SCRUM-357 publication and snapshot contract is
+[`pricing-v1-publication-and-snapshots.md`](pricing-v1-publication-and-snapshots.md).
+It defines publication preview and compare-and-set approval, full-stay active-version
+selection, pricing-backed immutable `booking_quotes` evidence, and exact one-lineage
+manual-override consumption. The related outbox fact is defined by
+[`pricing-v1-rate-profile-published-event.md`](pricing-v1-rate-profile-published-event.md).
+SCRUM-366 builds the customer/inventory/operator journey on this primitive and must
+not duplicate or reinterpret pricing lifecycle logic.
+
 ## Receivable and employee accountability
 
 An unpaid customer amount remains a customer receivable. Booking snapshots the creator and collection owner; Finance records the customer receivable and a separate employee collection-accountability entry. Employee personal liability is created only by an explicit, authorized recovery decision and never replaces or hides the original customer receivable.
