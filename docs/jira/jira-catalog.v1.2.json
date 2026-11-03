@@ -15854,22 +15854,28 @@
       "parentSourceId": "VS-E06",
       "manageDescription": true,
       "actor": "Booking agent and inventory reconciler",
-      "outcome": "Deliver Admin Mobile availability and inventory-block parity is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This task is part of the ViStay VS-E06 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "An authorized booking agent can inspect exact-unit availability and create or release operator-owned inventory blocks from Admin Mobile with the same contracts, revisions, authorization, and failure semantics as Admin Web.",
+      "context": "This task delivers the mobile operator surface after SCRUM-540 establishes the canonical GraphQL behavior. Admin Mobile adapts information density and navigation for touch devices but must not introduce a second inventory API, state model, permission model, or offline mutation path.",
       "inScope": [
-        "Implement and verify: Deliver Admin Mobile availability and inventory-block parity.",
-        "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
-        "Provide repository-specific automated tests and Postman/Newman evidence for callable APIs."
+        "Add an Inventory destination to the existing authenticated Admin Mobile shell without changing the current OIDC login and profile flows.",
+        "Reuse the authenticated InventoryBlocks, PropertyAvailability, CreateInventoryBlock, and ReleaseInventoryBlock GraphQL operations and stable extension error codes delivered by SCRUM-540.",
+        "Provide a touch-first property/date filter, compact availability summary, active/history block list, block detail sheet, create form, release confirmation, loading/empty/error states, and revision refresh behavior.",
+        "Preserve exact property, authoritative branch, Property membership version, inventory revision, block source/type/status, half-open date range, reason, and provider code while excluding protected booking, guest, commercial, actor, and authorization-evidence fields.",
+        "Provide automated API-client/component coverage plus deterministic Android device evidence against the local full Compose stack and the checked-in Postman inventory fixtures."
       ],
       "outOfScope": [
-        "Unlisted provider credentials and production policy values.",
-        "Direct cross-service database reads or duplicated ownership.",
-        "Unreviewed workflow transitions, historical rewrites, or destructive migration shortcuts."
+        "A pixel-for-pixel copy of the desktop timeline, desktop-only drawer/sidebar behavior, or a new mobile-specific backend contract.",
+        "Offline creation, queued release, background retry, optimistic success, or local persistence of access tokens and protected inventory payloads outside the established auth storage.",
+        "Creating or releasing BOOKING or CHANNEL blocks, deleting terminal history, direct service/database access, and displaying guest, booking, financial, credential, or authorization-evidence data."
       ],
       "businessRules": [
-        "Availability uses half-open intervals and exact units.",
-        "Mutating commands require idempotency key and expected revision; overlap is rejected under concurrency.",
-        "Expired/orphan blocks are reconciled without deleting audit history."
+        "Use one canonical property and a 1-31 local-calendar-day half-open window; toDateExclusive is never rendered as an occupied day.",
+        "The mobile overview shows revision-consistent availability, active/history blocks, authoritative branch, and Property membership version from the same GraphQL observation; it never invents aggregate or cross-unit availability.",
+        "Create supports only MAINTENANCE, CLEANING, OWNER_USE, and MANUAL with a 10-1000 character reason, client UUID correlation ID, unique idempotency key, and latest observed inventory revision.",
+        "Release is offered only for TENTATIVE or ACTIVE operator-owned blocks. BOOKING, CHANNEL, RELEASED, and CANCELLED records are read-only and remain visible as history.",
+        "STALE_INVENTORY_REVISION and INVENTORY_BLOCK_CONFLICT clear any success state, display sanitized actionable feedback, refresh authoritative data, and never silently submit a second mutation.",
+        "Network loss or app backgrounding may invalidate the current observation; returning to the screen refreshes before enabling a mutation and no mutation is queued for later execution.",
+        "Mobile permission hints are usability only. Booking enforces inventory:read, inventory:block, active role, branch partition, and current Property membership evidence."
       ],
       "repositories": [
         "service_booking",
@@ -15891,14 +15897,14 @@
       ],
       "authorization": {
         "actions": [
-          "vs-e06-t04:view",
-          "vs-e06-t04:manage"
+          "inventory:read",
+          "inventory:block"
         ],
         "dataPartitions": [
-          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+          "Resolve the requested property through Property to its current authoritative branch and require the actor's active ADMIN role to cover that branch or ALL; fail closed when the mapping or authorization dependency is unavailable."
         ],
         "fieldGroups": [
-          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+          "Expose INVENTORY_OPERATIONAL summary fields only. Never return FINANCIAL, PII, booking/guest identity, channel external reference, actor identity, credentials, or authorization evidence to this workspace."
         ]
       },
       "failureSemantics": [
@@ -15919,25 +15925,47 @@
       ],
       "acceptanceCriteria": [
         {
-          "given": "an authorized actor with a valid partition and a complete request for Deliver Admin Mobile availability and inventory-block parity",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "an authenticated mobile inventory reader selects a canonical property and a valid 1-31 day window",
+          "when": "the Inventory screen loads or is pulled to refresh",
+          "then": "the availability summary and active/history list show the exact property, inventory revision, branch, membership version, and half-open ranges from one authoritative GraphQL observation"
         },
         {
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "an actor with inventory:block enters an allowed operator type, valid dates, and a 10-1000 character reason",
+          "when": "Create is confirmed once",
+          "then": "the app sends one mutation with the displayed expected revision, a stable correlation ID, and a unique idempotency key, disables duplicate submission, then refreshes to the returned revision"
         },
         {
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "an ACTIVE or TENTATIVE operator-owned block is opened",
+          "when": "Release is confirmed with a valid reason",
+          "then": "one release mutation succeeds and the same record remains visible as RELEASED history while BOOKING, CHANNEL, RELEASED, and CANCELLED records expose no release control"
+        },
+        {
+          "given": "another writer advances inventory after the screen observation",
+          "when": "the mobile operator creates or releases with the stale revision",
+          "then": "the app presents the stable stale/conflict message, refreshes authoritative data, preserves the operator's unsent text where safe, and never claims success or creates a duplicate effect"
+        },
+        {
+          "given": "the actor lacks inventory:block or the property belongs to a foreign branch",
+          "when": "the Inventory screen or command is attempted",
+          "then": "read or mutation access is denied by Booking, protected fields and resource existence are not leaked, and the mobile UI shows a sanitized forbidden state"
+        },
+        {
+          "given": "the network is unavailable, the Property mapping cannot be verified, or the app resumes after backgrounding",
+          "when": "the operator returns to Inventory",
+          "then": "no mutation is queued or replayed, stale controls remain disabled, and a successful authoritative refresh is required before a new command"
+        },
+        {
+          "given": "the screen is used on supported Android phone widths with large text, screen reader, keyboard, or reduced-motion settings",
+          "when": "filters, list rows, bottom sheets, forms, and confirmations are operated",
+          "then": "controls remain labeled, reachable, focus-visible, contrast-safe, scroll-safe, and free of horizontal clipping"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Mobile API tests assert the four canonical GraphQL operation names, bearer/CSRF transport, exact variables, response mapping, expected revision, idempotency/correlation identifiers, and extensions.code propagation.",
+        "Component tests cover loading, empty, current/history, read-only source, create/release validation, double-tap prevention, stale refresh, forbidden, dependency unavailable, network loss, resume refresh, and protected-field non-rendering.",
+        "Typecheck and lint pass without weakening the independently owned Web workspace; Android development build starts and authenticates through the existing OIDC flow.",
+        "Device smoke uses property 61000000-0000-4000-8000-000000000010 and records 1/14/31-day reads, create, stale revision, release, foreign-branch denial, Property-unavailable failure, app background/resume, large-text, and screen-reader evidence.",
+        "The checked-in Inventory, Inventory Management, and Inventory Commands Postman collections remain contract-valid and the seeded Newman flow is the backend parity oracle when runtime tokens are supplied."
       ],
       "observability": [
         "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
@@ -15961,7 +15989,9 @@
       "labels": [
         "roadmap-v1-2",
         "source-vs-e06-t04",
-        "owner-service-booking"
+        "owner-service-booking",
+        "frontend-mobile",
+        "agent-ready"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử."
     },
