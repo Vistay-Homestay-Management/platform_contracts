@@ -15584,7 +15584,13 @@
       "businessRules": [
         "Availability uses half-open intervals and exact units.",
         "Mutating commands require idempotency key and expected revision; overlap is rejected under concurrency.",
-        "Expired/orphan blocks are reconciled without deleting audit history."
+        "Expired/orphan blocks are reconciled without deleting audit history.",
+        "Expose inventoryBlocks as an authenticated Booking GraphQL query for exactly one canonical property ID.",
+        "Authorize inventory:read against the current Property-owned branch membership before reading Booking data; dependency failure, unmapped property, and foreign partition fail closed.",
+        "Optional date filters use half-open overlap semantics; type/status filters are exact enums and empty arrays mean all values.",
+        "Use opaque URL-safe keyset pagination ordered by updatedAt DESC then inventoryBlockId DESC, with page size 1-100 and default 50.",
+        "Return the Booking inventory revision plus Property branch and membership version so Admin clients can detect stale multi-page reads.",
+        "Expose operational reason and provider code only; never expose booking/hold/customer/guest identity, channel external reference, actor identity, authorization evidence, commercial data, credentials, or SQL details."
       ],
       "repositories": [
         "service_booking",
