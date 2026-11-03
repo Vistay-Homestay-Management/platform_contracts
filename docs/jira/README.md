@@ -4,7 +4,8 @@
 
 ## Source layout
 
-- `v1.3/epics/*.json`: reviewable source shards, one per epic plus `project.json`.
+- `v1.3/epics/*.json`: reviewable baseline source shards, one per epic plus `project.json`.
+- `v1.3/refinements/*.json`: wave-specific deep-merge refinements and new leaf additions. An addition must name an existing `templateSourceId`; the compiler removes that helper field and rejects duplicate or unknown identities.
 - `jira-catalog.v1.3.json`: deterministic compiler output; never edit it directly.
 - `schema/jira-catalog.v1.3.schema.json`: structural contract.
 - `scripts/build-jira-catalog.mjs`: compiler with duplicate identity protection.

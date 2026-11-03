@@ -23,7 +23,6 @@ for (const file of files) {
     issues.push(issue);
   }
 }
-issues.sort((left, right) => left.sourceId.localeCompare(right.sourceId, 'en', { numeric: true }));
 const issueBySource = new Map(issues.map((issue) => [issue.sourceId, issue]));
 const deepMerge = (target, override) => {
   if (Array.isArray(override) || override === null || typeof override !== 'object') return structuredClone(override);
@@ -36,7 +35,22 @@ const refinementFiles = fs.existsSync(refinementDirectory)
   : [];
 for (const file of refinementFiles) {
   const document = JSON.parse(fs.readFileSync(path.join(refinementDirectory, file), 'utf8').replace(/^\uFEFF/, ''));
-  if (!Array.isArray(document.refinements)) throw new Error(`${file}: expected { refinements[] }`);
+  for (const addition of document.additions ?? []) {
+    if (!addition.templateSourceId) throw new Error(`${file}: addition ${addition.sourceId ?? '<missing>'} needs templateSourceId`);
+    const template = issueBySource.get(addition.templateSourceId);
+    if (!template) throw new Error(`${file}: addition ${addition.sourceId ?? '<missing>'} references unknown template ${addition.templateSourceId}`);
+    if (!addition.sourceId) throw new Error(`${file}: addition needs sourceId`);
+    if (issueBySource.has(addition.sourceId)) throw new Error(`${file}: duplicate addition Source-ID ${addition.sourceId}`);
+    const issue = deepMerge(template, addition);
+    delete issue.templateSourceId;
+    issues.push(issue);
+    issueBySource.set(issue.sourceId, issue);
+    sourceFileById.set(issue.sourceId, file);
+  }
+}
+for (const file of refinementFiles) {
+  const document = JSON.parse(fs.readFileSync(path.join(refinementDirectory, file), 'utf8').replace(/^\uFEFF/, ''));
+  if (!Array.isArray(document.refinements)) throw new Error(`${file}: expected { refinements[], additions?[] }`);
   for (const refinement of document.refinements) {
     const current = issueBySource.get(refinement.sourceId);
     if (!current) throw new Error(`${file}: refinement references unknown Source-ID ${refinement.sourceId}`);
@@ -45,5 +59,6 @@ for (const file of refinementFiles) {
     Object.assign(current, merged);
   }
 }
+issues.sort((left, right) => left.sourceId.localeCompare(right.sourceId, 'en', { numeric: true }));
 fs.writeFileSync(outputPath, `${JSON.stringify({ schemaVersion: '1.3', projectKey: 'SCRUM', issues }, null, 2)}\n`);
 console.log(`Built Jira catalog v1.3 with ${issues.length} records from ${files.length} shards and ${refinementFiles.length} refinement files at ${outputPath}`);
