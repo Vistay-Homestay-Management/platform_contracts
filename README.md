@@ -28,6 +28,8 @@ Service implementations own their business logic. This repository owns only wire
 - `openapi/vietqr-callback.v1.yaml`: provider-facing callback contract owned by ViStay.
 - `docs/adr-002-service-communication-and-data-boundaries.md`: GraphQL, gRPC, Kafka, webhook, SSE, Redis, and data ownership boundaries.
 - `docs/epic-00-01-delivery-gates.md`: executable walking-skeleton, database rebaseline, and recovery gates.
+- `docs/jira/jira-catalog.v1.2.json`: validated delivery specification for Jira ownership, rules, dependencies, tests, and evidence.
+- `docs/jira/schema/jira-catalog.schema.json`: machine-readable Jira catalog contract; see `docs/jira/README.md` for readiness and synchronization rules.
 - `docs/roadmap-traceability.md`: final Epic 00–22 index and mapping from the historical backlog.
 
 Run `buf lint` to validate protobuf contracts and `npm test` to validate JSON Schemas, GraphQL contracts, and architecture artifacts.

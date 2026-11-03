@@ -4,11 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "npm run validate:events && npm run validate:graphql && npm run validate:architecture && npm run validate:pricing",
+    "test": "npm run validate:events && npm run validate:graphql && npm run validate:architecture && npm run validate:pricing && npm run validate:jira",
     "validate:events": "node scripts/validate-schemas.mjs",
     "validate:graphql": "node scripts/validate-graphql.mjs",
     "validate:architecture": "node scripts/validate-architecture-artifacts.mjs",
-    "validate:pricing": "node scripts/validate-pricing-publication.mjs"
+    "validate:pricing": "node scripts/validate-pricing-publication.mjs",
+    "validate:jira": "node scripts/validate-jira-catalog.mjs"
   },
   "devDependencies": {
     "@apollo/composition": "2.14.4",

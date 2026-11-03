@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vistay.vn/schemas/jira-catalog.v1.2.json",
+  "title": "ViStay Jira delivery catalog",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "projectKey", "issues"],
+  "properties": {
+    "schemaVersion": { "const": "1.2" },
+    "projectKey": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]+$" },
+    "issues": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/issue" }
+    }
+  },
+  "$defs": {
+    "nonEmptyString": { "type": "string", "minLength": 2 },
+    "stringList": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/nonEmptyString" },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "dependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceId", "relation"],
+      "properties": {
+        "sourceId": { "type": "string", "minLength": 3 },
+        "relation": { "enum": ["blocks", "is-blocked-by", "relates-to", "remediates"] }
+      }
+    },
+    "acceptanceCriterion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["given", "when", "then"],
+      "properties": {
+        "given": { "$ref": "#/$defs/nonEmptyString" },
+        "when": { "$ref": "#/$defs/nonEmptyString" },
+        "then": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actions", "dataPartitions", "fieldGroups"],
+      "properties": {
+        "actions": { "$ref": "#/$defs/stringList" },
+        "dataPartitions": { "$ref": "#/$defs/stringList" },
+        "fieldGroups": { "$ref": "#/$defs/stringList" }
+      }
+    },
+    "issue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceId", "issueType", "summary", "manageDescription", "actor", "outcome",
+        "context", "inScope", "outOfScope", "businessRules", "repositories", "interfaces",
+        "dataOwnership", "stateMachine", "authorization", "failureSemantics",
+        "idempotencyConcurrency", "acceptanceCriteria", "tests", "observability",
+        "definitionOfDone", "evidence", "decisionStatus", "externalBlockers"
+      ],
+      "properties": {
+        "sourceId": { "type": "string", "pattern": "^(VS-E[0-9]{2}(-[A-Z]+[0-9]+)*|PROJECT-[A-Z0-9-]+)$" },
+        "jiraKey": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]+-[0-9]+$" },
+        "issueType": { "enum": ["Epic", "Story", "Task", "Subtask", "Bug", "Spike", "Tech Debt"] },
+        "summary": { "type": "string", "minLength": 8, "maxLength": 255 },
+        "parentSourceId": { "type": "string", "minLength": 3 },
+        "manageDescription": { "type": "boolean" },
+        "actor": { "$ref": "#/$defs/nonEmptyString" },
+        "outcome": { "$ref": "#/$defs/nonEmptyString" },
+        "context": { "$ref": "#/$defs/nonEmptyString" },
+        "inScope": { "$ref": "#/$defs/stringList" },
+        "outOfScope": { "$ref": "#/$defs/stringList" },
+        "businessRules": { "$ref": "#/$defs/stringList" },
+        "repositories": { "$ref": "#/$defs/stringList" },
+        "interfaces": { "$ref": "#/$defs/stringList" },
+        "dataOwnership": { "$ref": "#/$defs/stringList" },
+        "stateMachine": { "$ref": "#/$defs/stringList" },
+        "authorization": { "$ref": "#/$defs/authorization" },
+        "failureSemantics": { "$ref": "#/$defs/stringList" },
+        "idempotencyConcurrency": { "$ref": "#/$defs/stringList" },
+        "dependencies": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/dependency" },
+          "default": []
+        },
+        "acceptanceCriteria": {
+          "type": "array",
+          "minItems": 2,
+          "items": { "$ref": "#/$defs/acceptanceCriterion" }
+        },
+        "tests": { "$ref": "#/$defs/stringList" },
+        "observability": { "$ref": "#/$defs/stringList" },
+        "definitionOfDone": { "$ref": "#/$defs/stringList" },
+        "evidence": { "$ref": "#/$defs/stringList" },
+        "decisionStatus": { "enum": ["approved", "decision-required"] },
+        "externalBlockers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" },
+          "uniqueItems": true
+        },
+        "labels": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+          "uniqueItems": true
+        },
+        "decisionNoteVi": { "type": "string", "minLength": 2 }
+      }
+    }
+  }
+}
