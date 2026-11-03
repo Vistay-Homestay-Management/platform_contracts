@@ -1,31 +1,78 @@
-# ViStay Jira catalog v1.2
+# ViStay Jira delivery catalog
 
-This directory is the canonical source for the managed delivery specification in Jira. Jira remains canonical for workflow status, comments, attachments, sprint membership, worklogs, and delivery evidence.
+`jira-catalog.v1.3.json` is the compiled, canonical implementation specification. Jira is canonical only for workflow status, assignee, sprint, comments, worklogs, attachments, and delivery evidence. The immutable `jira-catalog.v1.2.json` is retained as a migration snapshot; do not regenerate or edit it.
 
-## Contract
+## Source layout
 
-- `jira-catalog.v1.2.json` contains every managed open issue plus referenced historical dependencies.
-- `schema/jira-catalog.schema.json` validates structure; `npm run validate:jira` adds semantic checks.
-- `Source-ID` is the stable identity. Jira keys may change; automation must never match by summary alone.
-- English is used for implementation specifications and acceptance tests. Vietnamese is used for product-decision comments.
-- Synchronization may create or update managed fields, labels, parents, and links. It must not delete issues/comments or change workflow status unless an explicit transition phase is requested.
+- `v1.3/epics/*.json`: reviewable source shards, one per epic plus `project.json`.
+- `jira-catalog.v1.3.json`: deterministic compiler output; never edit it directly.
+- `schema/jira-catalog.v1.3.schema.json`: structural contract.
+- `scripts/build-jira-catalog.mjs`: compiler with duplicate identity protection.
+- `scripts/validate-jira-catalog.mjs`: structural and semantic Definition-of-Ready gate.
+- `scripts/audit-jira-readiness.mjs`: dispatch-safety and Jira-key coverage report.
 
-## Readiness labels
+The files under `service context/jira` and `service context/ViStay_Jira_Backlog_2026.txt` are historical inputs only. They are not authoritative and must not update Jira.
 
-The sync computes exactly one readiness label:
+## Identity and specification states
 
-- `agent-ready`: decision complete and no unresolved dependency or external blocker.
-- `agent-ready-after-dependencies`: specification complete but linked prerequisites remain open.
-- `decision-required`: a product or architecture decision is missing.
-- `externally-blocked`: credentials, vendor approval, production endpoint, or another external input is missing.
+`Source-ID` is stable; Jira keys are a backfilled transport identity and summaries are never used as the sole match key.
 
-Legacy `needs-refinement` and `agent-not-ready` labels are removed only after the record passes schema and semantic validation.
+- `needs-refinement`: not safe to implement.
+- `decision-required`: a named product or architecture decision is unresolved.
+- `externally-blocked`: implementation requires an external input.
+- `refined-parent`: non-dispatchable hierarchy record whose child boundary is complete.
+- `executable`: a dispatchable leaf with concrete repository paths, artifacts, contracts, authorization, AC IDs, commands, and evidence mapping.
+- `historical`: completed Jira history; the sync does not rewrite its description.
 
-## Workflow
+Only `Task`, `Subtask`, `Bug`, `Spike`, and `Tech Debt` may be dispatchable. `Epic` and `Story` describe outcomes and boundaries; they are never handed directly to an implementation agent.
 
-1. Edit the catalog and run `npm run validate:jira`.
-2. Run infrastructure sync in `Validate`, then `DryRun` mode.
-3. Review the JSON plan and backup path.
-4. Run `Apply`, then run `DryRun` again; the second plan must report zero changes.
+The sync computes exactly one managed readiness label:
 
-Never place Jira tokens or customer/provider secrets in this repository.
+- `agent-ready`: executable and all prerequisites are Done.
+- `agent-ready-after-dependencies`: executable but a prerequisite remains open.
+- `needs-refinement`, `decision-required`, `externally-blocked`, `refined-parent`, or `historical`: mirrors the non-dispatch state.
+
+An activation dependency such as production credentials does not block internal implementation. Put it in `activationBlockers`. Put only inputs required to write or test the implementation in `implementationBlockers`.
+
+## Required workflow
+
+From `platform_contracts`:
+
+```powershell
+npm run build:jira
+npm run validate:jira
+npm run audit:jira-readiness
+```
+
+From `platform_infrastructure`:
+
+```powershell
+.\scripts\jira\Sync-JiraCatalog.ps1 -Mode Validate
+.\scripts\jira\Sync-JiraCatalog.ps1 -Mode DryRun
+```
+
+Review both the backup and plan. Apply at most five Source-IDs as a canary, read Jira back, then repeat the same selected DryRun and require zero changes:
+
+```powershell
+.\scripts\jira\Sync-JiraCatalog.ps1 -Mode Apply -SourceId VS-E00-T01,VS-E00-T02
+.\scripts\jira\Sync-JiraCatalog.ps1 -Mode DryRun -SourceId VS-E00-T01,VS-E00-T02
+```
+
+Full apply is intentionally disabled unless `-ConfirmFullApply` is explicit. Issue creation is separately disabled unless `-AllowCreates` is explicit. The sync never transitions workflow status.
+
+Promote an executable leaf only through the readiness gate:
+
+```powershell
+.\scripts\jira\Promote-JiraIssue.ps1 -IssueKey SCRUM-123 -TargetStatus Ready -Mode DryRun
+.\scripts\jira\Promote-JiraIssue.ps1 -IssueKey SCRUM-123 -TargetStatus Ready -Mode Apply
+```
+
+## Weak-agent delivery contract
+
+1. Branch from current `dev` using `agent/<source-id>-<slug>`.
+2. Change only the repositories and paths listed by the issue.
+3. Run every exact `testCases[].command`; attach the named evidence to Jira.
+4. Open a PR to `dev`. Direct weak-agent pushes to `dev` are forbidden.
+5. The repository ServiceOwner reviews and approves. CI, owner approval, merge to `dev`, and required smoke evidence are mandatory before Done.
+
+English is used for technical specifications and acceptance tests. Vietnamese is used for product-decision notes. Never commit Jira tokens, provider credentials, customer data, or production policy values.

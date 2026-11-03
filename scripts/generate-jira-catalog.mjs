@@ -3,6 +3,10 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
+if (!process.argv.includes('--legacy-v1.2')) {
+  throw new Error('The v1.2 generator is retired. Use npm run build:jira for v1.3; pass --legacy-v1.2 only for an explicit historical reconstruction.');
+}
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const option = (name, fallback) => {
   const index = process.argv.indexOf(name);

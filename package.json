@@ -5,11 +5,14 @@
   "type": "module",
   "scripts": {
     "test": "npm run validate:events && npm run validate:graphql && npm run validate:architecture && npm run validate:pricing && npm run validate:jira",
+    "build:jira": "node scripts/build-jira-catalog.mjs",
+    "audit:jira-readiness": "node scripts/audit-jira-readiness.mjs",
+    "test:jira-readiness": "npm run build:jira && node scripts/test-jira-catalog-validation.mjs",
     "validate:events": "node scripts/validate-schemas.mjs",
     "validate:graphql": "node scripts/validate-graphql.mjs",
     "validate:architecture": "node scripts/validate-architecture-artifacts.mjs",
     "validate:pricing": "node scripts/validate-pricing-publication.mjs",
-    "validate:jira": "node scripts/validate-jira-catalog.mjs"
+    "validate:jira": "npm run build:jira && node scripts/validate-jira-catalog.mjs && npm run audit:jira-readiness && node scripts/test-jira-catalog-validation.mjs"
   },
   "devDependencies": {
     "@apollo/composition": "2.14.4",

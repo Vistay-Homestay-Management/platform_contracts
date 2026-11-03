@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vistay.vn/schemas/jira-catalog.v1.3.json",
+  "title": "ViStay Jira delivery catalog v1.3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "projectKey", "issues"],
+  "properties": {
+    "schemaVersion": { "const": "1.3" },
+    "projectKey": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]+$" },
+    "issues": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/issue" }
+    }
+  },
+  "$defs": {
+    "nonEmptyString": { "type": "string", "minLength": 2 },
+    "stringList": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/nonEmptyString" },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "optionalStringList": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/nonEmptyString" },
+      "uniqueItems": true
+    },
+    "dependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceId", "relation"],
+      "properties": {
+        "sourceId": { "type": "string", "minLength": 3 },
+        "relation": { "enum": ["blocks", "is-blocked-by", "relates-to", "remediates"] }
+      }
+    },
+    "acceptanceCriterion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "given", "when", "then"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^AC[0-9]{2}$" },
+        "given": { "$ref": "#/$defs/nonEmptyString" },
+        "when": { "$ref": "#/$defs/nonEmptyString" },
+        "then": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actions", "dataPartitions", "fieldGroups"],
+      "properties": {
+        "actions": { "$ref": "#/$defs/stringList" },
+        "dataPartitions": { "$ref": "#/$defs/stringList" },
+        "fieldGroups": { "$ref": "#/$defs/stringList" }
+      }
+    },
+    "repositorySlice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "paths", "artifacts"],
+      "properties": {
+        "repository": { "$ref": "#/$defs/nonEmptyString" },
+        "paths": { "$ref": "#/$defs/stringList" },
+        "artifacts": { "$ref": "#/$defs/stringList" }
+      }
+    },
+    "contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "owner", "name", "location", "compatibility"],
+      "properties": {
+        "kind": { "enum": ["REST", "GraphQL", "gRPC", "Kafka", "Database", "UI"] },
+        "owner": { "$ref": "#/$defs/nonEmptyString" },
+        "name": { "$ref": "#/$defs/nonEmptyString" },
+        "location": { "$ref": "#/$defs/nonEmptyString" },
+        "compatibility": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "question", "owner", "status"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^DEC-[0-9]{2}$" },
+        "question": { "$ref": "#/$defs/nonEmptyString" },
+        "owner": { "$ref": "#/$defs/nonEmptyString" },
+        "status": { "enum": ["approved", "required"] },
+        "resolution": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "testCase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "level", "command", "verifies", "evidence"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^TEST-[0-9]{2}$" },
+        "level": { "enum": ["unit", "integration", "contract", "e2e", "manual", "operational"] },
+        "command": { "$ref": "#/$defs/nonEmptyString" },
+        "verifies": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^AC[0-9]{2}$" }
+        },
+        "evidence": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "issue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceId", "issueType", "summary", "manageDescription", "specStatus", "workKind", "dispatchable",
+        "actor", "outcome", "context", "inScope", "outOfScope", "businessRules", "repositories",
+        "interfaces", "dataOwnership", "stateMachine", "authorization", "failureSemantics",
+        "idempotencyConcurrency", "dependencies", "acceptanceCriteria", "tests", "testCases", "observability",
+        "definitionOfDone", "evidence", "decisions", "implementationBlockers", "activationBlockers", "externalBlockers"
+      ],
+      "properties": {
+        "sourceId": { "type": "string", "pattern": "^(VS-E[0-9]{2}(-[A-Z]+[0-9]+)*|PROJECT-[A-Z0-9-]+)$" },
+        "jiraKey": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]+-[0-9]+$" },
+        "issueType": { "enum": ["Epic", "Story", "Task", "Subtask", "Bug", "Spike", "Tech Debt"] },
+        "summary": { "type": "string", "minLength": 8, "maxLength": 255 },
+        "parentSourceId": { "type": "string", "minLength": 3 },
+        "manageDescription": { "type": "boolean" },
+        "specStatus": { "enum": ["needs-refinement", "decision-required", "externally-blocked", "refined-parent", "executable", "historical"] },
+        "workKind": { "enum": ["decision", "contract", "service", "web", "mobile", "migration", "infrastructure", "integration", "operations", "bug", "spike", "tech-debt"] },
+        "dispatchable": { "type": "boolean" },
+        "actor": { "$ref": "#/$defs/nonEmptyString" },
+        "outcome": { "$ref": "#/$defs/nonEmptyString" },
+        "context": { "$ref": "#/$defs/nonEmptyString" },
+        "inScope": { "$ref": "#/$defs/stringList" },
+        "outOfScope": { "$ref": "#/$defs/stringList" },
+        "businessRules": { "$ref": "#/$defs/stringList" },
+        "repositories": { "$ref": "#/$defs/stringList" },
+        "primaryRepository": { "$ref": "#/$defs/nonEmptyString" },
+        "repositorySlices": { "type": "array", "items": { "$ref": "#/$defs/repositorySlice" }, "uniqueItems": true },
+        "contracts": { "type": "array", "items": { "$ref": "#/$defs/contract" }, "uniqueItems": true },
+        "interfaces": { "$ref": "#/$defs/stringList" },
+        "dataOwnership": { "$ref": "#/$defs/stringList" },
+        "stateMachine": { "$ref": "#/$defs/stringList" },
+        "authorization": { "$ref": "#/$defs/authorization" },
+        "failureSemantics": { "$ref": "#/$defs/stringList" },
+        "idempotencyConcurrency": { "$ref": "#/$defs/stringList" },
+        "dependencies": { "type": "array", "items": { "$ref": "#/$defs/dependency" }, "uniqueItems": true },
+        "acceptanceCriteria": { "type": "array", "minItems": 2, "items": { "$ref": "#/$defs/acceptanceCriterion" } },
+        "tests": { "$ref": "#/$defs/stringList" },
+        "testCases": { "type": "array", "items": { "$ref": "#/$defs/testCase" }, "uniqueItems": true },
+        "observability": { "$ref": "#/$defs/stringList" },
+        "definitionOfDone": { "$ref": "#/$defs/stringList" },
+        "evidence": { "$ref": "#/$defs/stringList" },
+        "decisions": { "type": "array", "items": { "$ref": "#/$defs/decision" }, "uniqueItems": true },
+        "implementationBlockers": { "$ref": "#/$defs/optionalStringList" },
+        "activationBlockers": { "$ref": "#/$defs/optionalStringList" },
+        "externalBlockers": { "$ref": "#/$defs/optionalStringList" },
+        "labels": { "type": "array", "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" }, "uniqueItems": true },
+        "decisionNoteVi": { "type": "string", "minLength": 2 }
+      }
+    }
+  }
+}

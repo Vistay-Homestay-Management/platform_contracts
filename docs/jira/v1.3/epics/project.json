@@ -1,0 +1,676 @@
+{
+  "shard": "PROJECT",
+  "issues": [
+    {
+      "sourceId": "PROJECT-GUIDE",
+      "jiraKey": "SCRUM-537",
+      "issueType": "Task",
+      "summary": "[PROJECT-GUIDE] Agent execution contract, readiness gate and delivery order",
+      "manageDescription": true,
+      "actor": "Product owner and architecture reviewer",
+      "outcome": "A versioned Jira catalog prevents generic or incomplete tickets from being dispatched and synchronizes managed Jira fields without rewriting completed history or workflow state.",
+      "context": "The v1.2 catalog covered every issue but generated broad acceptance text and synthetic permissions. Catalog v1.3 makes semantic readiness enforceable, shards specifications by epic, and adds canary-only synchronization plus an explicit promotion gate.",
+      "inScope": [
+        "Compile all v1.3 epic shards into one deterministic 401-record catalog and reject duplicate Source-IDs or Jira keys.",
+        "Reject executable leaves that lack concrete repository paths, artifacts, authorization actions, AC-to-test mapping, reproducible commands, or refined parents.",
+        "Synchronize descriptions, labels, Module, parents, issue types, and typed dependency links with backup, optimistic concurrency, canary limits, and no implicit creation or workflow transition."
+      ],
+      "outOfScope": [
+        "Unlisted provider credentials and production policy values.",
+        "Direct cross-service database reads or duplicated ownership.",
+        "Unreviewed workflow transitions, historical rewrites, or destructive migration shortcuts."
+      ],
+      "businessRules": [
+        "A decision is publishable only after named owner approval, effective time, supersession rule, fixtures, and rollback impact are recorded.",
+        "Example values are DRAFT/UAT only unless an explicit production policy is maker-checker approved."
+      ],
+      "repositories": [
+        "platform_contracts",
+        "platform_infrastructure"
+      ],
+      "primaryRepository": "platform_contracts",
+      "repositorySlices": [
+        {
+          "repository": "platform_contracts",
+          "paths": [
+            "docs/jira/v1.3/epics/*.json",
+            "docs/jira/schema/jira-catalog.v1.3.schema.json",
+            "scripts/build-jira-catalog.mjs",
+            "scripts/validate-jira-catalog.mjs",
+            "scripts/audit-jira-readiness.mjs"
+          ],
+          "artifacts": [
+            "docs/jira/jira-catalog.v1.3.json",
+            "semantic readiness validation report"
+          ]
+        },
+        {
+          "repository": "platform_infrastructure",
+          "paths": [
+            "scripts/jira/Sync-JiraCatalog.ps1",
+            "scripts/jira/Promote-JiraIssue.ps1"
+          ],
+          "artifacts": [
+            "timestamped Jira backup",
+            "reviewable dry-run plan",
+            "readiness-gated workflow transition result"
+          ]
+        }
+      ],
+      "contracts": [
+        {
+          "kind": "REST",
+          "owner": "platform_infrastructure",
+          "name": "Atlassian Jira Cloud REST API v3",
+          "location": "scripts/jira/Sync-JiraCatalog.ps1",
+          "compatibility": "Use Source-ID and Jira key identity, preserve comments, worklogs, attachments, sprint and status, and abort on concurrent updated timestamps."
+        },
+        {
+          "kind": "Database",
+          "owner": "platform_contracts",
+          "name": "ViStay Jira catalog v1.3 JSON schema",
+          "location": "docs/jira/schema/jira-catalog.v1.3.schema.json",
+          "compatibility": "v1.2 stays immutable; v1.3 is compiled from per-epic shards and validated before synchronization."
+        }
+      ],
+      "interfaces": [
+        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
+        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
+        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+      ],
+      "dataOwnership": [
+        "Versioned policy and decision records are owned by platform_contracts; runtime services consume published versions and never silently invent defaults."
+      ],
+      "stateMachine": [
+        "Specification moves from needs-refinement or decision-required to executable only after semantic validation; executable leaves become agent-ready or agent-ready-after-dependencies from live dependency state.",
+        "Jira workflow transitions are never performed by catalog synchronization; Ready promotion and Backlog demotion use the separate promotion gate.",
+        "Completed Jira issues are historical and their descriptions remain immutable; remediation is represented by a new Bug or Tech Debt issue."
+      ],
+      "authorization": {
+        "actions": [
+          "jira.catalog:view",
+          "jira.catalog:manage"
+        ],
+        "dataPartitions": [
+          "PROJECT:SCRUM only; credentials must have explicit project permission and may not enumerate other Jira projects."
+        ],
+        "fieldGroups": [
+          "DELIVERY_SPEC is managed from the catalog; WORKFLOW_EVIDENCE, COMMENTS, ATTACHMENTS, WORKLOGS, SPRINT and STATUS remain Jira-owned."
+        ]
+      },
+      "failureSemantics": [
+        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
+        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
+        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+      ],
+      "idempotencyConcurrency": [
+        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
+        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
+        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "the 26 v1.3 source shards containing all managed project issues",
+          "when": "npm run validate:jira is executed in platform_contracts",
+          "then": "one deterministic 401-record catalog is built, all Jira keys are present, and structural plus semantic validation succeeds"
+        },
+        {
+          "id": "AC02",
+          "given": "an open issue still contains generator boilerplate or lacks a concrete path, artifact, authorization action, AC mapping, or command",
+          "when": "that issue is marked executable or dispatchable",
+          "then": "validation fails and the issue cannot receive agent-ready"
+        },
+        {
+          "id": "AC03",
+          "given": "a reviewed catalog and a fresh Jira backup",
+          "when": "a canary Apply is requested for at most five Source-IDs",
+          "then": "only those issues are updated, any concurrent Jira edit aborts the run, no workflow status changes, and a repeated selected DryRun reports zero changes"
+        }
+      ],
+      "tests": [
+        "Catalog build and semantic validation cover identity, hierarchy, readiness, repository, authorization, acceptance, test-command, and evidence invariants.",
+        "Jira Validate and DryRun cover credential access, catalog-to-live identity, Module options, typed links, managed-field drift, backup, and reviewable plan generation.",
+        "Canary Apply plus selected zero-diff DryRun proves idempotent synchronization without touching Jira-owned workflow evidence."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "contract",
+          "command": "npm run validate:jira",
+          "verifies": ["AC01", "AC02"],
+          "evidence": "platform_contracts console output showing 401 valid records, readiness counts, zero unsafe dispatchable records, and zero missing Jira keys"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/jira/Sync-JiraCatalog.ps1 -Mode DryRun -SourceId PROJECT-GUIDE",
+          "verifies": ["AC03"],
+          "evidence": "timestamped Jira backup and JSON dry-run plan for SCRUM-537"
+        },
+        {
+          "id": "TEST-03",
+          "level": "operational",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/jira/Sync-JiraCatalog.ps1 -Mode Apply -SourceId PROJECT-GUIDE",
+          "verifies": ["AC03"],
+          "evidence": "Apply result followed by a selected DryRun with changes=0 and unchanged Jira workflow status"
+        }
+      ],
+      "observability": [
+        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
+        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
+        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+      ],
+      "definitionOfDone": [
+        "Catalog validation and all affected repository CI checks pass.",
+        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
+        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
+        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+      ],
+      "evidence": [
+        "Pull request and commit links per repository.",
+        "Automated test and Newman report with fixture version.",
+        "Migration/rollback or compatibility evidence where data/contracts change.",
+        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "owner-platform-contracts",
+        "roadmap-v1-3",
+        "source-project-guide"
+      ],
+      "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
+      "specStatus": "executable",
+      "workKind": "contract",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": []
+    },
+    {
+      "sourceId": "PROJECT-REFINE-W1",
+      "jiraKey": "SCRUM-548",
+      "issueType": "Subtask",
+      "summary": "[PROJECT-REFINE-W1] Refine release-0 and release-1 foundations",
+      "parentSourceId": "PROJECT-GUIDE",
+      "manageDescription": true,
+      "actor": "Product owner and architecture reviewer",
+      "outcome": "Refine release-0 and release-1 foundations is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
+      "context": "This subtask is part of the ViStay PROJECT-REFINE delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "inScope": [
+        "Implement and verify: Refine release-0 and release-1 foundations.",
+        "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
+        "Provide repository-specific automated tests and Postman/Newman evidence for callable APIs."
+      ],
+      "outOfScope": [
+        "Unlisted provider credentials and production policy values.",
+        "Direct cross-service database reads or duplicated ownership.",
+        "Unreviewed workflow transitions, historical rewrites, or destructive migration shortcuts."
+      ],
+      "businessRules": [
+        "A decision is publishable only after named owner approval, effective time, supersession rule, fixtures, and rollback impact are recorded.",
+        "Example values are DRAFT/UAT only unless an explicit production policy is maker-checker approved."
+      ],
+      "repositories": [
+        "platform_contracts",
+        "platform_infrastructure"
+      ],
+      "interfaces": [
+        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
+        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
+        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+      ],
+      "dataOwnership": [
+        "Versioned policy and decision records are owned by platform_contracts; runtime services consume published versions and never silently invent defaults."
+      ],
+      "stateMachine": [
+        "Model legal states and transitions for Refine release-0 and release-1 foundations; reject illegal transitions with stable error codes.",
+        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
+        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+      ],
+      "authorization": {
+        "actions": [
+          "project-refine-w1:view",
+          "project-refine-w1:manage"
+        ],
+        "dataPartitions": [
+          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+        ]
+      },
+      "failureSemantics": [
+        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
+        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
+        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+      ],
+      "idempotencyConcurrency": [
+        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
+        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
+        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized actor with a valid partition and a complete request for Refine release-0 and release-1 foundations",
+          "when": "the command or query is executed",
+          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+        },
+        {
+          "id": "AC02",
+          "given": "a caller missing the action, partition, or requested field-group grant",
+          "when": "the same operation is attempted",
+          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+        },
+        {
+          "id": "AC03",
+          "given": "the same mutation is replayed or two requests use the same expected revision",
+          "when": "processing overlaps or retries occur",
+          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+        }
+      ],
+      "tests": [
+        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
+        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
+        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+      ],
+      "observability": [
+        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
+        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
+        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+      ],
+      "definitionOfDone": [
+        "Catalog validation and all affected repository CI checks pass.",
+        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
+        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
+        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+      ],
+      "evidence": [
+        "Pull request and commit links per repository.",
+        "Automated test and Newman report with fixture version.",
+        "Migration/rollback or compatibility evidence where data/contracts change.",
+        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "owner-platform-contracts",
+        "roadmap-v1-3",
+        "source-project-refine-w1"
+      ],
+      "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
+      "specStatus": "needs-refinement",
+      "workKind": "contract",
+      "dispatchable": false,
+      "testCases": [],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": []
+    },
+    {
+      "sourceId": "PROJECT-REFINE-W3",
+      "jiraKey": "SCRUM-549",
+      "issueType": "Subtask",
+      "summary": "[PROJECT-REFINE-W3] Refine release-3 payment, finance, stay, operations and notifications",
+      "parentSourceId": "PROJECT-GUIDE",
+      "manageDescription": true,
+      "actor": "Product owner and architecture reviewer",
+      "outcome": "Refine release-3 payment, finance, stay, operations and notifications is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
+      "context": "This subtask is part of the ViStay PROJECT-REFINE delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "inScope": [
+        "Implement and verify: Refine release-3 payment, finance, stay, operations and notifications.",
+        "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
+        "Provide repository-specific automated tests and Postman/Newman evidence for callable APIs."
+      ],
+      "outOfScope": [
+        "Unlisted provider credentials and production policy values.",
+        "Direct cross-service database reads or duplicated ownership.",
+        "Unreviewed workflow transitions, historical rewrites, or destructive migration shortcuts."
+      ],
+      "businessRules": [
+        "A decision is publishable only after named owner approval, effective time, supersession rule, fixtures, and rollback impact are recorded.",
+        "Example values are DRAFT/UAT only unless an explicit production policy is maker-checker approved."
+      ],
+      "repositories": [
+        "platform_contracts",
+        "platform_infrastructure"
+      ],
+      "interfaces": [
+        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
+        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
+        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+      ],
+      "dataOwnership": [
+        "Versioned policy and decision records are owned by platform_contracts; runtime services consume published versions and never silently invent defaults."
+      ],
+      "stateMachine": [
+        "Model legal states and transitions for Refine release-3 payment, finance, stay, operations and notifications; reject illegal transitions with stable error codes.",
+        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
+        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+      ],
+      "authorization": {
+        "actions": [
+          "project-refine-w3:view",
+          "project-refine-w3:manage"
+        ],
+        "dataPartitions": [
+          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+        ]
+      },
+      "failureSemantics": [
+        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
+        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
+        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+      ],
+      "idempotencyConcurrency": [
+        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
+        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
+        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized actor with a valid partition and a complete request for Refine release-3 payment, finance, stay, operations and notifications",
+          "when": "the command or query is executed",
+          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+        },
+        {
+          "id": "AC02",
+          "given": "a caller missing the action, partition, or requested field-group grant",
+          "when": "the same operation is attempted",
+          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+        },
+        {
+          "id": "AC03",
+          "given": "the same mutation is replayed or two requests use the same expected revision",
+          "when": "processing overlaps or retries occur",
+          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+        }
+      ],
+      "tests": [
+        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
+        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
+        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+      ],
+      "observability": [
+        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
+        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
+        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+      ],
+      "definitionOfDone": [
+        "Catalog validation and all affected repository CI checks pass.",
+        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
+        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
+        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+      ],
+      "evidence": [
+        "Pull request and commit links per repository.",
+        "Automated test and Newman report with fixture version.",
+        "Migration/rollback or compatibility evidence where data/contracts change.",
+        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "owner-platform-contracts",
+        "roadmap-v1-3",
+        "source-project-refine-w3"
+      ],
+      "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
+      "specStatus": "needs-refinement",
+      "workKind": "contract",
+      "dispatchable": false,
+      "testCases": [],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": []
+    },
+    {
+      "sourceId": "PROJECT-REFINE-W4",
+      "jiraKey": "SCRUM-550",
+      "issueType": "Subtask",
+      "summary": "[PROJECT-REFINE-W4] Refine release-4 Channex and pilot/cutover work",
+      "parentSourceId": "PROJECT-GUIDE",
+      "manageDescription": true,
+      "actor": "Product owner and architecture reviewer",
+      "outcome": "Refine release-4 Channex and pilot/cutover work is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
+      "context": "This subtask is part of the ViStay PROJECT-REFINE delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "inScope": [
+        "Implement and verify: Refine release-4 Channex and pilot/cutover work.",
+        "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
+        "Provide repository-specific automated tests and Postman/Newman evidence for callable APIs."
+      ],
+      "outOfScope": [
+        "Unlisted provider credentials and production policy values.",
+        "Direct cross-service database reads or duplicated ownership.",
+        "Unreviewed workflow transitions, historical rewrites, or destructive migration shortcuts."
+      ],
+      "businessRules": [
+        "A decision is publishable only after named owner approval, effective time, supersession rule, fixtures, and rollback impact are recorded.",
+        "Example values are DRAFT/UAT only unless an explicit production policy is maker-checker approved."
+      ],
+      "repositories": [
+        "platform_contracts",
+        "platform_infrastructure"
+      ],
+      "interfaces": [
+        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
+        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
+        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+      ],
+      "dataOwnership": [
+        "Versioned policy and decision records are owned by platform_contracts; runtime services consume published versions and never silently invent defaults."
+      ],
+      "stateMachine": [
+        "Model legal states and transitions for Refine release-4 Channex and pilot/cutover work; reject illegal transitions with stable error codes.",
+        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
+        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+      ],
+      "authorization": {
+        "actions": [
+          "project-refine-w4:view",
+          "project-refine-w4:manage"
+        ],
+        "dataPartitions": [
+          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+        ]
+      },
+      "failureSemantics": [
+        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
+        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
+        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+      ],
+      "idempotencyConcurrency": [
+        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
+        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
+        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized actor with a valid partition and a complete request for Refine release-4 Channex and pilot/cutover work",
+          "when": "the command or query is executed",
+          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+        },
+        {
+          "id": "AC02",
+          "given": "a caller missing the action, partition, or requested field-group grant",
+          "when": "the same operation is attempted",
+          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+        },
+        {
+          "id": "AC03",
+          "given": "the same mutation is replayed or two requests use the same expected revision",
+          "when": "processing overlaps or retries occur",
+          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+        }
+      ],
+      "tests": [
+        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
+        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
+        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+      ],
+      "observability": [
+        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
+        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
+        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+      ],
+      "definitionOfDone": [
+        "Catalog validation and all affected repository CI checks pass.",
+        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
+        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
+        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+      ],
+      "evidence": [
+        "Pull request and commit links per repository.",
+        "Automated test and Newman report with fixture version.",
+        "Migration/rollback or compatibility evidence where data/contracts change.",
+        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "owner-platform-contracts",
+        "roadmap-v1-3",
+        "source-project-refine-w4"
+      ],
+      "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
+      "specStatus": "needs-refinement",
+      "workKind": "migration",
+      "dispatchable": false,
+      "testCases": [],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": []
+    },
+    {
+      "sourceId": "PROJECT-REFINE-W5",
+      "jiraKey": "SCRUM-551",
+      "issueType": "Subtask",
+      "summary": "[PROJECT-REFINE-W5] Refine post-pilot portals, analytics, employee integration and HA/DR",
+      "parentSourceId": "PROJECT-GUIDE",
+      "manageDescription": true,
+      "actor": "Product owner and architecture reviewer",
+      "outcome": "Refine post-pilot portals, analytics, employee integration and HA/DR is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
+      "context": "This subtask is part of the ViStay PROJECT-REFINE delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "inScope": [
+        "Implement and verify: Refine post-pilot portals, analytics, employee integration and HA/DR.",
+        "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
+        "Provide repository-specific automated tests and Postman/Newman evidence for callable APIs."
+      ],
+      "outOfScope": [
+        "Unlisted provider credentials and production policy values.",
+        "Direct cross-service database reads or duplicated ownership.",
+        "Unreviewed workflow transitions, historical rewrites, or destructive migration shortcuts."
+      ],
+      "businessRules": [
+        "A decision is publishable only after named owner approval, effective time, supersession rule, fixtures, and rollback impact are recorded.",
+        "Example values are DRAFT/UAT only unless an explicit production policy is maker-checker approved."
+      ],
+      "repositories": [
+        "platform_contracts",
+        "platform_infrastructure"
+      ],
+      "interfaces": [
+        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
+        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
+        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+      ],
+      "dataOwnership": [
+        "Versioned policy and decision records are owned by platform_contracts; runtime services consume published versions and never silently invent defaults."
+      ],
+      "stateMachine": [
+        "Model legal states and transitions for Refine post-pilot portals, analytics, employee integration and HA/DR; reject illegal transitions with stable error codes.",
+        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
+        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+      ],
+      "authorization": {
+        "actions": [
+          "project-refine-w5:view",
+          "project-refine-w5:manage"
+        ],
+        "dataPartitions": [
+          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+        ]
+      },
+      "failureSemantics": [
+        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
+        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
+        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+      ],
+      "idempotencyConcurrency": [
+        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
+        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
+        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized actor with a valid partition and a complete request for Refine post-pilot portals, analytics, employee integration and HA/DR",
+          "when": "the command or query is executed",
+          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+        },
+        {
+          "id": "AC02",
+          "given": "a caller missing the action, partition, or requested field-group grant",
+          "when": "the same operation is attempted",
+          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+        },
+        {
+          "id": "AC03",
+          "given": "the same mutation is replayed or two requests use the same expected revision",
+          "when": "processing overlaps or retries occur",
+          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+        }
+      ],
+      "tests": [
+        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
+        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
+        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+      ],
+      "observability": [
+        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
+        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
+        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+      ],
+      "definitionOfDone": [
+        "Catalog validation and all affected repository CI checks pass.",
+        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
+        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
+        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+      ],
+      "evidence": [
+        "Pull request and commit links per repository.",
+        "Automated test and Newman report with fixture version.",
+        "Migration/rollback or compatibility evidence where data/contracts change.",
+        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "owner-platform-contracts",
+        "roadmap-v1-3",
+        "source-project-refine-w5"
+      ],
+      "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
+      "specStatus": "needs-refinement",
+      "workKind": "contract",
+      "dispatchable": false,
+      "testCases": [],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": []
+    }
+  ]
+}
