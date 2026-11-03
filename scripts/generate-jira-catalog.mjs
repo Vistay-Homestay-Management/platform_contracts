@@ -207,6 +207,16 @@ const additions = [
 const specialRules = {
   'VS-E05-T01': ['Remediate durable pricing idempotency and preserve published quote snapshots while adding explicit staff-markup components.'],
   'VS-E06-T02': ['Expose inventoryBlocks as an authenticated Booking GraphQL query for exactly one canonical property ID.', 'Authorize inventory:read against the current Property-owned branch membership before reading Booking data; dependency failure, unmapped property, and foreign partition fail closed.', 'Optional date filters use half-open overlap semantics; type/status filters are exact enums and empty arrays mean all values.', 'Use opaque URL-safe keyset pagination ordered by updatedAt DESC then inventoryBlockId DESC, with page size 1-100 and default 50.', 'Return the Booking inventory revision plus Property branch and membership version so Admin clients can detect stale multi-page reads.', 'Expose operational reason and provider code only; never expose booking/hold/customer/guest identity, channel external reference, actor identity, authorization evidence, commercial data, credentials, or SQL details.'],
+  'VS-E06-T03': [
+    'Use a fixed operational sidebar, contextual date/property toolbar, exact-unit timeline, status legend, recent-activity strip, and right-side detail drawer; the visual hierarchy follows the approved frontend_design room-management references while using the ViStay forest-green palette.',
+    'Load inventoryBlocks and propertyAvailability only through the authenticated GraphQL gateway; never query Booking or Property storage directly and never fabricate cross-unit availability when the contract resolves one exact property.',
+    'Limit one timeline window to 1-31 local calendar dates and render all ranges as half-open intervals so a block ending on a date does not occupy that date column.',
+    'Display inventory revision, authoritative branch, Property membership version, current/history status, operational reason, provider code, and stable sanitized failures; do not expose guest, booking, external channel reference, actor, commercial, credential, or authorization-evidence fields.',
+    'Create only MAINTENANCE, CLEANING, OWNER_USE, or MANUAL blocks with a 10-1000 character reason, a client UUID correlation ID, a unique idempotency key, and the latest observed inventory revision.',
+    'Release only TENTATIVE or ACTIVE operator-owned blocks; BOOKING and CHANNEL remain read-only in this workspace and RELEASED/CANCELLED history is never deleted or hidden by the command.',
+    'Treat STALE_INVENTORY_REVISION and INVENTORY_BLOCK_CONFLICT as recoverable operator feedback, refresh the page from revision-consistent data, and never silently retry a mutation with a new business effect.',
+    'Frontend permission hints improve usability only; Booking remains the enforcement authority for inventory:read, inventory:block, branch partition, active role, and dependency evidence.',
+  ],
   'VS-E08-S06': ['Let N be the configured full-refund boundary in property-local calendar days and P the loss percentage exactly at N.', 'For d greater than N refund 100%; for 0 <= d <= N use refundRate = (100 - P) * d / N, so exactly N refunds 100-P and d=0 refunds zero.', 'Calculate on verified collected advance payment in VND with HALF_UP; forfeited equals collected minus refund.', 'Cancellation preview expires at the earlier of five minutes or next property-local midnight; stale execution returns CANCELLATION_QUOTE_STALE.', 'ViStay/property cancellation or approved force majeure refunds 100% with no trust penalty; after check-in uses a separate early-termination policy.', 'Booking cancellation and inventory release are atomic; Finance records obligation and Payment executes provider refund; refund failure never reactivates booking.'],
   'VS-E09-S09': ['SHORT is due at checkout.', 'MEDIUM and LONG schedule policy versions configure advance/arrears, anniversary/calendar-month boundary, grace period, and daily proration for partial periods.', 'Schedule override requires an explicit permission, reason, audit, and customer acceptance before confirmation.'],
   'VS-E09-T08': ['Remove charge, receivable, allocation, refund obligation, and deposit-decision authority from Payment; migrate or expose them from Finance.', 'Payment retains provider intent, QR, provider transaction, callback, and technical reconciliation only.', 'Use compatibility events and reconciliation before disabling legacy writes.'],
@@ -263,6 +273,27 @@ const issueLinks = (issue) => (issue?.fields?.issuelinks ?? []).flatMap((link) =
   return [];
 });
 
+const specialAcceptance = {
+  'VS-E06-T03': [
+    { given: 'an authorized inventory reader selects a canonical property and a 1-31 day window', when: 'the workspace loads', then: 'the timeline, availability result, active/history blocks, inventory revision, branch, and membership version match one revision-consistent GraphQL observation' },
+    { given: 'the operator changes date, block-type, or status filters', when: 'Apply is selected', then: 'the workspace sends the exact documented management input and redraws half-open block spans without inventing unavailable dates or cross-unit data' },
+    { given: 'an actor with inventory:block enters one of the four operator block types, valid dates, and a valid reason', when: 'Create block is confirmed', then: 'one idempotent mutation uses the displayed expected revision and correlation ID, then refreshes to the resulting revision' },
+    { given: 'another writer advances inventory after the page observation', when: 'the operator creates or releases with a stale revision', then: 'the UI displays the stable stale message, refreshes authoritative data, and does not claim success or duplicate the command' },
+    { given: 'an ACTIVE or TENTATIVE operator-owned block is selected', when: 'Release is confirmed with a valid reason', then: 'one release mutation succeeds and the block remains visible as RELEASED history; BOOKING, CHANNEL, RELEASED, and CANCELLED blocks expose no release action' },
+    { given: 'authorization, branch membership, Property, or User evidence is forbidden or unavailable', when: 'a read or command is attempted', then: 'the workspace fails closed with sanitized actionable feedback and no protected field or resource-existence leak' },
+    { given: 'the workspace is used at desktop, tablet, or phone width with keyboard or reduced-motion preferences', when: 'navigation, filters, timeline, dialog, and drawer are operated', then: 'controls remain reachable, focus-visible, contrast-safe, horizontally contained, and motion is reduced when requested' },
+  ],
+};
+
+const specialTests = {
+  'VS-E06-T03': [
+    'API-client tests assert InventoryBlocks, PropertyAvailability, CreateInventoryBlock, and ReleaseInventoryBlock operation names, bearer/CSRF transport, variables, response mapping, expected revision, and GraphQL extensions.code propagation.',
+    'Production typecheck, lint, API-client Vitest, and Vite build pass without modifying the independently owned Admin Mobile package manifest.',
+    'Manual smoke covers the deterministic local management property 61000000-0000-4000-8000-000000000010, empty/history/current states, 1/14/31-day windows, filters, create, stale refresh, release, and read-only BOOKING/CHANNEL detail.',
+    'Responsive evidence covers fixed desktop sidebar, compact tablet rail, five-action mobile dock, horizontally scrollable timeline, keyboard focus, dialogs/drawer, and prefers-reduced-motion.',
+  ],
+};
+
 const build = ({ sourceId, issueType, summary, parentSourceId, jiraKey, issue }) => {
   const profile = profiles[epicNumber(sourceId)] ?? profiles['00'];
   const cleanTitle = summary.replace(/^\[[^\]]+]\s*/, '');
@@ -297,12 +328,12 @@ const build = ({ sourceId, issueType, summary, parentSourceId, jiraKey, issue })
     failureSemantics: ['Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.', 'Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.', 'Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue.'],
     idempotencyConcurrency: ['Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.', 'Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.', 'Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects.'],
     dependencies: mergedDependencies,
-    acceptanceCriteria: [
+    acceptanceCriteria: specialAcceptance[sourceId] ?? [
       { given: `an authorized actor with a valid partition and a complete request for ${cleanTitle}`, when: 'the command or query is executed', then: 'the documented outcome, state revision, audit record, and contract response are produced deterministically' },
       { given: 'a caller missing the action, partition, or requested field-group grant', when: 'the same operation is attempted', then: 'access is denied without leaking existence or restricted fields and the denial is auditable' },
       { given: 'the same mutation is replayed or two requests use the same expected revision', when: 'processing overlaps or retries occur', then: 'at most one business effect is committed and all responses are stable, explainable, and reconciled' },
     ],
-    tests: ['Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.', 'Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.', 'Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture.'],
+    tests: specialTests[sourceId] ?? ['Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.', 'Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.', 'Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture.'],
     observability: ['Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.', 'Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.', 'Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback.'],
     definitionOfDone: ['Catalog validation and all affected repository CI checks pass.', 'Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.', 'Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.', 'No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done.'],
     evidence: ['Pull request and commit links per repository.', 'Automated test and Newman report with fixture version.', 'Migration/rollback or compatibility evidence where data/contracts change.', 'Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts.'],
