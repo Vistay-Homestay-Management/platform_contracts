@@ -687,8 +687,8 @@
       "summary": "[VS-E00] Business Rules, Compliance & Vendor Readiness",
       "manageDescription": true,
       "actor": "Product owner and architecture reviewer",
-      "outcome": "Business Rules, Compliance & Vendor Readiness is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This epic is part of the ViStay VS-E00 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "Product decisions, compliance boundaries, commercial policies, and vendor activation gates are versioned before downstream services consume them.",
+      "context": "Release 0 is the authority boundary for decisions that otherwise become conflicting defaults across Booking, Finance, Payment, Property, User, and external integrations.",
       "inScope": [
         "Implement and verify: Business Rules, Compliance & Vendor Readiness.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -792,7 +792,7 @@
         "source-vs-e00"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "contract",
       "dispatchable": false,
       "testCases": [],
@@ -912,12 +912,19 @@
         "roadmap-v1-3",
         "source-vs-e00-s01"
       ],
-      "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "decisionNoteVi": "Cần ProductOwner và ArchitectureOwner duyệt glossary/aggregate state model trước khi tách leaf triển khai; agent không được tự đặt tên hoặc tự chuyển quyền sở hữu dữ liệu.",
+      "specStatus": "decision-required",
       "workKind": "contract",
       "dispatchable": false,
       "testCases": [],
-      "decisions": [],
+      "decisions": [
+        {
+          "id": "DEC-01",
+          "question": "Which aggregate names, identifiers, owners, and terminal states are approved as the shared domain glossary?",
+          "owner": "ProductOwner and ArchitectureOwner",
+          "status": "required"
+        }
+      ],
       "implementationBlockers": [],
       "activationBlockers": []
     },
@@ -1419,16 +1426,16 @@
         "roadmap-v1-3",
         "source-vs-e00-s05"
       ],
-      "decisionNoteVi": "Đặc tả đã đủ để triển khai phần nội bộ; chỉ giữ trạng thái blocked cho đầu vào bên ngoài: Channex sandbox account and credentials are not yet supplied.",
-      "specStatus": "needs-refinement",
+      "decisionNoteVi": "Đã chọn Channex; cần tài khoản sandbox và credentials để kiểm chứng API/webhook thật, không thể giả lập rồi coi là hoàn tất.",
+      "specStatus": "externally-blocked",
       "workKind": "contract",
       "dispatchable": false,
       "testCases": [],
       "decisions": [],
-      "implementationBlockers": [],
-      "activationBlockers": [
-        "Channex sandbox account and credentials are not yet supplied."
-      ]
+      "implementationBlockers": [
+        "A Channex sandbox tenant, API credentials, webhook signing material, and sandbox property identifier are required to prove the live contract."
+      ],
+      "activationBlockers": []
     },
     {
       "sourceId": "VS-E00-S06",
@@ -1668,12 +1675,25 @@
         "roadmap-v1-3",
         "source-vs-e00-s07"
       ],
-      "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "decisionNoteVi": "Cần chốt dataset pilot và tên người chịu trách nhiệm RACI; các bước kỹ thuật có thể chuẩn bị nhưng không được tự suy đoán dữ liệu/cá nhân phê duyệt.",
+      "specStatus": "decision-required",
       "workKind": "migration",
       "dispatchable": false,
       "testCases": [],
-      "decisions": [],
+      "decisions": [
+        {
+          "id": "DEC-01",
+          "question": "Which properties, users, opening balances, bookings, and exception cases form the pilot migration dataset?",
+          "owner": "ProductOwner and PilotReleaseOwner",
+          "status": "required"
+        },
+        {
+          "id": "DEC-02",
+          "question": "Who owns go/no-go, rollback, reconciliation sign-off, and incident communication during cutover?",
+          "owner": "ProductOwner and PilotReleaseOwner",
+          "status": "required"
+        }
+      ],
       "implementationBlockers": [],
       "activationBlockers": []
     },
@@ -1910,12 +1930,19 @@
         "roadmap-v1-3",
         "source-vs-e00-t02"
       ],
-      "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "decisionNoteVi": "Chưa xác định nhà cung cấp employee/cleaning system và contract chính thức; giữ decision-required thay vì tạo draft có vẻ hoàn chỉnh nhưng sai vendor.",
+      "specStatus": "decision-required",
       "workKind": "contract",
       "dispatchable": false,
       "testCases": [],
-      "decisions": [],
+      "decisions": [
+        {
+          "id": "DEC-01",
+          "question": "Which external employee or cleaning system is the target, and where is its authoritative API, signing, retry, and data-retention contract?",
+          "owner": "ProductOwner and ExternalIntegrationOwner",
+          "status": "required"
+        }
+      ],
       "implementationBlockers": [],
       "activationBlockers": []
     },
@@ -1926,8 +1953,8 @@
       "parentSourceId": "VS-E00",
       "manageDescription": true,
       "actor": "Product owner and architecture reviewer",
-      "outcome": "Publish executable commercial policy schemas and production-default gates is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This task is part of the ViStay VS-E00 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "Commercial policy schemas and their deployment gates are delivered by separate contract and infrastructure leaves without embedding production monetary defaults.",
+      "context": "The parent coordinates schema authority in platform_contracts and enforcement/evidence in platform_infrastructure; only the two child slices are dispatchable.",
       "inScope": [
         "Implement and verify: Publish executable commercial policy schemas and production-default gates.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -2037,7 +2064,7 @@
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
       "jiraKey": "SCRUM-552",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "contract",
       "dispatchable": false,
       "testCases": [],
@@ -2052,12 +2079,12 @@
       "parentSourceId": "VS-E00-T03",
       "manageDescription": true,
       "actor": "Repository ServiceOwner and implementing engineer",
-      "outcome": "platform_contracts supplies its bounded contract, implementation, tests, and evidence for parent VS-E00-T03.",
-      "context": "This is the platform_contracts implementation slice of VS-E00-T03. It must not duplicate authority assigned to another repository.",
+      "outcome": "Platform Contracts publishes machine-verifiable pricing, deposit, cancellation, refund, settlement, and trust-policy artifacts with explicit version and no production default values.",
+      "context": "Existing pricing v1 documents and validation scripts are the baseline. This slice owns contract shape and fixtures only; runtime publication and secret values remain outside this repository.",
       "inScope": [
-        "Change only platform_contracts plus generated artifacts explicitly owned by it.",
-        "Implement the platform_contracts responsibilities and interfaces stated in parent VS-E00-T03.",
-        "Attach focused unit/integration evidence and compatibility or rollback notes."
+        "Complete the commercial policy documents and machine-readable artifacts under docs/ for pricing publication, cancellation/deposit/refund, settlement, and customer trust inputs.",
+        "Add deterministic validation for version, effective time, approval state, supersession, numeric bounds, rounding, and absence of implicit production defaults.",
+        "Publish valid and invalid fixtures that downstream Booking and Finance implementations can consume without inventing fallback values."
       ],
       "outOfScope": [
         "Implementing another repository ownership slice.",
@@ -2080,20 +2107,20 @@
         "Versioned policy and decision records are owned by platform_contracts; runtime services consume published versions and never silently invent defaults."
       ],
       "stateMachine": [
-        "Model legal states and transitions for platform_contracts delivery slice for Publish executable commercial policy schemas and production-default gates; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "Policy lifecycle is DRAFT -> APPROVED -> EFFECTIVE -> SUPERSEDED; only an approved version can become effective.",
+        "A new effective version supersedes rather than edits the previous version, preserving its fingerprint and evidence.",
+        "Missing approval, effective time, required bound, or production value fails validation and publication."
       ],
       "authorization": {
         "actions": [
-          "vs-e00-t03-st01:view",
-          "vs-e00-t03-st01:manage"
+          "commercial-policy:view",
+          "commercial-policy:publish"
         ],
         "dataPartitions": [
-          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+          "SYSTEM policy catalogue; publication is restricted to the configured environment and policy family."
         ],
         "fieldGroups": [
-          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+          "POLICY_SUMMARY for readers; POLICY_DEFINITION and POLICY_APPROVAL for explicitly granted publishers."
         ]
       },
       "failureSemantics": [
@@ -2110,27 +2137,26 @@
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for platform_contracts delivery slice for Publish executable commercial policy schemas and production-default gates",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "a complete approved commercial policy fixture with bounded values and an effective time",
+          "when": "the publication validator runs",
+          "then": "it emits the documented deterministic fingerprint and accepts the fixture"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "a fixture containing an implicit production monetary default, missing approval metadata, invalid percentage, or overlapping effective winner",
+          "when": "the same validator runs",
+          "then": "validation fails with a stable diagnostic and publishes no fingerprint"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "an already effective policy version",
+          "when": "a replacement is prepared",
+          "then": "the replacement uses a new version and supersession reference while the prior artifact remains unchanged"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Run the full platform contract suite and the focused pricing publication validator against valid and invalid fixtures.",
+        "Review the generated fingerprint twice from identical canonical input and verify byte-for-byte equality."
       ],
       "observability": [
         "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
@@ -2157,13 +2183,60 @@
       ],
       "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo platform_contracts cho VS-E00-T03; không được lấy quyền sở hữu dữ liệu của service khác.",
       "jiraKey": "SCRUM-553",
-      "specStatus": "needs-refinement",
+      "specStatus": "executable",
       "workKind": "contract",
-      "dispatchable": false,
-      "testCases": [],
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "contract",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "platform_contracts test log including validate-pricing-publication output and accepted fingerprint"
+        },
+        {
+          "id": "TEST-02",
+          "level": "manual",
+          "command": "manual: compare the approved artifact and its superseding fixture in the pull request",
+          "verifies": [
+            "AC03"
+          ],
+          "evidence": "pull-request diff showing append-only versioning and no edit to the effective artifact"
+        }
+      ],
       "decisions": [],
       "implementationBlockers": [],
-      "activationBlockers": []
+      "activationBlockers": [],
+      "primaryRepository": "platform_contracts",
+      "repositorySlices": [
+        {
+          "repository": "platform_contracts",
+          "paths": [
+            "docs/pricing-v1-policy.md",
+            "docs/pricing-v1-publication-and-snapshots.md",
+            "docs/pricing-v1-quote-calculation.md",
+            "scripts/validate-pricing-publication.mjs"
+          ],
+          "artifacts": [
+            "versioned commercial policy contract",
+            "valid and invalid policy fixtures",
+            "deterministic policy fingerprint validation"
+          ]
+        }
+      ],
+      "contracts": [
+        {
+          "kind": "Database",
+          "owner": "platform_contracts",
+          "name": "COMMERCIAL_POLICY_V1",
+          "location": "docs/pricing-v1-publication-and-snapshots.md",
+          "compatibility": "Additive fields remain optional inside v1; a semantic or rounding change requires a new policy version and fingerprint."
+        }
+      ]
     },
     {
       "sourceId": "VS-E00-T03-ST02",
@@ -2172,12 +2245,12 @@
       "parentSourceId": "VS-E00-T03",
       "manageDescription": true,
       "actor": "Repository ServiceOwner and implementing engineer",
-      "outcome": "platform_infrastructure supplies its bounded contract, implementation, tests, and evidence for parent VS-E00-T03.",
-      "context": "This is the platform_infrastructure implementation slice of VS-E00-T03. It must not duplicate authority assigned to another repository.",
+      "outcome": "Infrastructure rejects unapproved commercial policy values and records repeatable local/CI evidence for the published pricing contract.",
+      "context": "This slice consumes the contract artifact from platform_contracts. It does not own commercial formulas or commit environment secrets.",
       "inScope": [
-        "Change only platform_infrastructure plus generated artifacts explicitly owned by it.",
-        "Implement the platform_infrastructure responsibilities and interfaces stated in parent VS-E00-T03.",
-        "Attach focused unit/integration evidence and compatibility or rollback notes."
+        "Wire the commercial-policy validation into infrastructure CI before compose or deployment artifacts are accepted.",
+        "Keep production policy values in environment/secret delivery and fail closed when required values or an approved fingerprint are absent.",
+        "Exercise the pricing Postman collection against deterministic local fixtures and retain the Newman-compatible result."
       ],
       "outOfScope": [
         "Implementing another repository ownership slice.",
@@ -2200,20 +2273,20 @@
         "Versioned policy and decision records are owned by platform_contracts; runtime services consume published versions and never silently invent defaults."
       ],
       "stateMachine": [
-        "Model legal states and transitions for platform_infrastructure delivery slice for Publish executable commercial policy schemas and production-default gates; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "Environment policy state is MISSING, VALIDATED, or REJECTED; only VALIDATED may start the dependent pricing path.",
+        "Changing policy content without the approved fingerprint moves the environment to REJECTED.",
+        "Rollback selects a previously approved fingerprint and never mutates its contract artifact."
       ],
       "authorization": {
         "actions": [
-          "vs-e00-t03-st02:view",
-          "vs-e00-t03-st02:manage"
+          "commercial-policy:activate",
+          "commercial-policy:rollback"
         ],
         "dataPartitions": [
-          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+          "ENVIRONMENT:LOCAL, ENVIRONMENT:UAT, or ENVIRONMENT:PRODUCTION; activation never crosses environments."
         ],
         "fieldGroups": [
-          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+          "POLICY_FINGERPRINT and ACTIVATION_STATUS are visible to operators; POLICY_SECRET_VALUE is never emitted to logs or Jira."
         ]
       },
       "failureSemantics": [
@@ -2230,27 +2303,26 @@
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for platform_infrastructure delivery slice for Publish executable commercial policy schemas and production-default gates",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "the approved policy artifact and matching fingerprint are supplied to local or CI configuration",
+          "when": "the infrastructure validation and pricing collection run",
+          "then": "the policy gate passes and pricing scenarios use that exact fingerprint"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "the fingerprint is missing, unapproved, or does not match policy content",
+          "when": "compose or CI attempts to enable the pricing path",
+          "then": "startup or validation fails closed without logging policy secrets"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "the same pricing collection is executed repeatedly against its deterministic fixture",
+          "when": "the run completes",
+          "then": "results and stable error codes are repeatable and cleanup leaves no duplicated business effect"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Run infrastructure configuration validation and the focused Postman pricing script with approved and mismatched fingerprints.",
+        "Inspect CI and compose logs to confirm secret values are redacted and failure is explicit."
       ],
       "observability": [
         "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
@@ -2277,13 +2349,60 @@
       ],
       "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo platform_infrastructure cho VS-E00-T03; không được lấy quyền sở hữu dữ liệu của service khác.",
       "jiraKey": "SCRUM-554",
-      "specStatus": "needs-refinement",
-      "workKind": "contract",
-      "dispatchable": false,
-      "testCases": [],
+      "specStatus": "executable",
+      "workKind": "infrastructure",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "integration",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-PostmanPricing.ps1",
+          "verifies": [
+            "AC01",
+            "AC03"
+          ],
+          "evidence": "pricing Postman/Newman summary with fixture and policy fingerprint"
+        },
+        {
+          "id": "TEST-02",
+          "level": "operational",
+          "command": "docker compose -f compose.yaml config",
+          "verifies": [
+            "AC02"
+          ],
+          "evidence": "configuration validation plus negative CI log for missing or mismatched fingerprint with secrets redacted"
+        }
+      ],
       "decisions": [],
       "implementationBlockers": [],
-      "activationBlockers": []
+      "activationBlockers": [],
+      "primaryRepository": "platform_infrastructure",
+      "repositorySlices": [
+        {
+          "repository": "platform_infrastructure",
+          "paths": [
+            ".github/workflows/infrastructure-ci.yml",
+            "compose.yaml",
+            "compose.full.yaml",
+            "postman/ViStay-Pricing.postman_collection.json",
+            "scripts/Test-PostmanPricing.ps1"
+          ],
+          "artifacts": [
+            "CI commercial-policy gate",
+            "fail-closed compose configuration",
+            "pricing Postman/Newman evidence"
+          ]
+        }
+      ],
+      "contracts": [
+        {
+          "kind": "REST",
+          "owner": "service_booking",
+          "name": "Pricing policy and quote validation flow",
+          "location": "postman/ViStay-Pricing.postman_collection.json",
+          "compatibility": "The collection pins operation names and stable error codes while environment values remain external."
+        }
+      ]
     },
     {
       "sourceId": "VS-E01",

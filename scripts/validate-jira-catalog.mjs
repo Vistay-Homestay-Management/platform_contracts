@@ -82,9 +82,6 @@ for (const issue of catalog.issues) {
   if (issue.specStatus === 'externally-blocked' && !issue.externalBlockers.length) {
     errors.push(`${issue.sourceId}: externally-blocked needs an explicit external blocker`);
   }
-  if (issue.specStatus === 'refined-parent' && dispatchableTypes.has(issue.issueType)) {
-    errors.push(`${issue.sourceId}: refined-parent is reserved for non-dispatchable hierarchy records`);
-  }
   if (issue.specStatus !== 'needs-refinement' && issue.specStatus !== 'historical' && unresolvedPattern.test(allText)) {
     errors.push(`${issue.sourceId}: refined specification contains an unresolved placeholder`);
   }
@@ -118,7 +115,11 @@ for (const issue of catalog.issues) {
   }
 }
 
+const parentIds = new Set(catalog.issues.map((issue) => issue.parentSourceId).filter(Boolean));
 for (const issue of catalog.issues) {
+  if (issue.specStatus === 'refined-parent' && !parentIds.has(issue.sourceId)) {
+    errors.push(`${issue.sourceId}: refined-parent needs at least one child issue`);
+  }
   if (issue.parentSourceId && !byId.has(issue.parentSourceId)) errors.push(`${issue.sourceId}: missing parent ${issue.parentSourceId}`);
   if (catalog.schemaVersion === '1.3' && issue.specStatus === 'executable' && issue.parentSourceId) {
     const parent = byId.get(issue.parentSourceId);

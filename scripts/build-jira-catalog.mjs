@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const sourceDirectory = path.join(root, 'docs', 'jira', 'v1.3', 'epics');
+const refinementDirectory = path.join(root, 'docs', 'jira', 'v1.3', 'refinements');
 const outputPath = path.join(root, 'docs', 'jira', 'jira-catalog.v1.3.json');
 const files = fs.readdirSync(sourceDirectory).filter((name) => name.endsWith('.json')).sort();
 if (!files.length) throw new Error(`No Jira v1.3 shards found in ${sourceDirectory}`);
@@ -23,5 +24,26 @@ for (const file of files) {
   }
 }
 issues.sort((left, right) => left.sourceId.localeCompare(right.sourceId, 'en', { numeric: true }));
+const issueBySource = new Map(issues.map((issue) => [issue.sourceId, issue]));
+const deepMerge = (target, override) => {
+  if (Array.isArray(override) || override === null || typeof override !== 'object') return structuredClone(override);
+  const result = { ...(target ?? {}) };
+  for (const [key, value] of Object.entries(override)) result[key] = deepMerge(result[key], value);
+  return result;
+};
+const refinementFiles = fs.existsSync(refinementDirectory)
+  ? fs.readdirSync(refinementDirectory).filter((name) => name.endsWith('.json')).sort()
+  : [];
+for (const file of refinementFiles) {
+  const document = JSON.parse(fs.readFileSync(path.join(refinementDirectory, file), 'utf8').replace(/^\uFEFF/, ''));
+  if (!Array.isArray(document.refinements)) throw new Error(`${file}: expected { refinements[] }`);
+  for (const refinement of document.refinements) {
+    const current = issueBySource.get(refinement.sourceId);
+    if (!current) throw new Error(`${file}: refinement references unknown Source-ID ${refinement.sourceId}`);
+    const merged = deepMerge(current, refinement);
+    Object.keys(current).forEach((key) => delete current[key]);
+    Object.assign(current, merged);
+  }
+}
 fs.writeFileSync(outputPath, `${JSON.stringify({ schemaVersion: '1.3', projectKey: 'SCRUM', issues }, null, 2)}\n`);
-console.log(`Built Jira catalog v1.3 with ${issues.length} records from ${files.length} shards at ${outputPath}`);
+console.log(`Built Jira catalog v1.3 with ${issues.length} records from ${files.length} shards and ${refinementFiles.length} refinement files at ${outputPath}`);
