@@ -36,10 +36,18 @@
       "sourceId": "VS-E00-S07",
       "specStatus": "decision-required",
       "dispatchable": false,
+      "outcome": "Approve the exact pilot dataset manifest and cutover RACI from a provisional one-branch, one-to-three-property representative scope before any production-like migration is executed.",
+      "context": "Provisional pilot scope: one branch; one to three representative properties; every active employee at that branch; customers related to the selected stays; in-house and future bookings; deposits, collected amounts, open balances, and representative exception cases. Full legacy history is excluded. This scope may drive fixtures, queries, rehearsal tooling, and reconciliation templates, but cutover still requires an immutable manifest of real identifiers, extraction cutoff, dataset fingerprint, and ProductOwner sign-off.",
+      "labels": [
+        "owner-platform-contracts",
+        "roadmap-v1-3",
+        "source-vs-e00-s07",
+        "provisional-pilot-dataset"
+      ],
       "decisions": [
         {
           "id": "DEC-01",
-          "question": "Which properties, users, opening balances, bookings, and exception cases form the pilot migration dataset?",
+          "question": "Which exact branch, one-to-three representative properties, active branch employees, related customers, in-house and future bookings, deposits, collected amounts, open balances, and exception cases form the immutable pilot manifest, at which extraction cutoff and fingerprint?",
           "owner": "ProductOwner and PilotReleaseOwner",
           "status": "required"
         },

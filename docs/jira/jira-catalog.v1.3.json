@@ -1571,8 +1571,8 @@
       "parentSourceId": "VS-E00",
       "manageDescription": true,
       "actor": "Product owner and architecture reviewer",
-      "outcome": "Approve pilot dataset, cutover RACI and unresolved-decision register is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E00 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "Approve the exact pilot dataset manifest and cutover RACI from a provisional one-branch, one-to-three-property representative scope before any production-like migration is executed.",
+      "context": "Provisional pilot scope: one branch; one to three representative properties; every active employee at that branch; customers related to the selected stays; in-house and future bookings; deposits, collected amounts, open balances, and representative exception cases. Full legacy history is excluded. This scope may drive fixtures, queries, rehearsal tooling, and reconciliation templates, but cutover still requires an immutable manifest of real identifiers, extraction cutoff, dataset fingerprint, and ProductOwner sign-off.",
       "inScope": [
         "Implement and verify: Approve pilot dataset, cutover RACI and unresolved-decision register.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -1673,7 +1673,8 @@
       "labels": [
         "owner-platform-contracts",
         "roadmap-v1-3",
-        "source-vs-e00-s07"
+        "source-vs-e00-s07",
+        "provisional-pilot-dataset"
       ],
       "decisionNoteVi": "Cần chốt dataset pilot và tên người chịu trách nhiệm RACI; các bước kỹ thuật có thể chuẩn bị nhưng không được tự suy đoán dữ liệu/cá nhân phê duyệt.",
       "specStatus": "decision-required",
@@ -1683,7 +1684,7 @@
       "decisions": [
         {
           "id": "DEC-01",
-          "question": "Which properties, users, opening balances, bookings, and exception cases form the pilot migration dataset?",
+          "question": "Which exact branch, one-to-three representative properties, active branch employees, related customers, in-house and future bookings, deposits, collected amounts, open balances, and exception cases form the immutable pilot manifest, at which extraction cutoff and fingerprint?",
           "owner": "ProductOwner and PilotReleaseOwner",
           "status": "required"
         },
@@ -57134,8 +57135,8 @@
       "summary": "[VS-E16] Host Identity & Profile",
       "manageDescription": true,
       "actor": "Host account holder",
-      "outcome": "Host Identity & Profile is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This epic is part of the ViStay VS-E16 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "Host identity is decomposed into invitation/projection, realm and Web session, self profile/avatar, scoped lifecycle administration, contracts, Postman and a distinct Host edge/JWT boundary.",
+      "context": "Verified current state: Host realm and database tables are only skeletons; Host realm is disabled, User profile code is ADMIN-only, Host Web is demo-only, and no Host edge/router exists. Assign only executable children.",
       "inScope": [
         "Implement and verify: Host Identity & Profile.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -57241,7 +57242,7 @@
         "source-vs-e16"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "web",
       "dispatchable": false,
       "testCases": [],
@@ -57257,8 +57258,8 @@
       "parentSourceId": "VS-E16",
       "manageDescription": true,
       "actor": "Host account holder",
-      "outcome": "invitation/activation is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E16 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "S01 separates Keycloak invitation/activation command ownership in Authentication from replay-safe host profile and authorization provisioning in User.",
+      "context": "No property ownership is inferred during identity creation; Property party binding remains authoritative in E04.",
       "inScope": [
         "Implement and verify: invitation/activation.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -57364,13 +57365,363 @@
         "source-vs-e16-s01"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "web",
       "dispatchable": false,
       "testCases": [],
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E16-S01-ST01",
+      "jiraKey": "SCRUM-806",
+      "issueType": "Subtask",
+      "summary": "[VS-E16-S01-ST01] Implement host invitation and Keycloak activation",
+      "parentSourceId": "VS-E16-S01",
+      "manageDescription": true,
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Authentication lets an authorized Backoffice operator invite one HOST identity into the vistay-host realm, requires email verification and initial password setup, and records a replay-safe lifecycle ledger without storing credentials locally.",
+      "context": "Authentication currently provisions only Backoffice accounts against vistay-backoffice. The vistay-host realm exists but is disabled; host activation must use Keycloak execute-actions email rather than a ViStay password or raw activation token table.",
+      "inScope": [
+        "Add POST /api/v1/host-accounts invitations with normalized unique email, display name, optional phone, reason, idempotency key and explicit HOST account type.",
+        "Create the disabled-or-action-required Keycloak user in vistay-host with VERIFY_EMAIL and UPDATE_PASSWORD, send an expiring execute-actions email, and never return or persist a password/action token.",
+        "Persist invitation request fingerprint, Keycloak subject, state, expiry, actor, correlation ID and immutable security audit; emit HostAccountInvited/HostAccountActivated without email or token leakage.",
+        "Support safe resend before activation and deterministic duplicate-email/idempotency behavior; activation observation reconciles Keycloak state instead of trusting a browser callback."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "businessRules": [
+        "Host v1 is one account per host/primary signatory, not a multi-member organization portal.",
+        "Host access is limited by action, host-party partition, and field group."
+      ],
+      "repositories": [
+        "service_authentication"
+      ],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "Keycloak owns HOST credentials, required actions and interactive sessions. Authentication owns invitation/lifecycle command audit and the minimal Keycloak subject projection; User owns the host profile and authorization subject."
+      ],
+      "stateMachine": [
+        "Invitation is INVITED -> ACTIONS_PENDING -> ACTIVE; EXPIRED and CANCELLED are terminal for that invitation revision.",
+        "Only verified email plus completed required actions may produce ACTIVE; browser redirect alone cannot activate.",
+        "Resend rotates Keycloak action-link validity but appends audit and does not create a second host identity."
+      ],
+      "authorization": {
+        "actions": [
+          "host-account:invite",
+          "host-account:invitation:resend"
+        ],
+        "dataPartitions": [
+          "ADMIN organization or explicitly granted SITE/BRANCH partition; HOST callers cannot invite themselves."
+        ],
+        "fieldGroups": [
+          "ACCOUNT_SUMMARY by default; PII_CONTACT and INTERNAL_AUDIT require explicit grants."
+        ]
+      },
+      "failureSemantics": [
+        "Reject duplicate or malformed email, unauthorized scope, reused idempotency key with a different body and invalid state using stable codes without revealing unrelated accounts.",
+        "If Keycloak create succeeds but local commit or email action dispatch is uncertain, retain a visible reconciliation state and repair by exact realm plus subject/email; never create a second user blindly.",
+        "Never log action links, passwords, tokens, cookies or unmasked host PII."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E16-T01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E16-S02-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized operator, unused normalized email and new idempotency key",
+          "when": "the invitation command completes",
+          "then": "one vistay-host user with required actions, one durable invitation/audit lineage and one replay-safe invited event exist without local credentials"
+        },
+        {
+          "id": "AC02",
+          "given": "missing action/partition, duplicate email, malformed input, token leakage or unavailable Keycloak",
+          "when": "invitation or resend is attempted",
+          "then": "the stable failure is returned and no ambiguous duplicate active identity is produced"
+        },
+        {
+          "id": "AC03",
+          "given": "the same invitation/resend repeats or a partial Keycloak success is reconciled",
+          "when": "processing resumes",
+          "then": "the original subject and durable result are reused and activation is emitted at most once"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-authentication",
+        "roadmap-v1-3",
+        "source-vs-e16-s01-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E16-S01-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*HostInvitation*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *HostInvitation*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*HostInvitation*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *HostInvitation*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "service_authentication",
+      "repositorySlices": [
+        {
+          "repository": "service_authentication",
+          "paths": [
+            "src/main/resources/db/migration/V9__host_invitation_audit.sql",
+            "src/main/java/com/vistay/authentication/adapter/in/rest/HostInvitationController.java",
+            "src/main/java/com/vistay/authentication/application/HostInvitationService.java",
+            "src/main/java/com/vistay/authentication/adapter/out/keycloak/KeycloakAdminClient.java",
+            "src/main/java/com/vistay/authentication/adapter/out/messaging/OutboxPublisher.java",
+            "src/test/java/com/vistay/authentication/application/HostInvitationServiceIntegrationTest.java"
+          ],
+          "artifacts": [
+            "host invitation REST contract",
+            "multi-realm Keycloak invitation adapter",
+            "idempotent invitation and activation audit",
+            "host account lifecycle events"
+          ]
+        }
+      ],
+      "contracts": [
+        {
+          "kind": "REST",
+          "owner": "service_authentication",
+          "name": "Host invitation lifecycle v1",
+          "location": "src/main/java/com/vistay/authentication/adapter/in/rest/HostInvitationController.java",
+          "compatibility": "Additive response fields are compatible; state, required-action or identity semantics require a new version."
+        }
+      ]
+    },
+    {
+      "sourceId": "VS-E16-S01-ST02",
+      "jiraKey": "SCRUM-807",
+      "issueType": "Subtask",
+      "summary": "[VS-E16-S01-ST02] Provision host profile subject and default role",
+      "parentSourceId": "VS-E16-S01",
+      "manageDescription": true,
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "User consumes the HOST account event once and creates one hosts row, HOST authorization subject and least-privilege HOST_PARTNER assignment without inferring property ownership.",
+      "context": "The hosts and shared authorization tables already exist, but AccountProvisionedListener provisions only admin_users and first-super-admin behavior. Property ownership remains an explicit Property service relationship.",
+      "inScope": [
+        "Extend the versioned provisioning event consumer for accountType HOST and reject cross-type subject collisions.",
+        "Insert hosts plus authorization_subjects atomically, assign HOST_PARTNER with SELF/OWN defaults from the published policy, and never run first-super-admin logic for HOST.",
+        "Persist processed-event deduplication, audit and ProfileProvisioned outbox evidence in one transaction.",
+        "Handle activation/deactivation events by changing subject/profile active state and authorizationVersion without deleting history or property relationships."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "businessRules": [
+        "Host v1 is one account per host/primary signatory, not a multi-member organization portal.",
+        "Host access is limited by action, host-party partition, and field group."
+      ],
+      "repositories": [
+        "service_user"
+      ],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "User owns host profiles, authorization subjects, role assignments and authorization versions. Authentication owns identity lifecycle facts; Property owns property-party relationships."
+      ],
+      "stateMachine": [
+        "HOST profile is INVITED/INACTIVE until Authentication reports activation, then ACTIVE; SUSPENDED and INACTIVE deny snapshots.",
+        "Duplicate event ID or same HOST subject is a no-op only when canonical fields agree; a type/identity mismatch enters visible conflict.",
+        "Property OWN scope becomes effective only from authoritative property-party bindings, never from profile creation."
+      ],
+      "authorization": {
+        "actions": [
+          "host-profile:provision",
+          "host-authorization:bootstrap"
+        ],
+        "dataPartitions": [
+          "SYSTEM authenticated event consumer for provisioning; resulting HOST grants are SELF/OWN only."
+        ],
+        "fieldGroups": [
+          "PROFILE_CORE only in provisioning; PII_CONTACT and INTERNAL_AUDIT remain restricted."
+        ]
+      },
+      "failureSemantics": [
+        "Fail closed on missing/invalid event version, subject collision or authorization policy; route exhausted events to repair evidence.",
+        "Do not query Authentication or Property databases and do not synthesize property ownership.",
+        "Keep PII out of Kafka payloads beyond the approved provisioning minimum and out of logs/metrics."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E16-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E16-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "one valid HOST activation event whose subject is absent from User",
+          "when": "the consumer commits",
+          "then": "one hosts row, one HOST subject, one HOST_PARTNER assignment, audit/outbox and processed-event record are committed atomically"
+        },
+        {
+          "id": "AC02",
+          "given": "an ADMIN/CUSTOMER collision, malformed version, policy mismatch or fake ownership claim",
+          "when": "the event is processed",
+          "then": "provisioning fails visibly without a partial profile or elevated grant"
+        },
+        {
+          "id": "AC03",
+          "given": "the event replays or activation/deactivation arrives again",
+          "when": "processing completes",
+          "then": "one profile lineage remains and authorizationVersion changes only for a real effective-state change"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-user",
+        "roadmap-v1-3",
+        "source-vs-e16-s01-st02"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E16-S01-ST02 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*HostProvisioning*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *HostProvisioning*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*HostProvisioning*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *HostProvisioning*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "service_user",
+      "repositorySlices": [
+        {
+          "repository": "service_user",
+          "paths": [
+            "src/main/resources/db/migration/V14__host_profile_provisioning.sql",
+            "src/main/java/com/vistay/user/adapter/in/messaging/AccountProvisionedListener.java",
+            "src/main/java/com/vistay/user/application/HostProvisioningService.java",
+            "src/test/java/com/vistay/user/application/HostProvisioningServiceIntegrationTest.java"
+          ],
+          "artifacts": [
+            "HOST event consumer",
+            "host profile and authorization subject transaction",
+            "HOST_PARTNER default grants",
+            "activation/deactivation projection tests"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E16-S02",
@@ -57380,8 +57731,8 @@
       "parentSourceId": "VS-E16",
       "manageDescription": true,
       "actor": "Host account holder",
-      "outcome": "PKCE/session/recovery is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E16 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "S02 separates realm/PKCE/recovery configuration from Host Web OIDC callback/session UX.",
+      "context": "Real production email delivery is activation-gated by SMTP secrets; local mail-capture and all static/runtime contract work remain executable.",
       "inScope": [
         "Implement and verify: PKCE/session/recovery.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -57487,13 +57838,355 @@
         "source-vs-e16-s02"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "web",
       "dispatchable": false,
       "testCases": [],
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E16-S02-ST01",
+      "jiraKey": "SCRUM-808",
+      "issueType": "Subtask",
+      "summary": "[VS-E16-S02-ST01] Harden host realm PKCE recovery and session contract",
+      "parentSourceId": "VS-E16-S02",
+      "manageDescription": true,
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Infrastructure publishes a validated vistay-host realm with S256 PKCE, exact redirects/origins, email verification, bounded sessions, brute-force protection, recovery, logout and development mail capture while keeping production SMTP activation-gated.",
+      "context": "The realm JSON already declares PKCE and reset password but is disabled, uses wildcard localhost redirects and has no Host edge/API issuer path. This task owns realm behavior only; edge federation is VS-E16-T03.",
+      "inScope": [
+        "Replace wildcard redirects/origins with allow-listed local and environment templates and validate public-client S256 PKCE with implicit/direct grants disabled.",
+        "Define access/SSO/action-token/recovery lifetimes, verified-email login, brute-force lockout, logout redirect and required-action ordering.",
+        "Add Mailpit or equivalent local-only SMTP capture and tests for invitation/verify/reset emails; production SMTP uses secret references and remains disabled when absent.",
+        "Enable the realm only in profiles that also pass realm, edge/JWT and smoke validation; document rollback to disabled realm without deleting users."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "businessRules": [
+        "Host v1 is one account per host/primary signatory, not a multi-member organization portal.",
+        "Host access is limited by action, host-party partition, and field group."
+      ],
+      "repositories": [
+        "platform_infrastructure"
+      ],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "host-realm:configure",
+          "host-realm:test"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E16-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "the local Host profile and approved realm configuration",
+          "when": "realm contract tests run",
+          "then": "S256 login, verify-email, update-password, reset-password, logout and bounded session behavior pass through local mail capture"
+        },
+        {
+          "id": "AC02",
+          "given": "wildcard/unapproved redirect, implicit/direct grant, missing PKCE, plaintext SMTP secret or enablement without edge validation",
+          "when": "configuration is validated",
+          "then": "CI or startup fails closed with a path-specific diagnostic"
+        },
+        {
+          "id": "AC03",
+          "given": "realm import or restart repeats",
+          "when": "validation completes",
+          "then": "clients, roles and required actions converge without duplicate identities or weakened settings"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-platform-infrastructure",
+        "roadmap-v1-3",
+        "source-vs-e16-s02-st01"
+      ],
+      "decisionNoteVi": "Leaf VS-E16-S02-ST01 chỉ sở hữu artifact của platform_infrastructure; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "infrastructure",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "contract",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-HostRealmContract.ps1",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Host realm and local email-capture contract report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-KeycloakContract.ps1",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "Keycloak multi-realm compatibility report"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [
+        "Real invitation and password-recovery email delivery requires approved production SMTP secret references and sender-domain configuration; local Mailpit evidence is executable."
+      ],
+      "primaryRepository": "platform_infrastructure",
+      "repositorySlices": [
+        {
+          "repository": "platform_infrastructure",
+          "paths": [
+            "keycloak/realms/vistay-host-realm.json",
+            "compose.full.yaml",
+            ".env.example",
+            "scripts/Test-KeycloakContract.ps1",
+            "scripts/Test-HostRealmContract.ps1",
+            "docs/runbooks/host-identity.md"
+          ],
+          "artifacts": [
+            "validated Host realm export",
+            "local email-capture profile",
+            "realm/session/recovery contract tests",
+            "enable-disable rollback runbook"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
+      "sourceId": "VS-E16-S02-ST02",
+      "jiraKey": "SCRUM-809",
+      "issueType": "Subtask",
+      "summary": "[VS-E16-S02-ST02] Implement Host Web OIDC session and recovery UX",
+      "parentSourceId": "VS-E16-S02",
+      "manageDescription": true,
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Host Web performs real vistay-host Authorization Code plus S256 login, callback, refresh/session-expiry, logout and recovery navigation without manually seeded tokens or Chrome-only redirects.",
+      "context": "The current Host Web is a static demo and Apollo reads an access token directly from sessionStorage. It has no OIDC provider, callback route, protected shell or error recovery.",
+      "inScope": [
+        "Add typed runtime configuration and OIDC provider for vistay-host-web with state, nonce, S256 and exact callback/logout routes.",
+        "Replace manual sessionStorage token reads with the selected OIDC library session API and inject bearer tokens through an Apollo auth link; never log or render tokens.",
+        "Implement loading, unauthenticated, callback, expired-session, forbidden, offline and configuration-error states plus login/logout/retry/recovery actions.",
+        "Add responsive keyboard-accessible tests for successful callback, state/nonce mismatch, restart-login/cookie failure, expired refresh and logout."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "businessRules": [
+        "Host v1 is one account per host/primary signatory, not a multi-member organization portal.",
+        "Host access is limited by action, host-party partition, and field group."
+      ],
+      "repositories": [
+        "frontend_host"
+      ],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "host-session:login",
+          "host-session:logout",
+          "host-session:recover"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E16-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E16-T03",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "valid Host runtime configuration and an activated user",
+          "when": "the user logs in through Keycloak",
+          "then": "the callback validates state/nonce, the protected shell loads through the Host API and logout clears the app session"
+        },
+        {
+          "id": "AC02",
+          "given": "missing configuration, bad state/nonce, expired session, denied account or unavailable identity/API",
+          "when": "the route loads or a request runs",
+          "then": "a safe actionable state is shown without token leakage, redirect loop or static demo data"
+        },
+        {
+          "id": "AC03",
+          "given": "callback/login is retried after browser or network interruption",
+          "when": "the flow resumes",
+          "then": "one valid session results or restart-login is offered without cookie-not-found deadlock"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-frontend-host",
+        "roadmap-v1-3",
+        "source-vs-e16-s02-st02"
+      ],
+      "decisionNoteVi": "Leaf VS-E16-S02-ST02 chỉ sở hữu artifact của frontend_host; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm test -- --run",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Vitest Host auth and Apollo report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "e2e",
+          "command": "npm run test:e2e -- --project=chromium host-auth",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Host PKCE callback/logout/recovery browser report"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "frontend_host",
+      "repositorySlices": [
+        {
+          "repository": "frontend_host",
+          "paths": [
+            "src/lib/config.ts",
+            "src/lib/auth.tsx",
+            "src/lib/apollo.ts",
+            "src/App.tsx",
+            "src/auth/**",
+            "src/**/*.test.tsx",
+            ".env.example",
+            "README.md"
+          ],
+          "artifacts": [
+            "Host OIDC provider and protected shell",
+            "Apollo token integration",
+            "callback/recovery/error UX",
+            "web auth tests"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E16-S03",
@@ -57503,8 +58196,8 @@
       "parentSourceId": "VS-E16",
       "manageDescription": true,
       "actor": "Host account holder",
-      "outcome": "profile/contact/avatar is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E16 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "S03 separates Host self-profile APIs from the Host Web profile/avatar experience.",
+      "context": "Email/credentials/sessions remain Keycloak-owned, avatar objects Media-owned, property relationships Property-owned, and verification/tax/authorization fields are not self-editable.",
       "inScope": [
         "Implement and verify: profile/contact/avatar.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -57610,13 +58303,369 @@
         "source-vs-e16-s03"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "web",
       "dispatchable": false,
       "testCases": [],
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E16-S03-ST01",
+      "jiraKey": "SCRUM-810",
+      "issueType": "Subtask",
+      "summary": "[VS-E16-S03-ST01] Implement host self profile and verification-safe updates",
+      "parentSourceId": "VS-E16-S03",
+      "manageDescription": true,
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "User exposes HOST self-profile queries and idempotent contact/avatar updates from the trusted Host issuer while preventing self-edits to identity, verification, tax and authorization fields.",
+      "context": "ProfileService currently forces account type ADMIN and reads admin_users. The hosts table exists with contact, avatar, address, tax and verification fields, but no Host GraphQL operations are implemented.",
+      "inScope": [
+        "Add hostViewer and myHostProfile using trusted JWT issuer/audience to derive HOST account type; never accept account type or target ID from self-service input.",
+        "Add updateMyHostProfile for display name, normalized phone and verified AVAILABLE avatar reference with expectedVersion, reason and idempotency fingerprint.",
+        "Keep email/Keycloak subject, host code, verification status, tax code, authorization and property-party ownership immutable through this mutation; expose restricted fields only under explicit field-group grants.",
+        "Persist host-specific update request, audit and outbox rows; do not reuse admin_user foreign keys or aggregate labels."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "businessRules": [
+        "Host v1 is one account per host/primary signatory, not a multi-member organization portal.",
+        "Host access is limited by action, host-party partition, and field group."
+      ],
+      "repositories": [
+        "service_user"
+      ],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "User owns host profile and authorization data. Keycloak owns login email/credentials/sessions, Media owns avatar availability, and Property owns property-party relationships."
+      ],
+      "stateMachine": [
+        "ACTIVE HOST subjects may read/update SELF fields; INVITED, INACTIVE and SUSPENDED fail closed.",
+        "A successful update increments profile version once; stale expectedVersion returns stable conflict and replay returns the original result.",
+        "Verification and property ownership state cannot change through self-profile commands."
+      ],
+      "authorization": {
+        "actions": [
+          "host-profile:read",
+          "host-profile:update"
+        ],
+        "dataPartitions": [
+          "HOST SELF for the authenticated subject; ADMIN reads require an explicit host management partition."
+        ],
+        "fieldGroups": [
+          "PROFILE_SUMMARY baseline; PII_CONTACT, TAX_IDENTITY, VERIFICATION_DETAIL and INTERNAL_AUDIT require separate grants."
+        ]
+      },
+      "failureSemantics": [
+        "Return non-enumerating forbidden/not-found behavior for wrong issuer, subject, action, partition or field group.",
+        "Reject invalid E.164 phone, unavailable/unauthorized avatar, restricted-field mutation, stale version and mismatched idempotency fingerprint using stable codes.",
+        "Fail closed when authorization or Media reference verification is unavailable; never read their databases."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E16-S01-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E16-T01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E03-S03-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an ACTIVE HOST with SELF grants and an AVAILABLE authorized avatar",
+          "when": "profile is read and updated with current version",
+          "then": "only allowed fields change once and host audit/outbox evidence records the new version without restricted values"
+        },
+        {
+          "id": "AC02",
+          "given": "wrong issuer/subject, inactive profile, missing grant, restricted field, invalid phone/avatar or stale version",
+          "when": "the operation runs",
+          "then": "it fails with the stable code and reveals no protected host or property information"
+        },
+        {
+          "id": "AC03",
+          "given": "the same update is replayed or concurrent updates share a version",
+          "when": "processing completes",
+          "then": "one version wins and exact replay returns the durable original result"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-user",
+        "roadmap-v1-3",
+        "source-vs-e16-s03-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E16-S03-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*HostProfile*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *HostProfile*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*HostProfile*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *HostProfile*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "service_user",
+      "repositorySlices": [
+        {
+          "repository": "service_user",
+          "paths": [
+            "src/main/resources/db/migration/V15__host_profile_updates.sql",
+            "src/main/resources/graphql/schema.graphqls",
+            "src/main/java/com/vistay/user/adapter/in/graphql/HostProfileController.java",
+            "src/main/java/com/vistay/user/application/HostProfileService.java",
+            "src/test/java/com/vistay/user/application/HostProfileServiceIntegrationTest.java"
+          ],
+          "artifacts": [
+            "hostViewer and myHostProfile GraphQL queries",
+            "updateMyHostProfile mutation",
+            "host-specific idempotency/audit persistence",
+            "field and authorization tests"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
+      "sourceId": "VS-E16-S03-ST02",
+      "jiraKey": "SCRUM-811",
+      "issueType": "Subtask",
+      "summary": "[VS-E16-S03-ST02] Build Host Web profile contact and avatar workspace",
+      "parentSourceId": "VS-E16-S03",
+      "manageDescription": true,
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Host Web replaces demo identity with the authenticated Host profile and provides accessible optimistic-safe contact and avatar editing through User and Media contracts.",
+      "context": "The current shell hard-codes a sample host and property data. There is no profile route, update form, avatar upload flow, field permission handling or version-conflict recovery.",
+      "inScope": [
+        "Add typed Host API client/hooks for hostViewer, myHostProfile and updateMyHostProfile with stable error mapping.",
+        "Build responsive profile summary/editor for name and E.164 phone; show email and verification state read-only only when returned by granted fields.",
+        "Use Media authorize/upload/finalize/download contracts for avatar preview and commit; do not ask users to paste a media UUID or persist presigned URLs.",
+        "Handle read-only grants, validation, upload progress/failure, stale version refresh, idempotent retry, offline/retry and success feedback without losing unsaved values."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "businessRules": [
+        "Host v1 is one account per host/primary signatory, not a multi-member organization portal.",
+        "Host access is limited by action, host-party partition, and field group."
+      ],
+      "repositories": [
+        "frontend_host"
+      ],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "host-profile:read",
+          "host-profile:update",
+          "media:upload:create",
+          "media:upload:finalize",
+          "media:download:presign"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E16-S02-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E16-S03-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E03-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E03-S03-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authenticated Host with update permission",
+          "when": "contact or avatar is saved",
+          "then": "the current expectedVersion/idempotency input is sent, the durable result renders and no token/presigned URL/media UUID entry is exposed"
+        },
+        {
+          "id": "AC02",
+          "given": "read-only grant, invalid input, failed upload, stale version, forbidden field or dependency outage",
+          "when": "the user acts",
+          "then": "the correct control/state is disabled or recoverable and restricted data is not rendered"
+        },
+        {
+          "id": "AC03",
+          "given": "save/upload is retried after timeout",
+          "when": "the durable result is fetched",
+          "then": "one profile version/avatar reference remains and the UI converges without duplicate upload effects"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-frontend-host",
+        "roadmap-v1-3",
+        "source-vs-e16-s03-st02"
+      ],
+      "decisionNoteVi": "Leaf VS-E16-S03-ST02 chỉ sở hữu artifact của frontend_host; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm test -- --run",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Vitest Host profile and avatar report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "e2e",
+          "command": "npm run test:e2e -- --project=chromium host-profile",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "responsive Host profile permission/conflict browser report"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "frontend_host",
+      "repositorySlices": [
+        {
+          "repository": "frontend_host",
+          "paths": [
+            "src/features/profile/**",
+            "src/lib/api/**",
+            "src/App.tsx",
+            "src/App.css",
+            "src/**/*.test.tsx"
+          ],
+          "artifacts": [
+            "Host profile route and editor",
+            "Media-backed avatar flow",
+            "authorization and conflict UX",
+            "responsive accessibility tests"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E16-S04",
@@ -57626,8 +58675,8 @@
       "parentSourceId": "VS-E16",
       "manageDescription": true,
       "actor": "Host account holder",
-      "outcome": "scoped lifecycle administration is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E16 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "S04 separates scoped Authentication lifecycle/session APIs from the Admin Host identity workspace.",
+      "context": "Lifecycle administration requires action, management partition and field-group checks; no credential or cross-service database access is allowed.",
       "inScope": [
         "Implement and verify: scoped lifecycle administration.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -57733,13 +58782,873 @@
         "source-vs-e16-s04"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "web",
       "dispatchable": false,
       "testCases": [],
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E16-S04-ST01",
+      "jiraKey": "SCRUM-812",
+      "issueType": "Subtask",
+      "summary": "[VS-E16-S04-ST01] Implement scoped host lifecycle and session administration",
+      "parentSourceId": "VS-E16-S04",
+      "manageDescription": true,
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Authentication lets authorized Backoffice operators view, suspend, reactivate, recover and revoke sessions for HOST identities within explicit management partitions while synchronizing lifecycle facts to User.",
+      "context": "Current account lifecycle and session controllers are Backoffice-specific and target the vistay-backoffice realm. Keycloak remains session authority; Authentication stores only immutable command/security evidence.",
+      "inScope": [
+        "Add HOST-aware account detail, security-event and session endpoints using explicit realm/account type internally, never a caller-selected arbitrary realm.",
+        "Implement SUSPEND, REACTIVATE, FORCE_REQUIRED_ACTIONS and REVOKE_SESSION/REVOKE_ALL with reason, expected lifecycle version and idempotency key.",
+        "Authorize actor action plus organization/site/branch or assigned-host partition from User snapshot; do not infer partition from an email or Property database read.",
+        "Persist command reservation/result and audit, apply Keycloak action, emit lifecycle event, and expose repair state when Keycloak/User projection outcome is uncertain."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "businessRules": [
+        "Host v1 is one account per host/primary signatory, not a multi-member organization portal.",
+        "Host access is limited by action, host-party partition, and field group."
+      ],
+      "repositories": [
+        "service_authentication"
+      ],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "Keycloak owns HOST enabled state, required actions and sessions. Authentication owns lifecycle command/audit evidence; User owns authorization and active profile projection."
+      ],
+      "stateMachine": [
+        "ACTIVE -> SUSPENDED -> ACTIVE is allowed; INVITED/EXPIRED activation follows invitation rules and is not bypassed by reactivate.",
+        "Suspend/recovery revokes current sessions before or atomically with enabling required actions; a suspended subject remains denied until User projection confirms the new version.",
+        "Repeated commands with the same fingerprint return the original result; stale lifecycle version conflicts."
+      ],
+      "authorization": {
+        "actions": [
+          "host-account:read",
+          "host-account:suspend",
+          "host-account:reactivate",
+          "host-account:recover",
+          "host-account:revoke-session"
+        ],
+        "dataPartitions": [
+          "ADMIN organization, SITE/BRANCH, or explicitly ASSIGNED HOST management partition; HOST self may only revoke its own session through a separate self contract."
+        ],
+        "fieldGroups": [
+          "ACCOUNT_SUMMARY baseline; SECURITY_EVENT, SESSION_METADATA, PII_CONTACT and INTERNAL_AUDIT require explicit grants."
+        ]
+      },
+      "failureSemantics": [
+        "Fail closed on missing action/partition, wrong realm/type, last-safe-admin policy where applicable, stale version or unavailable authorization.",
+        "Represent partial Keycloak/event outcomes as repairable states with correlation IDs; never report success while projections are knowingly divergent.",
+        "Never return raw token, cookie, credential or unmasked security-event PII."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E16-S01-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E16-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E16-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized operator and current HOST lifecycle version",
+          "when": "a lifecycle or session command runs",
+          "then": "the intended Keycloak effect, immutable command/audit result and versioned User lifecycle event complete once"
+        },
+        {
+          "id": "AC02",
+          "given": "wrong type/partition, missing grant, stale version, illegal transition or dependency failure",
+          "when": "the command runs",
+          "then": "the stable denial/conflict/repair result is returned without leaking account or session details"
+        },
+        {
+          "id": "AC03",
+          "given": "the command repeats or fails between Keycloak and event publication",
+          "when": "repair/retry executes",
+          "then": "one effective lifecycle result remains and Authentication/User divergence is visible until reconciled"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-authentication",
+        "roadmap-v1-3",
+        "source-vs-e16-s04-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E16-S04-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*HostAccountLifecycle*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *HostAccountLifecycle*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*HostAccountLifecycle*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *HostAccountLifecycle*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "service_authentication",
+      "repositorySlices": [
+        {
+          "repository": "service_authentication",
+          "paths": [
+            "src/main/resources/db/migration/V10__host_lifecycle_security_audit.sql",
+            "src/main/java/com/vistay/authentication/adapter/in/rest/HostAccountLifecycleController.java",
+            "src/main/java/com/vistay/authentication/application/HostAccountLifecycleService.java",
+            "src/main/java/com/vistay/authentication/application/SessionService.java",
+            "src/main/java/com/vistay/authentication/adapter/out/keycloak/KeycloakAdminClient.java",
+            "src/test/java/com/vistay/authentication/application/HostAccountLifecycleServiceIntegrationTest.java"
+          ],
+          "artifacts": [
+            "scoped HOST lifecycle REST API",
+            "multi-realm session administration",
+            "lifecycle event and repair ledger",
+            "authorization/idempotency/concurrency tests"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
+      "sourceId": "VS-E16-S04-ST02",
+      "jiraKey": "SCRUM-813",
+      "issueType": "Subtask",
+      "summary": "[VS-E16-S04-ST02] Build Admin host identity lifecycle workspace",
+      "parentSourceId": "VS-E16-S04",
+      "manageDescription": true,
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Admin Web provides a permission-aware Host identity search/detail, invitation, lifecycle and session workspace without exposing credentials or unrelated property/financial data.",
+      "context": "Admin currently has Backoffice account provisioning/security consoles only. HOST management requires distinct API types, permissions, partitions and field-group redaction.",
+      "inScope": [
+        "Add Host identity route with invite form, status filters and exact server-side partitioned search; do not download all hosts then filter in the browser.",
+        "Render account/profile/lifecycle/security/session fields only when returned; clearly separate Keycloak identity state from User profile/authorization state and show repair divergence.",
+        "Add confirmation dialogs requiring reason and expectedVersion for resend, suspend, reactivate, recovery and session revoke; refresh durable result after timeout/conflict.",
+        "Cover loading, empty, forbidden, stale, dependency-failure, partial-repair and responsive keyboard/screen-reader states."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "businessRules": [
+        "Host v1 is one account per host/primary signatory, not a multi-member organization portal.",
+        "Host access is limited by action, host-party partition, and field group."
+      ],
+      "repositories": [
+        "frontend_admin"
+      ],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "host-account:invite",
+          "host-account:read",
+          "host-account:suspend",
+          "host-account:reactivate",
+          "host-account:recover",
+          "host-account:revoke-session"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E16-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E16-S04-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized operator in one management partition",
+          "when": "Host identities are searched and a valid command is confirmed",
+          "then": "only permitted fields/targets render and the durable versioned result plus audit correlation is shown"
+        },
+        {
+          "id": "AC02",
+          "given": "missing action/partition/field group, stale version, illegal transition or partial backend failure",
+          "when": "the workspace loads or submits",
+          "then": "restricted data/actions stay hidden or disabled and an actionable non-misleading state is shown"
+        },
+        {
+          "id": "AC03",
+          "given": "a command times out and is retried",
+          "when": "the workspace refreshes by idempotency/correlation",
+          "then": "one backend effect remains and the current lifecycle/projection state is rendered"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-frontend-admin",
+        "roadmap-v1-3",
+        "source-vs-e16-s04-st02"
+      ],
+      "decisionNoteVi": "Leaf VS-E16-S04-ST02 chỉ sở hữu artifact của frontend_admin; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm test -- --run",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Admin Host account workspace Vitest report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "e2e",
+          "command": "npm run test:e2e -- --project=chromium host-accounts",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Admin Host lifecycle authorization browser report"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "frontend_admin",
+      "repositorySlices": [
+        {
+          "repository": "frontend_admin",
+          "paths": [
+            "apps/web/src/features/host-accounts/**",
+            "packages/api-client/src/hostAccounts.ts",
+            "apps/web/src/App.tsx",
+            "apps/web/src/App.css",
+            "apps/web/src/**/*.test.tsx"
+          ],
+          "artifacts": [
+            "Admin Host account route",
+            "invitation/lifecycle/session controls",
+            "partition and field redaction UX",
+            "responsive authorization/error tests"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
+      "sourceId": "VS-E16-T01",
+      "jiraKey": "SCRUM-814",
+      "issueType": "Task",
+      "summary": "[VS-E16-T01] Publish host identity profile and lifecycle contracts",
+      "manageDescription": true,
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Platform Contracts publishes versioned Host invitation, identity lifecycle, profile, authorization and event schemas with explicit Keycloak/User/Property/Media ownership and no local credential model.",
+      "context": "Existing contracts cover the Backoffice walking slice and shared account types, but no complete Host identity/profile lifecycle contract exists.",
+      "inScope": [
+        "Document Host aggregate identities, realm/audience, invitation and lifecycle states, owner services, stable codes and compatibility rules.",
+        "Publish REST/GraphQL/Kafka schemas for invitation, activation, hostViewer/profile update, lifecycle/session commands and versioned projection events.",
+        "Specify action plus partition plus field-group rules, self-versus-admin boundaries, subject collision behavior and property OWN binding source.",
+        "Add valid/invalid fixtures for replay, stale version, restricted field, wrong realm/type, partial dependency and redaction cases."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "businessRules": [
+        "Host v1 is one account per host/primary signatory, not a multi-member organization portal.",
+        "Host access is limited by action, host-party partition, and field group."
+      ],
+      "repositories": [
+        "platform_contracts"
+      ],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "host-contract:publish"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "all Host v1 operations/events and ownership boundaries",
+          "when": "schema validation runs",
+          "then": "states, versions, stable errors, authorization dimensions and compatibility are machine-verifiable"
+        },
+        {
+          "id": "AC02",
+          "given": "local credential/session ownership, self-verification, inferred property ownership, missing redaction or ambiguous realm/type",
+          "when": "negative fixtures validate",
+          "then": "CI fails with an exact contract diagnostic"
+        },
+        {
+          "id": "AC03",
+          "given": "identical canonical fixture input",
+          "when": "validation repeats",
+          "then": "the same fingerprint is produced and prior published version remains immutable"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-platform-contracts",
+        "roadmap-v1-3",
+        "source-vs-e16-t01"
+      ],
+      "decisionNoteVi": "Leaf VS-E16-T01 chỉ sở hữu artifact của platform_contracts; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "contract",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "contract",
+          "command": "npm run validate:schemas",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Host contract schema and fixture report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "unit",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "platform_contracts full validation report"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "parentSourceId": "VS-E16",
+      "primaryRepository": "platform_contracts",
+      "repositorySlices": [
+        {
+          "repository": "platform_contracts",
+          "paths": [
+            "docs/host-identity-profile-v1.md",
+            "schemas/host-identity/**",
+            "events/host-account/**",
+            "fixtures/host-identity/**",
+            "scripts/validate-schemas.mjs"
+          ],
+          "artifacts": [
+            "Host identity/profile contract",
+            "lifecycle and event schemas",
+            "authorization/ownership matrix",
+            "positive and negative fixtures"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
+      "sourceId": "VS-E16-T02",
+      "jiraKey": "SCRUM-815",
+      "issueType": "Task",
+      "summary": "[VS-E16-T02] Add host identity lifecycle Postman evidence",
+      "manageDescription": true,
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "A deterministic Postman/Newman flow proves Host invitation through activation, PKCE token use, self profile, Admin lifecycle/session controls, authorization negatives and repair-safe replay without committing secrets.",
+      "context": "Infrastructure Postman assets currently target Backoffice flows; no Host environment or end-to-end Host identity collection exists.",
+      "inScope": [
+        "Add local Host collection/environment with runtime-generated PKCE/state/nonce values, local mail-capture action-link retrieval and no checked-in token/cookie/password.",
+        "Exercise invite, duplicate/replay, activation, token claims, hostViewer/profile update, stale version, field denial, session list/revoke, suspend/reactivate/recovery and logout.",
+        "Use two Admin partitions and one Host subject to prove wrong-partition, wrong-audience/realm and restricted-field negatives without existence leakage.",
+        "Produce redacted Newman JSON/JUnit with deterministic cleanup or isolated fixture namespace and a troubleshooting map for Keycloak, edge, Authentication and User failures."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "businessRules": [
+        "Host v1 is one account per host/primary signatory, not a multi-member organization portal.",
+        "Host access is limited by action, host-party partition, and field group."
+      ],
+      "repositories": [
+        "platform_infrastructure"
+      ],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "host-identity:test"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E16-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E16-S03-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E16-S04-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E16-T03",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "the local full profile and deterministic fixture namespace",
+          "when": "the Host identity Newman runner executes",
+          "then": "the positive invitation/activation/profile/lifecycle flow and all named negative/replay cases pass with correlated evidence"
+        },
+        {
+          "id": "AC02",
+          "given": "missing component, wrong issuer/audience/partition, leaked secret, duplicate effect or unhandled repair divergence",
+          "when": "static or runtime validation runs",
+          "then": "the runner fails at the exact assertion with no protected value in output"
+        },
+        {
+          "id": "AC03",
+          "given": "the collection repeats after cleanup or timeout",
+          "when": "it runs again",
+          "then": "fixture isolation/idempotency prevents duplicate identities and produces one new evidence lineage"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-platform-infrastructure",
+        "roadmap-v1-3",
+        "source-vs-e16-t02"
+      ],
+      "decisionNoteVi": "Leaf VS-E16-T02 chỉ sở hữu artifact của platform_infrastructure; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "integration",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "contract",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-PostmanHostIdentity.ps1 -StaticOnly",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "collection/environment secret and contract validation report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "e2e",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-PostmanHostIdentity.ps1",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "redacted Host identity Newman JSON/JUnit report"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "parentSourceId": "VS-E16",
+      "primaryRepository": "platform_infrastructure",
+      "repositorySlices": [
+        {
+          "repository": "platform_infrastructure",
+          "paths": [
+            "postman/ViStay-Host-Identity-v1.postman_collection.json",
+            "postman/ViStay-Host-Identity-local.postman_environment.example.json",
+            "scripts/Test-PostmanHostIdentity.ps1",
+            "postman/README.md"
+          ],
+          "artifacts": [
+            "Host identity Postman collection",
+            "secret-free local environment template",
+            "authorization/replay/lifecycle assertions",
+            "redacted Newman evidence"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
+      "sourceId": "VS-E16-T03",
+      "jiraKey": "SCRUM-816",
+      "issueType": "Task",
+      "summary": "[VS-E16-T03] Provision Host edge federation and JWT boundary",
+      "manageDescription": true,
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Infrastructure exposes host.localhost and a Host-only federated API path whose router and services validate the vistay-host issuer and vistay-host-api audience without weakening Backoffice isolation.",
+      "context": "Compose starts frontend-host, but Nginx has no Host server block, the router accepts only vistay-backoffice, and service issuer variables are Backoffice-only. A UI-only change would therefore authenticate but fail every Host API call.",
+      "inScope": [
+        "Add allow-listed Host Web and Host GraphQL edge hosts/routes with request IDs, CORS, security headers and no public actuator/internal routes.",
+        "Provision a Host supergraph/router boundary containing only approved Host fields; validate vistay-host issuer and vistay-host-api audience while rejecting Backoffice/customer tokens.",
+        "Configure User and required services for explicit multi-issuer resource-server mapping by trusted issuer, never by an unverified accountType claim.",
+        "Add topology/JWT/CORS/smoke tests and rollback that disables Host routes/realm without changing Backoffice routing."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "businessRules": [
+        "Host v1 is one account per host/primary signatory, not a multi-member organization portal.",
+        "Host access is limited by action, host-party partition, and field group."
+      ],
+      "repositories": [
+        "platform_infrastructure"
+      ],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "host-edge:configure",
+          "host-edge:test"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E16-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E16-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "valid Host configuration and token",
+          "when": "Host Web calls an approved Host GraphQL field",
+          "then": "edge, router and owning service accept the exact issuer/audience and propagate correlation without exposing internal routes"
+        },
+        {
+          "id": "AC02",
+          "given": "Backoffice/customer/wrong-audience/expired token, hostile origin or non-Host field",
+          "when": "the Host boundary is called",
+          "then": "the request is denied without fallback to another realm, graph or data partition"
+        },
+        {
+          "id": "AC03",
+          "given": "Host routes are disabled or configuration reload repeats",
+          "when": "rollback/validation runs",
+          "then": "Backoffice remains healthy and Host routes converge to the documented disabled or active state"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-platform-infrastructure",
+        "roadmap-v1-3",
+        "source-vs-e16-t03"
+      ],
+      "decisionNoteVi": "Leaf VS-E16-T03 chỉ sở hữu artifact của platform_infrastructure; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "infrastructure",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "contract",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-HostEdgeTopology.ps1",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Host edge JWT/CORS/topology report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": "docker compose -f compose.yaml -f compose.full.yaml config",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "rendered secret-redacted Host topology configuration"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "parentSourceId": "VS-E16",
+      "primaryRepository": "platform_infrastructure",
+      "repositorySlices": [
+        {
+          "repository": "platform_infrastructure",
+          "paths": [
+            "compose.yaml",
+            "compose.full.yaml",
+            ".env.example",
+            "nginx/templates/default.conf.template",
+            "router/host/**",
+            "scripts/Test-HostEdgeTopology.ps1",
+            "scripts/Test-HiveRouterCompatibility.ps1",
+            "docs/runbooks/host-edge.md"
+          ],
+          "artifacts": [
+            "Host edge server blocks",
+            "Host-only router/supergraph",
+            "multi-issuer service configuration",
+            "JWT/CORS/topology smoke and rollback"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E17",
