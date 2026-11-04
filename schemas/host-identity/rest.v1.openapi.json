@@ -1,0 +1,307 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "ViStay Host identity and profile API",
+    "version": "1.0.0",
+    "description": "Versioned Host boundary. Authentication and profile implementations remain service-owned."
+  },
+  "x-vistay-contract-id": "HOST_IDENTITY_PROFILE",
+  "x-vistay-contract-status": "PUBLISHED",
+  "paths": {
+    "/v1/host/invitations": {
+      "post": {
+        "operationId": "issueHostInvitation",
+        "x-owner": "AUTHENTICATION",
+        "x-action": "host:invite",
+        "x-partitions": ["ADMIN:SITE", "ADMIN:BRANCH"],
+        "x-field-groups": ["SUMMARY", "PII"],
+        "x-timeout-ms": 2000,
+        "security": [{ "backofficeBearer": ["host:invite"] }],
+        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/IssueHostInvitationRequest" } } } },
+        "responses": {
+          "201": { "description": "Invitation created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/HostInvitation" } } } },
+          "409": { "$ref": "#/components/responses/HostConflict" },
+          "422": { "$ref": "#/components/responses/HostValidationError" }
+        }
+      }
+    },
+    "/v1/host/invitations/{invitationId}/activate": {
+      "post": {
+        "operationId": "activateHostInvitation",
+        "x-owner": "AUTHENTICATION",
+        "x-action": "host:activate",
+        "x-partitions": ["INVITATION_SUBJECT"],
+        "x-field-groups": ["SUMMARY"],
+        "x-timeout-ms": 2000,
+        "security": [{ "hostBearer": ["host:activate"] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/InvitationId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ActivateHostInvitationRequest" } } } },
+        "responses": {
+          "200": { "description": "Invitation activated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/HostAccount" } } } },
+          "409": { "$ref": "#/components/responses/HostConflict" },
+          "422": { "$ref": "#/components/responses/HostValidationError" }
+        }
+      }
+    },
+    "/v1/host/viewer": {
+      "get": {
+        "operationId": "getHostViewer",
+        "x-owner": "USER",
+        "x-action": "host:read",
+        "x-partitions": ["SELF", "PROPERTY:OWN", "ADMIN:SITE", "ADMIN:BRANCH"],
+        "x-field-groups": ["SUMMARY"],
+        "x-timeout-ms": 2000,
+        "security": [{ "hostBearer": ["host:read"] }],
+        "responses": {
+          "200": { "description": "Safe Host viewer projection", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/HostViewer" } } } },
+          "403": { "$ref": "#/components/responses/HostForbidden" }
+        }
+      }
+    },
+    "/v1/host/profile": {
+      "patch": {
+        "operationId": "patchHostProfile",
+        "x-owner": "USER",
+        "x-action": "host:profile:update",
+        "x-partitions": ["SELF", "ADMIN:SITE", "ADMIN:BRANCH"],
+        "x-field-groups": ["SUMMARY", "PII"],
+        "x-timeout-ms": 2000,
+        "security": [{ "hostBearer": ["host:profile:update"] }, { "backofficeBearer": ["host:profile:update"] }],
+        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateHostProfileRequest" } } } },
+        "responses": {
+          "200": { "description": "Profile updated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/HostProfileSummary" } } } },
+          "409": { "$ref": "#/components/responses/HostConflict" },
+          "422": { "$ref": "#/components/responses/HostValidationError" }
+        }
+      }
+    },
+    "/v1/host/lifecycle/commands": {
+      "post": {
+        "operationId": "changeHostLifecycle",
+        "x-owner": "AUTHENTICATION",
+        "x-action": "host:lifecycle:manage",
+        "x-partitions": ["ADMIN:SITE", "ADMIN:BRANCH"],
+        "x-field-groups": ["SUMMARY", "INTERNAL_AUDIT"],
+        "x-timeout-ms": 2000,
+        "security": [{ "backofficeBearer": ["host:lifecycle:manage"] }],
+        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ChangeHostLifecycleRequest" } } } },
+        "responses": {
+          "200": { "description": "Lifecycle changed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/HostAccount" } } } },
+          "409": { "$ref": "#/components/responses/HostConflict" },
+          "422": { "$ref": "#/components/responses/HostValidationError" }
+        }
+      }
+    },
+    "/v1/host/sessions/{sessionId}/revoke": {
+      "post": {
+        "operationId": "revokeHostSession",
+        "x-owner": "AUTHENTICATION",
+        "x-action": "host:session:revoke",
+        "x-partitions": ["SELF", "ADMIN:SITE", "ADMIN:BRANCH"],
+        "x-field-groups": ["SUMMARY"],
+        "x-timeout-ms": 2000,
+        "security": [{ "hostBearer": ["host:session:revoke"] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/SessionId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RevokeHostSessionRequest" } } } },
+        "responses": {
+          "200": { "description": "Session revoked", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/HostSession" } } } },
+          "409": { "$ref": "#/components/responses/HostConflict" },
+          "422": { "$ref": "#/components/responses/HostValidationError" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "hostBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "KEYCLOAK_HOST_JWT",
+        "x-issuer-alias": "KEYCLOAK_HOST_ISSUER",
+        "x-audiences": ["host-portal", "host-api"],
+        "x-credential-owner": "KEYCLOAK"
+      },
+      "backofficeBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "KEYCLOAK_BACKOFFICE_JWT",
+        "x-issuer-alias": "KEYCLOAK_BACKOFFICE_ISSUER",
+        "x-audiences": ["backoffice-api"],
+        "x-credential-owner": "KEYCLOAK"
+      }
+    },
+    "parameters": {
+      "IdempotencyKey": { "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "type": "string", "minLength": 16, "maxLength": 128 } },
+      "InvitationId": { "name": "invitationId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+      "SessionId": { "name": "sessionId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+    },
+    "responses": {
+      "HostConflict": { "description": "A stable Host concurrency or collision error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/HostError" } } } },
+      "HostValidationError": { "description": "A stable Host contract validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/HostError" } } } },
+      "HostForbidden": { "description": "Host partition or field group denied", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/HostError" } } } }
+    },
+    "schemas": {
+      "IssueHostInvitationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["contactReference", "propertyPartition", "expectedRealm", "expectedSubjectType"],
+        "properties": {
+          "contactReference": { "$ref": "#/components/schemas/ContactReference" },
+          "propertyPartition": { "$ref": "#/components/schemas/PropertyPartition" },
+          "expectedRealm": { "const": "HOST" },
+          "expectedSubjectType": { "const": "HOST" }
+        }
+      },
+      "ActivateHostInvitationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["activationReference", "expectedVersion"],
+        "properties": {
+          "activationReference": { "type": "string", "pattern": "^KEYCLOAK_ACTIVATION_REF_[A-Z0-9_]+$" },
+          "expectedVersion": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "UpdateHostProfileRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedVersion"],
+        "properties": {
+          "profileId": { "type": "string", "format": "uuid" },
+          "displayName": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "preferredLocale": { "type": "string", "pattern": "^[a-z]{2}(?:-[A-Z]{2})?$" },
+          "phone": { "type": "string", "minLength": 3, "maxLength": 40 },
+          "avatarMediaId": { "type": "string", "format": "uuid" },
+          "expectedVersion": { "type": "integer", "minimum": 1 }
+        },
+        "anyOf": [
+          { "required": ["displayName"] },
+          { "required": ["preferredLocale"] },
+          { "required": ["phone"] },
+          { "required": ["avatarMediaId"] }
+        ]
+      },
+      "ChangeHostLifecycleRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["accountId", "targetState", "expectedVersion", "reasonCode"],
+        "properties": {
+          "accountId": { "type": "string", "format": "uuid" },
+          "targetState": { "enum": ["ACTIVE", "SUSPENDED", "DEACTIVATED"] },
+          "expectedVersion": { "type": "integer", "minimum": 1 },
+          "reasonCode": { "enum": ["INVITATION_ACCEPTED", "ADMIN_SUSPENSION", "ADMIN_REACTIVATION", "ADMIN_DEACTIVATION"] }
+        }
+      },
+      "RevokeHostSessionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedVersion", "reasonCode"],
+        "properties": {
+          "expectedVersion": { "type": "integer", "minimum": 1 },
+          "reasonCode": { "enum": ["SELF_REQUEST", "ADMIN_SECURITY_ACTION", "ACCOUNT_LIFECYCLE"] }
+        }
+      },
+      "ContactReference": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "normalizedContactHash"],
+        "properties": {
+          "kind": { "const": "EMAIL" },
+          "normalizedContactHash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+        }
+      },
+      "PropertyPartition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["propertyId", "branchId", "source", "ownershipTerm"],
+        "properties": {
+          "propertyId": { "type": "string", "format": "uuid" },
+          "branchId": { "type": "string", "format": "uuid" },
+          "source": { "const": "PROPERTY_ACTIVE_MEMBERSHIP" },
+          "ownershipTerm": { "const": "OWNED" }
+        }
+      },
+      "HostInvitation": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["invitationId", "realm", "subjectType", "state", "aggregateVersion"],
+        "properties": {
+          "invitationId": { "type": "string", "format": "uuid" },
+          "realm": { "const": "HOST" },
+          "subjectType": { "const": "HOST" },
+          "state": { "enum": ["PENDING", "ACTIVATED", "EXPIRED", "REVOKED"] },
+          "aggregateVersion": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "HostAccount": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["accountId", "realm", "subjectType", "state", "authorizationVersion"],
+        "properties": {
+          "accountId": { "type": "string", "format": "uuid" },
+          "realm": { "const": "HOST" },
+          "subjectType": { "const": "HOST" },
+          "state": { "enum": ["INVITED", "ACTIVE", "SUSPENDED", "DEACTIVATED"] },
+          "authorizationVersion": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "HostViewer": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["accountId", "profileId", "realm", "subjectType", "lifecycleState", "authorizationVersion", "profile", "propertyOwnBindings"],
+        "properties": {
+          "accountId": { "type": "string", "format": "uuid" },
+          "profileId": { "type": "string", "format": "uuid" },
+          "realm": { "const": "HOST" },
+          "subjectType": { "const": "HOST" },
+          "lifecycleState": { "enum": ["INVITED", "ACTIVE", "SUSPENDED", "DEACTIVATED"] },
+          "authorizationVersion": { "type": "integer", "minimum": 1 },
+          "profile": { "$ref": "#/components/schemas/HostProfileSummary" },
+          "propertyOwnBindings": { "type": "array", "items": { "$ref": "#/components/schemas/PropertyPartition" } }
+        }
+      },
+      "HostProfileSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["profileId", "displayName", "preferredLocale", "verificationStatus", "aggregateVersion"],
+        "properties": {
+          "profileId": { "type": "string", "format": "uuid" },
+          "displayName": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "preferredLocale": { "type": "string", "pattern": "^[a-z]{2}(?:-[A-Z]{2})?$" },
+          "verificationStatus": { "enum": ["PENDING", "VERIFIED", "REQUIRES_REVIEW"] },
+          "aggregateVersion": { "type": "integer", "minimum": 1 },
+          "avatarMediaId": { "type": "string", "format": "uuid" }
+        }
+      },
+      "HostSession": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sessionId", "state", "aggregateVersion"],
+        "properties": {
+          "sessionId": { "type": "string", "format": "uuid" },
+          "state": { "enum": ["ACTIVE", "EXPIRED", "REVOKED"] },
+          "aggregateVersion": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "HostError": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message", "correlationId", "retryable"],
+        "properties": {
+          "code": { "type": "string", "pattern": "^HOST_[A-Z0-9_]+$" },
+          "message": { "type": "string", "minLength": 1, "maxLength": 240 },
+          "correlationId": { "type": "string", "format": "uuid" },
+          "retryable": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}

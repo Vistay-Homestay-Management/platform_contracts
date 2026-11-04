@@ -1,0 +1,13 @@
+{
+  "fixtureVersion": 1,
+  "valid": false,
+  "kind": "missing-redaction",
+  "violation": "MISSING_REDACTION",
+  "expectedError": "HOST_REDACTION_REQUIRED",
+  "correlationId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaab",
+  "input": {
+    "responseField": "email",
+    "fieldGroup": "SUMMARY",
+    "explicitGrant": false
+  }
+}

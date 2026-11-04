@@ -1,0 +1,18 @@
+{
+  "fixtureVersion": 1,
+  "valid": true,
+  "kind": "admin-lifecycle-partition",
+  "correlationId": "ffffffff-ffff-4fff-8fff-ffffffffffff",
+  "request": {
+    "action": "host:lifecycle:manage",
+    "caller": "ADMIN",
+    "partition": "ADMIN:SITE",
+    "fieldGroups": ["SUMMARY", "INTERNAL_AUDIT"],
+    "expectedVersion": 2
+  },
+  "expected": {
+    "allowed": true,
+    "effectCount": 1,
+    "auditFields": ["actorType", "reasonCode", "correlationId"]
+  }
+}

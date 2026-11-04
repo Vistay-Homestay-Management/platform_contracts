@@ -1,0 +1,221 @@
+{
+  "$schema": "https://contracts.vistay.vn/schemas/host-identity/host-identity-contract.v1.schema.json",
+  "contractId": "HOST_IDENTITY_PROFILE",
+  "version": 1,
+  "status": "PUBLISHED",
+  "artifactLifecycle": {
+    "states": ["DRAFT", "VALIDATED", "PUBLISHED"],
+    "transitions": ["DRAFT_TO_VALIDATED", "VALIDATED_TO_PUBLISHED", "PUBLISHED_TO_LAST_VALIDATED"],
+    "failedValidation": "UNPUBLISHED",
+    "rollback": "SELECT_LAST_VALIDATED_IMMUTABLE"
+  },
+  "fingerprint": {
+    "algorithm": "SHA-256",
+    "canonicalization": "SORTED_UTF8_JSON_OBJECT_KEYS",
+    "input": "canonicalInput"
+  },
+  "ownerServices": {
+    "identityProvider": "KEYCLOAK",
+    "authentication": "AUTHENTICATION",
+    "profile": "USER",
+    "propertyBinding": "PROPERTY",
+    "media": "MEDIA",
+    "contractCatalogue": "PLATFORM_CONTRACTS"
+  },
+  "realms": [
+    {
+      "name": "HOST",
+      "issuerAlias": "KEYCLOAK_HOST_ISSUER",
+      "audiences": ["host-portal", "host-api"],
+      "subjectType": "HOST",
+      "credentialOwner": "KEYCLOAK",
+      "sessionOwner": "AUTHENTICATION"
+    }
+  ],
+  "aggregates": [
+    {
+      "name": "invitation",
+      "owner": "AUTHENTICATION",
+      "versionField": "aggregateVersion",
+      "states": ["PENDING", "ACTIVATED", "EXPIRED", "REVOKED"]
+    },
+    {
+      "name": "hostAccount",
+      "owner": "AUTHENTICATION",
+      "versionField": "aggregateVersion",
+      "states": ["INVITED", "ACTIVE", "SUSPENDED", "DEACTIVATED"]
+    },
+    {
+      "name": "hostProfile",
+      "owner": "USER",
+      "versionField": "aggregateVersion",
+      "states": ["PROVISIONED", "ACTIVE", "REDACTED"]
+    },
+    {
+      "name": "hostSession",
+      "owner": "AUTHENTICATION",
+      "versionField": "aggregateVersion",
+      "states": ["ACTIVE", "EXPIRED", "REVOKED"]
+    }
+  ],
+  "operations": [
+    {
+      "id": "issueHostInvitation",
+      "version": 1,
+      "protocol": "REST",
+      "method": "POST",
+      "path": "/v1/host/invitations",
+      "owner": "AUTHENTICATION",
+      "caller": "ADMIN",
+      "authorization": { "action": "host:invite", "partitions": ["ADMIN:SITE", "ADMIN:BRANCH"], "fieldGroups": ["SUMMARY", "PII"] },
+      "timeoutMs": 2000,
+      "idempotency": "REQUIRED",
+      "optimisticVersion": "NOT_APPLICABLE",
+      "errors": ["HOST_WRONG_REALM_OR_TYPE", "HOST_SUBJECT_COLLISION", "HOST_IDEMPOTENCY_CONFLICT", "HOST_PARTIAL_DEPENDENCY"]
+    },
+    {
+      "id": "activateHostInvitation",
+      "version": 1,
+      "protocol": "REST",
+      "method": "POST",
+      "path": "/v1/host/invitations/{invitationId}/activate",
+      "owner": "AUTHENTICATION",
+      "caller": "INVITED_HOST",
+      "authorization": { "action": "host:activate", "partitions": ["INVITATION_SUBJECT"], "fieldGroups": ["SUMMARY"] },
+      "timeoutMs": 2000,
+      "idempotency": "REQUIRED",
+      "optimisticVersion": "REQUIRED",
+      "errors": ["HOST_INVITATION_REPLAY", "HOST_INVALID_STATE_TRANSITION", "HOST_WRONG_REALM_OR_TYPE", "HOST_PARTIAL_DEPENDENCY"]
+    },
+    {
+      "id": "getHostViewer",
+      "version": 1,
+      "protocol": "REST",
+      "method": "GET",
+      "path": "/v1/host/viewer",
+      "owner": "USER",
+      "caller": "HOST",
+      "authorization": { "action": "host:read", "partitions": ["SELF", "PROPERTY:OWN", "ADMIN:SITE", "ADMIN:BRANCH"], "fieldGroups": ["SUMMARY"] },
+      "timeoutMs": 2000,
+      "idempotency": "NOT_APPLICABLE",
+      "optimisticVersion": "NOT_APPLICABLE",
+      "errors": ["HOST_WRONG_REALM_OR_TYPE", "HOST_REDACTION_REQUIRED", "HOST_PARTIAL_DEPENDENCY"]
+    },
+    {
+      "id": "hostViewer",
+      "version": 1,
+      "protocol": "GRAPHQL",
+      "field": "hostViewer",
+      "owner": "USER",
+      "caller": "HOST",
+      "authorization": { "action": "host:read", "partitions": ["SELF", "PROPERTY:OWN", "ADMIN:SITE", "ADMIN:BRANCH"], "fieldGroups": ["SUMMARY"] },
+      "timeoutMs": 2000,
+      "idempotency": "NOT_APPLICABLE",
+      "optimisticVersion": "NOT_APPLICABLE",
+      "errors": ["HOST_WRONG_REALM_OR_TYPE", "HOST_REDACTION_REQUIRED", "HOST_PARTIAL_DEPENDENCY"]
+    },
+    {
+      "id": "updateHostProfile",
+      "version": 1,
+      "protocol": "GRAPHQL",
+      "field": "updateHostProfile",
+      "owner": "USER",
+      "caller": "HOST_OR_ADMIN",
+      "authorization": { "action": "host:profile:update", "partitions": ["SELF", "ADMIN:SITE", "ADMIN:BRANCH"], "fieldGroups": ["SUMMARY", "PII"] },
+      "timeoutMs": 2000,
+      "idempotency": "REQUIRED",
+      "optimisticVersion": "REQUIRED",
+      "errors": ["HOST_STALE_VERSION", "HOST_RESTRICTED_FIELD", "HOST_REDACTION_REQUIRED", "HOST_IDEMPOTENCY_CONFLICT"]
+    },
+    {
+      "id": "patchHostProfile",
+      "version": 1,
+      "protocol": "REST",
+      "method": "PATCH",
+      "path": "/v1/host/profile",
+      "owner": "USER",
+      "caller": "HOST_OR_ADMIN",
+      "authorization": { "action": "host:profile:update", "partitions": ["SELF", "ADMIN:SITE", "ADMIN:BRANCH"], "fieldGroups": ["SUMMARY", "PII"] },
+      "timeoutMs": 2000,
+      "idempotency": "REQUIRED",
+      "optimisticVersion": "REQUIRED",
+      "errors": ["HOST_STALE_VERSION", "HOST_RESTRICTED_FIELD", "HOST_REDACTION_REQUIRED", "HOST_IDEMPOTENCY_CONFLICT"]
+    },
+    {
+      "id": "changeHostLifecycle",
+      "version": 1,
+      "protocol": "REST",
+      "method": "POST",
+      "path": "/v1/host/lifecycle/commands",
+      "owner": "AUTHENTICATION",
+      "caller": "ADMIN",
+      "authorization": { "action": "host:lifecycle:manage", "partitions": ["ADMIN:SITE", "ADMIN:BRANCH"], "fieldGroups": ["SUMMARY", "INTERNAL_AUDIT"] },
+      "timeoutMs": 2000,
+      "idempotency": "REQUIRED",
+      "optimisticVersion": "REQUIRED",
+      "errors": ["HOST_STALE_VERSION", "HOST_INVALID_STATE_TRANSITION", "HOST_IDEMPOTENCY_CONFLICT", "HOST_PARTIAL_DEPENDENCY"]
+    },
+    {
+      "id": "revokeHostSession",
+      "version": 1,
+      "protocol": "REST",
+      "method": "POST",
+      "path": "/v1/host/sessions/{sessionId}/revoke",
+      "owner": "AUTHENTICATION",
+      "caller": "HOST_OR_ADMIN",
+      "authorization": { "action": "host:session:revoke", "partitions": ["SELF", "ADMIN:SITE", "ADMIN:BRANCH"], "fieldGroups": ["SUMMARY"] },
+      "timeoutMs": 2000,
+      "idempotency": "REQUIRED",
+      "optimisticVersion": "REQUIRED",
+      "errors": ["HOST_STALE_VERSION", "HOST_INVALID_STATE_TRANSITION", "HOST_IDEMPOTENCY_CONFLICT", "HOST_PARTIAL_DEPENDENCY"]
+    }
+  ],
+  "events": [
+    { "type": "vistay.host.invitation-issued", "version": 1, "owner": "AUTHENTICATION", "aggregate": "invitation", "topic": "vistay.host.invitation-issued.v1", "partitionKey": "aggregateId" },
+    { "type": "vistay.host.identity-activated", "version": 1, "owner": "AUTHENTICATION", "aggregate": "hostAccount", "topic": "vistay.host.identity-activated.v1", "partitionKey": "aggregateId" },
+    { "type": "vistay.host.profile-provisioned", "version": 1, "owner": "USER", "aggregate": "hostProfile", "topic": "vistay.host.profile-provisioned.v1", "partitionKey": "aggregateId" },
+    { "type": "vistay.host.profile-updated", "version": 1, "owner": "USER", "aggregate": "hostProfile", "topic": "vistay.host.profile-updated.v1", "partitionKey": "aggregateId" },
+    { "type": "vistay.host.lifecycle-changed", "version": 1, "owner": "AUTHENTICATION", "aggregate": "hostAccount", "topic": "vistay.host.lifecycle-changed.v1", "partitionKey": "aggregateId" },
+    { "type": "vistay.host.session-revoked", "version": 1, "owner": "AUTHENTICATION", "aggregate": "hostSession", "topic": "vistay.host.session-revoked.v1", "partitionKey": "aggregateId" }
+  ],
+  "authorizationMatrix": [
+    { "action": "host-contract:publish", "caller": "RELEASE_OPERATOR", "partition": "SYSTEM", "defaultFieldGroup": "SUMMARY", "allowedFieldGroups": ["SUMMARY", "DOCUMENT", "PII", "INTERNAL_AUDIT"] },
+    { "action": "host:invite", "caller": "ADMIN", "partition": "ADMIN:SITE_OR_BRANCH", "defaultFieldGroup": "SUMMARY", "allowedFieldGroups": ["SUMMARY", "PII"] },
+    { "action": "host:activate", "caller": "INVITED_HOST", "partition": "INVITATION_SUBJECT", "defaultFieldGroup": "SUMMARY", "allowedFieldGroups": ["SUMMARY"] },
+    { "action": "host:read", "caller": "HOST_OR_ADMIN", "partition": "SELF_OR_PROPERTY_OWN_OR_ADMIN", "defaultFieldGroup": "SUMMARY", "allowedFieldGroups": ["SUMMARY", "PII", "DOCUMENT", "INTERNAL_AUDIT"] },
+    { "action": "host:profile:update", "caller": "HOST_OR_ADMIN", "partition": "SELF_OR_ADMIN", "defaultFieldGroup": "SUMMARY", "allowedFieldGroups": ["SUMMARY", "PII"] },
+    { "action": "host:lifecycle:manage", "caller": "ADMIN", "partition": "ADMIN:SITE_OR_BRANCH", "defaultFieldGroup": "SUMMARY", "allowedFieldGroups": ["SUMMARY", "INTERNAL_AUDIT"] },
+    { "action": "host:session:revoke", "caller": "HOST_OR_ADMIN", "partition": "SELF_OR_ADMIN", "defaultFieldGroup": "SUMMARY", "allowedFieldGroups": ["SUMMARY"] }
+  ],
+  "propertyOwnership": {
+    "owner": "PROPERTY",
+    "source": "ACTIVE_PROPERTY_OWNED_TERM_AND_BRANCH_MEMBERSHIP",
+    "requiredTerm": "OWNED",
+    "fallback": "DENY",
+    "inferenceForbidden": true
+  },
+  "collisionRule": {
+    "crossRealm": "NEVER_MERGE",
+    "sameRealm": "REJECT_DUPLICATE_SUBJECT_OR_NORMALIZED_CONTACT",
+    "error": "HOST_SUBJECT_COLLISION"
+  },
+  "stableErrors": [
+    { "code": "HOST_WRONG_REALM_OR_TYPE", "retryable": false, "meaning": "Issuer, audience, realm, or subject type is not Host." },
+    { "code": "HOST_SUBJECT_COLLISION", "retryable": false, "meaning": "A same-realm subject or normalized contact already exists." },
+    { "code": "HOST_INVITATION_REPLAY", "retryable": false, "meaning": "An invitation activation was already consumed or revoked." },
+    { "code": "HOST_STALE_VERSION", "retryable": true, "meaning": "The expected aggregate or profile version is stale." },
+    { "code": "HOST_RESTRICTED_FIELD", "retryable": false, "meaning": "The caller attempted a field outside the granted group." },
+    { "code": "HOST_PARTIAL_DEPENDENCY", "retryable": true, "meaning": "A required owner dependency is unavailable or incomplete." },
+    { "code": "HOST_REDACTION_REQUIRED", "retryable": false, "meaning": "A response would expose a field without its explicit field group." },
+    { "code": "HOST_CREDENTIAL_OWNER_VIOLATION", "retryable": false, "meaning": "A local credential or session model was introduced outside Keycloak." },
+    { "code": "HOST_INVALID_STATE_TRANSITION", "retryable": false, "meaning": "The requested lifecycle transition is not allowed." },
+    { "code": "HOST_IDEMPOTENCY_CONFLICT", "retryable": false, "meaning": "An idempotency key was reused with different canonical input." },
+    { "code": "HOST_PROPERTY_OWN_REQUIRED", "retryable": false, "meaning": "The Property-owned active OWN binding is absent or ambiguous." }
+  ],
+  "compatibility": {
+    "wireVersion": "v1",
+    "additiveChange": "OPTIONAL_FIELDS_OR_SAFE_ENUM_VALUES",
+    "breakingChange": "NEW_MAJOR_VERSION",
+    "eventOrdering": "AGGREGATE_VERSION"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "fixtureVersion": 1,
+  "valid": false,
+  "kind": "partial-dependency",
+  "violation": "PARTIAL_DEPENDENCY",
+  "expectedError": "HOST_PARTIAL_DEPENDENCY",
+  "correlationId": "99999999-9999-4999-8999-999999999999",
+  "input": {
+    "propertyDependency": "AVAILABLE",
+    "mediaDependency": "UNAVAILABLE",
+    "requiredOwner": "MEDIA",
+    "fallback": "DENY"
+  }
+}

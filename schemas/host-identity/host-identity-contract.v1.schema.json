@@ -1,0 +1,279 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/schemas/host-identity/host-identity-contract.v1.schema.json",
+  "title": "ViStay Host identity and profile contract manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractId",
+    "version",
+    "status",
+    "artifactLifecycle",
+    "fingerprint",
+    "ownerServices",
+    "realms",
+    "aggregates",
+    "operations",
+    "events",
+    "authorizationMatrix",
+    "propertyOwnership",
+    "collisionRule",
+    "stableErrors",
+    "compatibility"
+  ],
+  "properties": {
+    "$schema": { "type": "string", "format": "uri-reference" },
+    "contractId": { "const": "HOST_IDENTITY_PROFILE" },
+    "version": { "const": 1 },
+    "status": { "enum": ["DRAFT", "VALIDATED", "PUBLISHED"] },
+    "artifactLifecycle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["states", "transitions", "failedValidation", "rollback"],
+      "properties": {
+        "states": {
+          "type": "array",
+          "const": ["DRAFT", "VALIDATED", "PUBLISHED"]
+        },
+        "transitions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 3
+        },
+        "failedValidation": { "const": "UNPUBLISHED" },
+        "rollback": { "const": "SELECT_LAST_VALIDATED_IMMUTABLE" }
+      }
+    },
+    "fingerprint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "canonicalization", "input"],
+      "properties": {
+        "algorithm": { "const": "SHA-256" },
+        "canonicalization": { "const": "SORTED_UTF8_JSON_OBJECT_KEYS" },
+        "input": { "const": "canonicalInput" }
+      }
+    },
+    "ownerServices": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "identityProvider",
+        "authentication",
+        "profile",
+        "propertyBinding",
+        "media",
+        "contractCatalogue"
+      ],
+      "properties": {
+        "identityProvider": { "const": "KEYCLOAK" },
+        "authentication": { "const": "AUTHENTICATION" },
+        "profile": { "const": "USER" },
+        "propertyBinding": { "const": "PROPERTY" },
+        "media": { "const": "MEDIA" },
+        "contractCatalogue": { "const": "PLATFORM_CONTRACTS" }
+      }
+    },
+    "realms": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "issuerAlias",
+          "audiences",
+          "subjectType",
+          "credentialOwner",
+          "sessionOwner"
+        ],
+        "properties": {
+          "name": { "const": "HOST" },
+          "issuerAlias": { "const": "KEYCLOAK_HOST_ISSUER" },
+          "audiences": {
+            "type": "array",
+            "const": ["host-portal", "host-api"]
+          },
+          "subjectType": { "const": "HOST" },
+          "credentialOwner": { "const": "KEYCLOAK" },
+          "sessionOwner": { "const": "AUTHENTICATION" }
+        }
+      }
+    },
+    "aggregates": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "owner", "versionField", "states"],
+        "properties": {
+          "name": { "type": "string", "pattern": "^[a-z][a-zA-Z]+$" },
+          "owner": { "type": "string", "minLength": 2 },
+          "versionField": { "const": "aggregateVersion" },
+          "states": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 2 },
+            "minItems": 2
+          }
+        }
+      }
+    },
+    "operations": {
+      "type": "array",
+      "minItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "version",
+          "protocol",
+          "owner",
+          "caller",
+          "authorization",
+          "timeoutMs",
+          "idempotency",
+          "errors"
+        ],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-zA-Z]+$" },
+          "version": { "const": 1 },
+          "protocol": { "enum": ["REST", "GRAPHQL"] },
+          "method": { "enum": ["GET", "POST", "PATCH"] },
+          "path": { "type": "string", "pattern": "^/v1/host/" },
+          "field": { "type": "string", "pattern": "^[a-z][a-zA-Z]+$" },
+          "owner": { "type": "string", "minLength": 2 },
+          "caller": { "type": "string", "minLength": 2 },
+          "authorization": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["action", "partitions", "fieldGroups"],
+            "properties": {
+              "action": { "type": "string", "pattern": "^host(-contract)?[:a-z-]+$" },
+              "partitions": {
+                "type": "array",
+                "items": { "type": "string", "minLength": 2 },
+                "minItems": 1
+              },
+              "fieldGroups": {
+                "type": "array",
+                "items": { "enum": ["SUMMARY", "PII", "DOCUMENT", "INTERNAL_AUDIT"] },
+                "minItems": 1
+              }
+            }
+          },
+          "timeoutMs": { "type": "integer", "minimum": 1, "maximum": 2000 },
+          "idempotency": { "enum": ["REQUIRED", "NOT_APPLICABLE"] },
+          "optimisticVersion": { "enum": ["REQUIRED", "NOT_APPLICABLE"] },
+          "errors": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]+$" },
+            "minItems": 1
+          }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "protocol": { "const": "REST" } } },
+            "then": {
+              "required": ["method", "path"],
+              "properties": { "method": {}, "path": {} }
+            }
+          },
+          {
+            "if": { "properties": { "protocol": { "const": "GRAPHQL" } } },
+            "then": {
+              "required": ["field"],
+              "properties": { "field": {} }
+            }
+          }
+        ]
+      }
+    },
+    "events": {
+      "type": "array",
+      "minItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "version", "owner", "aggregate", "topic", "partitionKey"],
+        "properties": {
+          "type": { "type": "string", "pattern": "^vistay\\.host\\.[a-z-]+$" },
+          "version": { "const": 1 },
+          "owner": { "type": "string", "minLength": 2 },
+          "aggregate": { "type": "string", "minLength": 2 },
+          "topic": { "type": "string", "pattern": "^vistay\\.host\\.[a-z-]+\\.v1$" },
+          "partitionKey": { "const": "aggregateId" }
+        }
+      }
+    },
+    "authorizationMatrix": {
+      "type": "array",
+      "minItems": 7,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["action", "caller", "partition", "defaultFieldGroup", "allowedFieldGroups"],
+        "properties": {
+          "action": { "type": "string", "minLength": 2 },
+          "caller": { "type": "string", "minLength": 2 },
+          "partition": { "type": "string", "minLength": 2 },
+          "defaultFieldGroup": { "const": "SUMMARY" },
+          "allowedFieldGroups": {
+            "type": "array",
+            "items": { "enum": ["SUMMARY", "PII", "DOCUMENT", "INTERNAL_AUDIT"] },
+            "minItems": 1
+          }
+        }
+      }
+    },
+    "propertyOwnership": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owner", "source", "requiredTerm", "fallback", "inferenceForbidden"],
+      "properties": {
+        "owner": { "const": "PROPERTY" },
+        "source": { "const": "ACTIVE_PROPERTY_OWNED_TERM_AND_BRANCH_MEMBERSHIP" },
+        "requiredTerm": { "const": "OWNED" },
+        "fallback": { "const": "DENY" },
+        "inferenceForbidden": { "const": true }
+      }
+    },
+    "collisionRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["crossRealm", "sameRealm", "error"],
+      "properties": {
+        "crossRealm": { "const": "NEVER_MERGE" },
+        "sameRealm": { "const": "REJECT_DUPLICATE_SUBJECT_OR_NORMALIZED_CONTACT" },
+        "error": { "const": "HOST_SUBJECT_COLLISION" }
+      }
+    },
+    "stableErrors": {
+      "type": "array",
+      "minItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "retryable", "meaning"],
+        "properties": {
+          "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]+$" },
+          "retryable": { "type": "boolean" },
+          "meaning": { "type": "string", "minLength": 8 }
+        }
+      }
+    },
+    "compatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["wireVersion", "additiveChange", "breakingChange", "eventOrdering"],
+      "properties": {
+        "wireVersion": { "const": "v1" },
+        "additiveChange": { "const": "OPTIONAL_FIELDS_OR_SAFE_ENUM_VALUES" },
+        "breakingChange": { "const": "NEW_MAJOR_VERSION" },
+        "eventOrdering": { "const": "AGGREGATE_VERSION" }
+      }
+    }
+  }
+}

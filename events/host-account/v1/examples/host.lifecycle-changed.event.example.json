@@ -1,0 +1,22 @@
+{
+  "eventId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaab",
+  "type": "vistay.host.lifecycle-changed",
+  "version": 1,
+  "aggregateId": "66666666-6666-4666-8666-666666666666",
+  "aggregateVersion": 3,
+  "correlationId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  "causationId": null,
+  "occurredAt": "2026-11-04T03:00:04Z",
+  "data": {
+    "accountId": "66666666-6666-4666-8666-666666666666",
+    "realm": "HOST",
+    "subjectType": "HOST",
+    "previousState": "ACTIVE",
+    "state": "SUSPENDED",
+    "authorizationVersion": 2,
+    "reasonCode": "ADMIN_SUSPENSION",
+    "actorType": "ADMIN",
+    "aggregateVersion": 3,
+    "changedAt": "2026-11-04T03:00:04Z"
+  }
+}

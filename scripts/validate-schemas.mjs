@@ -3,6 +3,7 @@ import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
+import { validateHostIdentity } from "./validate-host-identity.mjs";
 
 const schemaDirectory = new URL("../events/v1/", import.meta.url);
 const exampleDirectory = new URL("../events/v1/examples/", import.meta.url);
@@ -66,5 +67,7 @@ for (const file of examples) {
     throw new Error(`Schema ${schemaFile} accepted an incomplete envelope`);
   }
 
-  process.stdout.write(`validated example ${file}\n`);
+process.stdout.write(`validated example ${file}\n`);
 }
+
+await validateHostIdentity();

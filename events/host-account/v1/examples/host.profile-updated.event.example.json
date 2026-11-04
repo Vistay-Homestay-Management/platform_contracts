@@ -1,0 +1,20 @@
+{
+  "eventId": "99999999-9999-4999-8999-999999999999",
+  "type": "vistay.host.profile-updated",
+  "version": 1,
+  "aggregateId": "88888888-8888-4888-8888-888888888888",
+  "aggregateVersion": 2,
+  "correlationId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  "causationId": "88888888-8888-4888-8888-888888888888",
+  "occurredAt": "2026-11-04T03:00:03Z",
+  "data": {
+    "profileId": "88888888-8888-4888-8888-888888888888",
+    "accountId": "66666666-6666-4666-8666-666666666666",
+    "realm": "HOST",
+    "subjectType": "HOST",
+    "changedFieldGroup": "SUMMARY",
+    "changedFields": ["displayName"],
+    "aggregateVersion": 2,
+    "updatedAt": "2026-11-04T03:00:03Z"
+  }
+}

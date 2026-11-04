@@ -1,0 +1,14 @@
+{
+  "fixtureVersion": 1,
+  "valid": false,
+  "kind": "subject-collision",
+  "violation": "SUBJECT_COLLISION",
+  "expectedError": "HOST_SUBJECT_COLLISION",
+  "correlationId": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbc",
+  "input": {
+    "realm": "HOST",
+    "subjectType": "HOST",
+    "normalizedContactHash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "existingSubject": "22222222-2222-4222-8222-222222222222"
+  }
+}

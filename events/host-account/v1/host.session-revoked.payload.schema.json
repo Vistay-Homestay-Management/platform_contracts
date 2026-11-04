@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/events/host-account/v1/host.session-revoked.payload.schema.json",
+  "title": "Host session revoked payload v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["sessionId", "accountId", "realm", "subjectType", "previousState", "state", "reasonCode", "actorType", "aggregateVersion", "revokedAt"],
+  "properties": {
+    "sessionId": { "type": "string", "format": "uuid" },
+    "accountId": { "type": "string", "format": "uuid" },
+    "realm": { "const": "HOST" },
+    "subjectType": { "const": "HOST" },
+    "previousState": { "const": "ACTIVE" },
+    "state": { "const": "REVOKED" },
+    "reasonCode": { "enum": ["SELF_REQUEST", "ADMIN_SECURITY_ACTION", "ACCOUNT_LIFECYCLE"] },
+    "actorType": { "enum": ["HOST", "ADMIN", "SYSTEM"] },
+    "aggregateVersion": { "type": "integer", "minimum": 1 },
+    "revokedAt": { "type": "string", "format": "date-time" }
+  }
+}

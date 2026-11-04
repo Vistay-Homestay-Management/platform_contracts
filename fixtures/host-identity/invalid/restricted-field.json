@@ -1,0 +1,14 @@
+{
+  "fixtureVersion": 1,
+  "valid": false,
+  "kind": "restricted-field",
+  "violation": "RESTRICTED_FIELD",
+  "expectedError": "HOST_RESTRICTED_FIELD",
+  "correlationId": "55555555-5555-4555-8555-555555555555",
+  "input": {
+    "action": "host:profile:update",
+    "field": "internalAuditNote",
+    "grantedFieldGroups": ["SUMMARY"],
+    "requiredFieldGroup": "INTERNAL_AUDIT"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/events/host-account/v1/host.lifecycle-changed.payload.schema.json",
+  "title": "Host lifecycle changed payload v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["accountId", "realm", "subjectType", "previousState", "state", "authorizationVersion", "reasonCode", "actorType", "aggregateVersion", "changedAt"],
+  "properties": {
+    "accountId": { "type": "string", "format": "uuid" },
+    "realm": { "const": "HOST" },
+    "subjectType": { "const": "HOST" },
+    "previousState": { "enum": ["INVITED", "ACTIVE", "SUSPENDED"] },
+    "state": { "enum": ["ACTIVE", "SUSPENDED", "DEACTIVATED"] },
+    "authorizationVersion": { "type": "integer", "minimum": 1 },
+    "reasonCode": { "enum": ["INVITATION_ACCEPTED", "ADMIN_SUSPENSION", "ADMIN_REACTIVATION", "ADMIN_DEACTIVATION"] },
+    "actorType": { "enum": ["HOST", "ADMIN", "SYSTEM"] },
+    "aggregateVersion": { "type": "integer", "minimum": 1 },
+    "changedAt": { "type": "string", "format": "date-time" }
+  }
+}
