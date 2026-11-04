@@ -1,0 +1,17 @@
+{
+  "fixtureVersion": 1,
+  "valid": true,
+  "kind": "host-activation-idempotency",
+  "correlationId": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+  "request": {
+    "invitationId": "22222222-2222-4222-8222-222222222222",
+    "idempotencyKey": "host-activate-fixture-0001",
+    "expectedVersion": 1,
+    "activationReference": "KEYCLOAK_ACTIVATION_REF_FIXTURE_0001"
+  },
+  "expected": {
+    "effectCount": 1,
+    "replay": "SAME_RESULT",
+    "duplicateEvent": false
+  }
+}

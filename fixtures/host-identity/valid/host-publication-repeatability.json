@@ -1,0 +1,20 @@
+{
+  "fixtureVersion": 1,
+  "valid": true,
+  "kind": "host-publication-repeatability",
+  "correlationId": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+  "canonicalInput": {
+    "contractId": "HOST_IDENTITY_PROFILE",
+    "version": 1,
+    "realm": "HOST",
+    "audiences": ["host-portal", "host-api"],
+    "artifactState": "PUBLISHED",
+    "eventTypes": ["vistay.host.invitation-issued", "vistay.host.identity-activated"],
+    "propertyBindingSource": "ACTIVE_PROPERTY_OWNED_TERM_AND_BRANCH_MEMBERSHIP"
+  },
+  "expected": {
+    "sameFingerprint": true,
+    "previousPublishedVersionImmutable": true,
+    "effectCount": 1
+  }
+}

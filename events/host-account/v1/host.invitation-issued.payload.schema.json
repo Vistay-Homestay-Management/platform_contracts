@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/events/host-account/v1/host.invitation-issued.payload.schema.json",
+  "title": "Host invitation issued payload v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["invitationId", "realm", "subjectType", "state", "contactReferenceHash", "propertyId", "branchId", "ownershipTerm", "aggregateVersion", "issuedByType", "issuedAt", "expiresAt"],
+  "properties": {
+    "invitationId": { "type": "string", "format": "uuid" },
+    "realm": { "const": "HOST" },
+    "subjectType": { "const": "HOST" },
+    "state": { "const": "PENDING" },
+    "contactReferenceHash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "propertyId": { "type": "string", "format": "uuid" },
+    "branchId": { "type": "string", "format": "uuid" },
+    "ownershipTerm": { "const": "OWNED" },
+    "aggregateVersion": { "type": "integer", "minimum": 1 },
+    "issuedByType": { "enum": ["ADMIN", "SYSTEM"] },
+    "issuedAt": { "type": "string", "format": "date-time" },
+    "expiresAt": { "type": "string", "format": "date-time" }
+  }
+}

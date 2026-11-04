@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/events/host-account/v1/host.identity-activated.payload.schema.json",
+  "title": "Host identity activated payload v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["invitationId", "accountId", "realm", "subjectType", "state", "authorizationVersion", "activationSource", "aggregateVersion", "activatedAt"],
+  "properties": {
+    "invitationId": { "type": "string", "format": "uuid" },
+    "accountId": { "type": "string", "format": "uuid" },
+    "realm": { "const": "HOST" },
+    "subjectType": { "const": "HOST" },
+    "state": { "const": "ACTIVE" },
+    "authorizationVersion": { "type": "integer", "minimum": 1 },
+    "activationSource": { "const": "KEYCLOAK" },
+    "aggregateVersion": { "type": "integer", "minimum": 1 },
+    "activatedAt": { "type": "string", "format": "date-time" }
+  }
+}

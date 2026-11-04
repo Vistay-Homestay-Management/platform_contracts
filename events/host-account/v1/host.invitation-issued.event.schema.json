@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/events/host-account/v1/host.invitation-issued.event.schema.json",
+  "title": "Host invitation issued event v1",
+  "allOf": [
+    { "$ref": "https://contracts.vistay.vn/events/v1/common-event-envelope.schema.json" },
+    {
+      "type": "object",
+      "properties": {
+        "type": { "const": "vistay.host.invitation-issued" },
+        "version": { "const": 1 },
+        "data": { "$ref": "https://contracts.vistay.vn/events/host-account/v1/host.invitation-issued.payload.schema.json" }
+      }
+    }
+  ]
+}

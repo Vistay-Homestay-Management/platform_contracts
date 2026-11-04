@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/events/host-account/v1/host.profile-updated.payload.schema.json",
+  "title": "Host profile updated payload v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["profileId", "accountId", "realm", "subjectType", "changedFieldGroup", "changedFields", "aggregateVersion", "updatedAt"],
+  "properties": {
+    "profileId": { "type": "string", "format": "uuid" },
+    "accountId": { "type": "string", "format": "uuid" },
+    "realm": { "const": "HOST" },
+    "subjectType": { "const": "HOST" },
+    "changedFieldGroup": { "enum": ["SUMMARY", "PII"] },
+    "changedFields": {
+      "type": "array",
+      "items": { "enum": ["displayName", "preferredLocale", "phone", "avatarMediaId"] },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "aggregateVersion": { "type": "integer", "minimum": 1 },
+    "updatedAt": { "type": "string", "format": "date-time" }
+  }
+}
