@@ -1,0 +1,12 @@
+{
+  "fixtureVersion": 1,
+  "kind": "unbounded-retry",
+  "valid": false,
+  "violation": "UNBOUNDED_RETRY",
+  "request": {
+    "maximumAttempts": 0,
+    "maximumAgeSeconds": null,
+    "backoff": null
+  },
+  "expectedError": "RETRY_POLICY_MUST_BE_BOUNDED"
+}

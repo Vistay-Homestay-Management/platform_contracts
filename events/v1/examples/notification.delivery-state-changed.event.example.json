@@ -1,0 +1,31 @@
+{
+  "eventId": "55555555-5555-4555-8555-555555555553",
+  "type": "vistay.notification.delivery-state-changed",
+  "version": 1,
+  "aggregateId": "88888888-8888-4888-8888-888888888883",
+  "aggregateVersion": 2,
+  "correlationId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa3",
+  "causationId": "33333333-3333-4333-8333-333333333333",
+  "occurredAt": "2026-11-04T03:00:05Z",
+  "data": {
+    "deliveryId": "88888888-8888-4888-8888-888888888883",
+    "notificationId": "66666666-6666-4666-8666-666666666662",
+    "recipientAccountId": "22222222-2222-4222-8222-222222222222",
+    "channel": "EMAIL",
+    "provider": "smtp-primary",
+    "status": "QUEUED",
+    "templateRevision": 4,
+    "policyRevision": 2,
+    "providerIdempotencyKey": "delivery-88888888-attempt-0",
+    "attemptNumber": 0,
+    "maximumAttempts": 5,
+    "errorClass": null,
+    "errorCode": null,
+    "destinationMasked": "n***@example.test",
+    "contactSnapshotRevision": 7,
+    "providerMessageId": null,
+    "retryAfterSeconds": null,
+    "deliveryRevision": 2,
+    "occurredAt": "2026-11-04T03:00:05Z"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "fixtureVersion": 1,
+  "kind": "notification-delivery-retry",
+  "valid": true,
+  "request": {
+    "deliveryId": "88888888-8888-4888-8888-888888888883",
+    "expectedVersion": 2,
+    "reason": "Provider recovered",
+    "idempotencyKey": "retry-88888888-v2"
+  },
+  "expected": {
+    "maximumAttempts": 5,
+    "nextAttemptIsBounded": true,
+    "rawProviderPayloadReturned": false,
+    "requiredScope": "notifications:delivery:retry"
+  }
+}

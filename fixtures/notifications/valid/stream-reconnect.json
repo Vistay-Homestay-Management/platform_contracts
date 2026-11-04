@@ -1,0 +1,15 @@
+{
+  "fixtureVersion": 1,
+  "kind": "notification-stream-reconnect",
+  "valid": true,
+  "request": {
+    "afterCursor": "42",
+    "accountBinding": "22222222-2222-4222-8222-222222222222"
+  },
+  "expected": {
+    "deliveryGuarantee": "AT_LEAST_ONCE",
+    "duplicateFramesAllowed": true,
+    "clientDeduplicationKey": ["notificationId", "notificationRevision"],
+    "cursorSemantics": "EXCLUSIVE"
+  }
+}

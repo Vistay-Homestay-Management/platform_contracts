@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/events/v1/notification.notification-created.v2.payload.schema.json",
+  "title": "Notification created payload v2",
+  "description": "Versioned notification intake payload. Raw source payloads and raw contact destinations are never transported.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "notificationId",
+    "recipientAccountId",
+    "recipientAccountType",
+    "sourceEventId",
+    "sourceEventType",
+    "sourceAggregateId",
+    "sourceAggregateVersion",
+    "routeKey",
+    "routeVersion",
+    "category",
+    "notificationType",
+    "priority",
+    "templateKey",
+    "templateRevision",
+    "policyRevision",
+    "channels",
+    "requiredChannels",
+    "optionalChannels",
+    "inboxRevision",
+    "cursor",
+    "createdAt"
+  ],
+  "properties": {
+    "notificationId": { "type": "string", "format": "uuid" },
+    "recipientAccountId": { "type": "string", "format": "uuid" },
+    "recipientAccountType": { "enum": ["CUSTOMER", "ADMIN", "HOST"] },
+    "sourceEventId": { "type": "string", "format": "uuid" },
+    "sourceEventType": {
+      "type": "string",
+      "pattern": "^vistay\\.[a-z][a-z0-9-]*\\.[a-z][a-z0-9-]*$",
+      "maxLength": 160
+    },
+    "sourceAggregateId": { "type": "string", "format": "uuid" },
+    "sourceAggregateVersion": { "type": "integer", "minimum": 1 },
+    "routeKey": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$",
+      "maxLength": 100
+    },
+    "routeVersion": { "type": "integer", "minimum": 1 },
+    "category": {
+      "enum": ["WELCOME", "SECURITY", "BOOKING", "OPERATIONS", "FINANCE", "SYSTEM"]
+    },
+    "notificationType": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$",
+      "maxLength": 100
+    },
+    "priority": { "enum": ["LOW", "NORMAL", "HIGH", "URGENT"] },
+    "templateKey": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$",
+      "maxLength": 100
+    },
+    "templateRevision": { "type": "integer", "minimum": 1 },
+    "policyRevision": { "type": "integer", "minimum": 1 },
+    "channels": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "enum": ["IN_APP", "EMAIL", "PUSH"] }
+    },
+    "requiredChannels": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "enum": ["IN_APP", "EMAIL", "PUSH"] }
+    },
+    "optionalChannels": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "enum": ["IN_APP", "EMAIL", "PUSH"] }
+    },
+    "inboxRevision": { "type": "integer", "minimum": 1 },
+    "cursor": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "maxLength": 30
+    },
+    "createdAt": { "type": "string", "format": "date-time" }
+  }
+}

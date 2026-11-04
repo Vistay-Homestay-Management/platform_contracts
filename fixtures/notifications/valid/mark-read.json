@@ -1,0 +1,15 @@
+{
+  "fixtureVersion": 1,
+  "kind": "notification-mark-read",
+  "valid": true,
+  "request": {
+    "notificationId": "66666666-6666-4666-8666-666666666662",
+    "expectedVersion": 3,
+    "idempotencyKey": "mark-read-66666666-v3"
+  },
+  "expected": {
+    "status": "READ",
+    "replayIsIdempotent": true,
+    "staleVersionError": "STALE_REVISION"
+  }
+}
