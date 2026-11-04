@@ -849,7 +849,7 @@
         {
           "id": "TEST-02",
           "level": "integration",
-          "command": "npm run lint",
+          "command": "npm run lint && npm test",
           "verifies": [
             "AC01",
             "AC02",
@@ -1879,7 +1879,7 @@
         {
           "id": "TEST-02",
           "level": "integration",
-          "command": "npm run lint",
+          "command": "npm run lint && npm test",
           "verifies": [
             "AC01",
             "AC02",
@@ -2053,6 +2053,2121 @@
         "source-vs-e23-s02-st07",
         "policy-configurable",
         "business-review-needed"
+      ],
+      "decisionNoteVi": "Only platform_contracts owns this slice. Finance alone owns the canonical customer trust facts, policy, score and waiver decision; no new policy values are approved by this spec.",
+      "specStatus": "executable",
+      "workKind": "contract",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "sourceId": "VS-E23-S03",
+      "outcome": "S03 computes one explainable Finance-owned customer trust projection and exposes separately secured Admin and Customer views; producer services contribute evidence and confidence gates only.",
+      "context": "The E23 baseline proposes score dimensions and decay classes, but a proposed formula must not become an active score before S02 maker-checker policy approval. Zero history/absent responsible customer remains UNASSESSED.",
+      "specStatus": "refined-parent",
+      "dispatchable": false
+    },
+    {
+      "sourceId": "VS-E23-S03-ST01",
+      "summary": "[VS-E23-S03-ST01] Project explainable customer trust score and confidence in Finance",
+      "actor": "Authorized internal producer, reviewer or implementation engineer",
+      "outcome": "Finance computes one reproducible four-dimension customer score, tier, confidence and blocker view from immutable facts and one approved policy version.",
+      "context": "E23 initial proposal: Payment 30%, Booking 25%, Cleanliness 30%, Conduct 15%; dimension baseline 50, clamp 0..100, tier boundaries 0/39/40/59/60/79/80/100. These numbers activate only by approved S02 version.",
+      "inScope": [
+        "Build replayable projection keyed by responsible customer, source fact revisions and effective policy version; calculate per-dimension contributions, composite and tier with pinned rounding/decay semantics.",
+        "Keep verified identity, three completed stays spanning 90 days, evidence sufficiency and source freshness as separate eligibility/confidence gates, not bonus points.",
+        "Treat pending disputed negative as auto-waiver blocker without a final point deduction; never overwrite a prior score/decision when source correction or policy replacement arrives.",
+        "Expose authorized explanation with category contributions, version, asOf/watermarks and hard-blocker reason codes without raw evidence or employee notes."
+      ],
+      "outOfScope": [
+        "Second score calculation in User/Booking/Web or assuming approved initial weights are live.",
+        "Granting or changing a monetary deposit obligation from a read-only score projection."
+      ],
+      "repositories": [
+        "service_finance"
+      ],
+      "primaryRepository": "service_finance",
+      "repositorySlices": [
+        {
+          "repository": "service_finance",
+          "paths": [
+            "src/main/java/**",
+            "src/main/resources/**",
+            "src/test/java/**"
+          ],
+          "artifacts": [
+            "trust profile and score projection persistence",
+            "approved-policy evaluator and decay scheduler",
+            "boundary, replay, sufficiency and authorization tests"
+          ]
+        }
+      ],
+      "interfaces": [
+        "Publish versioned Finance trust profile query and internal event keyed by customer, source watermark and policy ID; absent policy returns unavailable, never a silently approved default."
+      ],
+      "dataOwnership": [
+        "Finance owns score, tier, confidence and explanation; source services retain raw evidence."
+      ],
+      "stateMachine": [
+        "UNASSESSED when evidence/gates are insufficient -> ASSESSED only with approved policy and current facts; STALE when any required source expires.",
+        "Revisioned replay appends a new projection and links it to the superseded revision; historical booking/waiver decisions remain frozen."
+      ],
+      "authorization": {
+        "actions": [
+          "trust:profile:compute",
+          "trust:profile:view-detail"
+        ],
+        "dataPartitions": [
+          "CUSTOMER only for its own subject; ADMIN only with the authorized organization/site/branch and target-customer relationship; SYSTEM only for authenticated, purpose-bound service calls."
+        ],
+        "fieldGroups": [
+          "SUMMARY exposes self-safe tier/eligibility only; TRUST_DETAIL controls dimension reasons, FINANCIAL payment detail and INTERNAL_AUDIT raw source linkage."
+        ]
+      },
+      "failureSemantics": [
+        "Reject missing grants and unrecognized subjects without disclosing existence or protected source facts.",
+        "Absent or stale source/identity/policy version must return explicit unavailable or unassessed state; never infer a positive trust outcome.",
+        "Do not log PII, detailed financial history, raw cleanliness notes, or signed URLs."
+      ],
+      "idempotencyConcurrency": [
+        "Deduplicate ingested events by owner, event ID, source revision and customer; repeated delivery cannot create new facts.",
+        "Externally retried writes use scoped idempotency key, request fingerprint and expected revision; concurrent conflicts expose a stable code.",
+        "Historical facts and decisions are append-only; correction publishes a linked compensating fact rather than overwriting the source."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E23-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E23-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E23-S03-ST07",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "approved effective policy, current source facts and sufficient completed-stay history",
+          "when": "Finance evaluates a customer",
+          "then": "four clamped dimensions and composite/tier are reproducible under pinned policy ID and explanation records input revisions"
+        },
+        {
+          "id": "AC02",
+          "given": "absent customer, insufficient evidence, stale source or pending disputed negative",
+          "when": "Finance evaluates eligibility",
+          "then": "projection remains UNASSESSED/STALE or blocks auto-waiver without a final disputed point deduction"
+        },
+        {
+          "id": "AC03",
+          "given": "source correction or newer policy is replayed",
+          "when": "Finance recalculates",
+          "then": "new revision is appended, original decision stays frozen and duplicate replay produces the same fingerprint"
+        }
+      ],
+      "tests": [
+        "Run the exact commands in testCases; add positive, cross-customer denial, unavailable-source, duplicate/reorder and compensation cases appropriate to this slice.",
+        "Attach machine-readable CI evidence and source-to-AC mapping; no simulated production approval or live secret is allowed."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*Trust*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E23-S03-ST01 focused CI output, denial/replay assertions and fixture version"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E23-S03-ST01 focused CI output, denial/replay assertions and fixture version"
+        }
+      ],
+      "observability": [
+        "Propagate correlation and source event IDs across the named boundary; record bounded result/replay/stale-source counters without customer PII.",
+        "Expose the source version, last successfully consumed watermark and recoverable failure reason to authorized operators."
+      ],
+      "definitionOfDone": [
+        "Named artifacts are committed in the owning repository; focused tests and CI pass.",
+        "Contract owner approves field/action partition matrix and retry/compensation behavior.",
+        "Jira has PR, tests, denial/replay evidence, and rollback/repair instructions; this task does not claim the runtime feature already exists."
+      ],
+      "evidence": [
+        "PR and CI URL for the owning repository.",
+        "Unit/integration result with positive, denial and replay/reordering fixture.",
+        "Contract compatibility and migration/rollback note where applicable."
+      ],
+      "labels": [
+        "repo-service-finance",
+        "roadmap-v1-3",
+        "source-vs-e23-s03-st01",
+        "policy-configurable"
+      ],
+      "decisionNoteVi": "Only service_finance owns this slice. Finance alone owns the canonical customer trust facts, policy, score and waiver decision; no new policy values are approved by this spec.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "sourceId": "VS-E23-S03-ST02",
+      "summary": "[VS-E23-S03-ST02] Expose cleaning evidence quality and revisions to Finance projection",
+      "actor": "Authorized internal producer, reviewer or implementation engineer",
+      "outcome": "Operations supplies separate validated stayover/checkout cleanliness provenance and source health so Finance can explain confidence, without storing score.",
+      "context": "Only signed external employee-system evaluations indicate guest cleanliness; operational cleaning effort and unrelated property damage are not automatically guest conduct.",
+      "inScope": [
+        "Attach source revision, assessor/source verification, event time and evidence type to stayover and checkout assessments used by Finance.",
+        "Expose correction and missing/untrusted-assessor markers; report source lag or unavailable external feed as evidence freshness, not guest guilt."
+      ],
+      "outOfScope": [
+        "Converting cleaning notes to scores, approving a trust policy or claiming a source outage equals poor guest behavior."
+      ],
+      "repositories": [
+        "service_operations"
+      ],
+      "primaryRepository": "service_operations",
+      "repositorySlices": [
+        {
+          "repository": "service_operations",
+          "paths": [
+            "src/main/java/**",
+            "src/main/resources/**",
+            "src/test/java/**"
+          ],
+          "artifacts": [
+            "provenance/freshness classification",
+            "stayover versus checkout source-revision fixtures"
+          ]
+        }
+      ],
+      "interfaces": [
+        "Deliver trusted care fact revisions with type/verifiedAt/sourceStatus; Finance may only consume authenticated validated events."
+      ],
+      "dataOwnership": [
+        "Operations owns external cleaning assessments and provenance; Finance owns score/confidence."
+      ],
+      "stateMachine": [
+        "VERIFIED -> AMENDED_BY_LINKED_EVENT; REJECTED external evidence remains out of score input."
+      ],
+      "authorization": {
+        "actions": [
+          "operations:care-evidence:verify"
+        ],
+        "dataPartitions": [
+          "CUSTOMER only for its own subject; ADMIN only with the authorized organization/site/branch and target-customer relationship; SYSTEM only for authenticated, purpose-bound service calls."
+        ],
+        "fieldGroups": [
+          "SUMMARY type/status only; DOCUMENT/TRUST_DETAIL restricted evidence; source-person PII not in shared event."
+        ]
+      },
+      "failureSemantics": [
+        "Reject missing grants and unrecognized subjects without disclosing existence or protected source facts.",
+        "Absent or stale source/identity/policy version must return explicit unavailable or unassessed state; never infer a positive trust outcome.",
+        "Do not log PII, detailed financial history, raw cleanliness notes, or signed URLs."
+      ],
+      "idempotencyConcurrency": [
+        "Deduplicate ingested events by owner, event ID, source revision and customer; repeated delivery cannot create new facts.",
+        "Externally retried writes use scoped idempotency key, request fingerprint and expected revision; concurrent conflicts expose a stable code.",
+        "Historical facts and decisions are append-only; correction publishes a linked compensating fact rather than overwriting the source."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E23-S01-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E23-S03-ST07",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "verified stayover and checkout reports for the same booking",
+          "when": "Operations emits source revisions",
+          "then": "Finance can distinguish both types, their freshness and provenance"
+        },
+        {
+          "id": "AC02",
+          "given": "assessor signature fails or source feed lags",
+          "when": "source classification runs",
+          "then": "event is rejected/marked stale and never silently becomes negative score"
+        },
+        {
+          "id": "AC03",
+          "given": "report is corrected and replayed",
+          "when": "Finance evaluates later",
+          "then": "linked correction supersedes the source input without rewriting the prior assessment"
+        }
+      ],
+      "tests": [
+        "Run the exact commands in testCases; add positive, cross-customer denial, unavailable-source, duplicate/reorder and compensation cases appropriate to this slice.",
+        "Attach machine-readable CI evidence and source-to-AC mapping; no simulated production approval or live secret is allowed."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*Trust*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E23-S03-ST02 focused CI output, denial/replay assertions and fixture version"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E23-S03-ST02 focused CI output, denial/replay assertions and fixture version"
+        }
+      ],
+      "observability": [
+        "Propagate correlation and source event IDs across the named boundary; record bounded result/replay/stale-source counters without customer PII.",
+        "Expose the source version, last successfully consumed watermark and recoverable failure reason to authorized operators."
+      ],
+      "definitionOfDone": [
+        "Named artifacts are committed in the owning repository; focused tests and CI pass.",
+        "Contract owner approves field/action partition matrix and retry/compensation behavior.",
+        "Jira has PR, tests, denial/replay evidence, and rollback/repair instructions; this task does not claim the runtime feature already exists."
+      ],
+      "evidence": [
+        "PR and CI URL for the owning repository.",
+        "Unit/integration result with positive, denial and replay/reordering fixture.",
+        "Contract compatibility and migration/rollback note where applicable."
+      ],
+      "labels": [
+        "repo-service-operations",
+        "roadmap-v1-3",
+        "source-vs-e23-s03-st02"
+      ],
+      "decisionNoteVi": "Only service_operations owns this slice. Finance alone owns the canonical customer trust facts, policy, score and waiver decision; no new policy values are approved by this spec.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "sourceId": "VS-E23-S03-ST03",
+      "summary": "[VS-E23-S03-ST03] Provide completed-stay history and no-show source revisions",
+      "actor": "Authorized internal producer, reviewer or implementation engineer",
+      "outcome": "Booking supplies reliable stay-history ordering and no-show correction facts for Finance confidence/decay without assigning trust tiers.",
+      "context": "At least three completed stays spanning 90 days is the E23 proposed waiver gate, not three confirmations; user account must be the responsible customer even if employee created booking.",
+      "inScope": [
+        "Publish completed-stay customer ID, completion date, immutable booking revision and reason-coded no-show/correction events.",
+        "Retain source timestamps and booking identity so Finance can count distinct stays and span in property-local date without overlapping duplicate bookings.",
+        "Mark missing/changed responsible-customer association as source conflict rather than inventing eligibility."
+      ],
+      "outOfScope": [
+        "Calculating 90-day waiver eligibility or tier in Booking; marking future check-in as completed."
+      ],
+      "repositories": [
+        "service_booking"
+      ],
+      "primaryRepository": "service_booking",
+      "repositorySlices": [
+        {
+          "repository": "service_booking",
+          "paths": [
+            "src/main/java/**",
+            "src/main/resources/**",
+            "src/test/java/**"
+          ],
+          "artifacts": [
+            "completed-stay/no-show revisioned events",
+            "staff-created booking and correction tests"
+          ]
+        }
+      ],
+      "interfaces": [
+        "Version Booking stay-completion/no-show events and stable business IDs/occurredAt for Finance."
+      ],
+      "dataOwnership": [
+        "Booking owns authoritative stay completion; Finance counts history and calculates score under active policy."
+      ],
+      "stateMachine": [
+        "CONFIRMED is not completed; only completed stay emits eligible history fact; corrected no-show is a linked new revision."
+      ],
+      "authorization": {
+        "actions": [
+          "booking:trust-evidence:publish"
+        ],
+        "dataPartitions": [
+          "CUSTOMER only for its own subject; ADMIN only with the authorized organization/site/branch and target-customer relationship; SYSTEM only for authenticated, purpose-bound service calls."
+        ],
+        "fieldGroups": [
+          "SUMMARY booking reference and completion state; PII and INTERNAL_AUDIT booking detail require grants."
+        ]
+      },
+      "failureSemantics": [
+        "Reject missing grants and unrecognized subjects without disclosing existence or protected source facts.",
+        "Absent or stale source/identity/policy version must return explicit unavailable or unassessed state; never infer a positive trust outcome.",
+        "Do not log PII, detailed financial history, raw cleanliness notes, or signed URLs."
+      ],
+      "idempotencyConcurrency": [
+        "Deduplicate ingested events by owner, event ID, source revision and customer; repeated delivery cannot create new facts.",
+        "Externally retried writes use scoped idempotency key, request fingerprint and expected revision; concurrent conflicts expose a stable code.",
+        "Historical facts and decisions are append-only; correction publishes a linked compensating fact rather than overwriting the source."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E23-S01-ST03",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E23-S03-ST07",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "three distinct finished stays with customer linkage",
+          "when": "Booking emits source events",
+          "then": "Finance can order completion dates and assess policy span without counting staff creator"
+        },
+        {
+          "id": "AC02",
+          "given": "uncompleted reservation or duplicate completed transition",
+          "when": "producer emits history",
+          "then": "no duplicate eligible stay is published"
+        },
+        {
+          "id": "AC03",
+          "given": "no-show is reversed after source review",
+          "when": "events replay",
+          "then": "original and linked correction remain distinguishable for Finance decay/replay"
+        }
+      ],
+      "tests": [
+        "Run the exact commands in testCases; add positive, cross-customer denial, unavailable-source, duplicate/reorder and compensation cases appropriate to this slice.",
+        "Attach machine-readable CI evidence and source-to-AC mapping; no simulated production approval or live secret is allowed."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*Trust*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E23-S03-ST03 focused CI output, denial/replay assertions and fixture version"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E23-S03-ST03 focused CI output, denial/replay assertions and fixture version"
+        }
+      ],
+      "observability": [
+        "Propagate correlation and source event IDs across the named boundary; record bounded result/replay/stale-source counters without customer PII.",
+        "Expose the source version, last successfully consumed watermark and recoverable failure reason to authorized operators."
+      ],
+      "definitionOfDone": [
+        "Named artifacts are committed in the owning repository; focused tests and CI pass.",
+        "Contract owner approves field/action partition matrix and retry/compensation behavior.",
+        "Jira has PR, tests, denial/replay evidence, and rollback/repair instructions; this task does not claim the runtime feature already exists."
+      ],
+      "evidence": [
+        "PR and CI URL for the owning repository.",
+        "Unit/integration result with positive, denial and replay/reordering fixture.",
+        "Contract compatibility and migration/rollback note where applicable."
+      ],
+      "labels": [
+        "repo-service-booking",
+        "roadmap-v1-3",
+        "source-vs-e23-s03-st03"
+      ],
+      "decisionNoteVi": "Only service_booking owns this slice. Finance alone owns the canonical customer trust facts, policy, score and waiver decision; no new policy values are approved by this spec.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "sourceId": "VS-E23-S03-ST04",
+      "summary": "[VS-E23-S03-ST04] Provide customer identity confidence gate without User score",
+      "actor": "Authorized internal producer, reviewer or implementation engineer",
+      "outcome": "User serves current customer verification/account-linkage state to Finance and keeps identity changes auditable without a second trust profile.",
+      "context": "Verified email and account type are gates/confidence, not weighted score points. A staff-created booking inherits the responsible customer identity, never staff score.",
+      "inScope": [
+        "Provide purpose-limited current customer verification revision and account conflict/merge marker to Finance.",
+        "Invalidate stale/merged account link assertions with linked events and preserve historical identity reference for past decisions."
+      ],
+      "outOfScope": [
+        "Storing four-dimension score, scoring policy or Finance appeal records in User."
+      ],
+      "repositories": [
+        "service_user"
+      ],
+      "primaryRepository": "service_user",
+      "repositorySlices": [
+        {
+          "repository": "service_user",
+          "paths": [
+            "src/main/java/**",
+            "src/main/resources/**",
+            "src/test/java/**"
+          ],
+          "artifacts": [
+            "current customer identity gate adapter",
+            "staff-vs-customer/merge-stale test suite"
+          ]
+        }
+      ],
+      "interfaces": [
+        "Version verified-identity assertion and revocation with source revision and subject account_type for Finance."
+      ],
+      "dataOwnership": [
+        "User owns identity/account link and Keycloak subject mapping; Finance owns confidence and eligibility projection."
+      ],
+      "stateMachine": [
+        "VERIFIED -> REVOKED or CONFLICTED via new assertion; missing source stays UNASSESSED in Finance."
+      ],
+      "authorization": {
+        "actions": [
+          "user:identity:trust-assert"
+        ],
+        "dataPartitions": [
+          "CUSTOMER only for its own subject; ADMIN only with the authorized organization/site/branch and target-customer relationship; SYSTEM only for authenticated, purpose-bound service calls."
+        ],
+        "fieldGroups": [
+          "SUMMARY verification flag; PII/DOCUMENT and INTERNAL_AUDIT remain User-authorized."
+        ]
+      },
+      "failureSemantics": [
+        "Reject missing grants and unrecognized subjects without disclosing existence or protected source facts.",
+        "Absent or stale source/identity/policy version must return explicit unavailable or unassessed state; never infer a positive trust outcome.",
+        "Do not log PII, detailed financial history, raw cleanliness notes, or signed URLs."
+      ],
+      "idempotencyConcurrency": [
+        "Deduplicate ingested events by owner, event ID, source revision and customer; repeated delivery cannot create new facts.",
+        "Externally retried writes use scoped idempotency key, request fingerprint and expected revision; concurrent conflicts expose a stable code.",
+        "Historical facts and decisions are append-only; correction publishes a linked compensating fact rather than overwriting the source."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E23-S01-ST04",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E23-S03-ST07",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "verified customer with staff-created booking",
+          "when": "Finance requests identity gate",
+          "then": "customer account type and verification revision are provided without computing score"
+        },
+        {
+          "id": "AC02",
+          "given": "employee subject, conflicting linkage or unauthorized Finance purpose",
+          "when": "assertion lookup runs",
+          "then": "no customer-eligible assertion or PII is exposed"
+        },
+        {
+          "id": "AC03",
+          "given": "identity is corrected after an old decision",
+          "when": "revision event is consumed",
+          "then": "current gate updates and the recorded historical identity revision is still reconstructible"
+        }
+      ],
+      "tests": [
+        "Run the exact commands in testCases; add positive, cross-customer denial, unavailable-source, duplicate/reorder and compensation cases appropriate to this slice.",
+        "Attach machine-readable CI evidence and source-to-AC mapping; no simulated production approval or live secret is allowed."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*Trust*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E23-S03-ST04 focused CI output, denial/replay assertions and fixture version"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E23-S03-ST04 focused CI output, denial/replay assertions and fixture version"
+        }
+      ],
+      "observability": [
+        "Propagate correlation and source event IDs across the named boundary; record bounded result/replay/stale-source counters without customer PII.",
+        "Expose the source version, last successfully consumed watermark and recoverable failure reason to authorized operators."
+      ],
+      "definitionOfDone": [
+        "Named artifacts are committed in the owning repository; focused tests and CI pass.",
+        "Contract owner approves field/action partition matrix and retry/compensation behavior.",
+        "Jira has PR, tests, denial/replay evidence, and rollback/repair instructions; this task does not claim the runtime feature already exists."
+      ],
+      "evidence": [
+        "PR and CI URL for the owning repository.",
+        "Unit/integration result with positive, denial and replay/reordering fixture.",
+        "Contract compatibility and migration/rollback note where applicable."
+      ],
+      "labels": [
+        "repo-service-user",
+        "roadmap-v1-3",
+        "source-vs-e23-s03-st04"
+      ],
+      "decisionNoteVi": "Only service_user owns this slice. Finance alone owns the canonical customer trust facts, policy, score and waiver decision; no new policy values are approved by this spec.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "sourceId": "VS-E23-S03-ST05",
+      "summary": "[VS-E23-S03-ST05] Display Finance-calculated trust explanations in Admin Web and Mobile",
+      "actor": "Authorized customer or backoffice operator",
+      "outcome": "Authorized Admin reviewer sees one Finance profile with dimensions, sufficiency and source freshness on Web/Mobile, not a browser-calculated score.",
+      "context": "Profile explanation differs from S01 source timeline: S03 renders computed tier, dimension contributions and confidence; source raw notes remain restricted.",
+      "inScope": [
+        "Add Web/Mobile profile summary, version, calculation time, required evidence and disputed/stale indicator.",
+        "Render Finance-provided dimension reasons only with TRUST_DETAIL grant and mask finance detail/assessor identity unless separately authorized.",
+        "Show UNASSESSED and source-unavailable without presenting 50-point starting values as a validated customer tier."
+      ],
+      "outOfScope": [
+        "Frontend-side weight formula, trust score edit or manual waiver review controls scoped to S04."
+      ],
+      "repositories": [
+        "frontend_admin"
+      ],
+      "primaryRepository": "frontend_admin",
+      "repositorySlices": [
+        {
+          "repository": "frontend_admin",
+          "paths": [
+            "apps/web/src/**",
+            "apps/mobile/src/**"
+          ],
+          "artifacts": [
+            "Web and Mobile profile explanation screens",
+            "authorization/stale/insufficient history UI tests"
+          ]
+        }
+      ],
+      "interfaces": [
+        "Consume versioned Finance profile summary/detail operations with policy ID, source asOf and restricted field groups."
+      ],
+      "dataOwnership": [
+        "Finance owns trust profile; Admin caches only short-lived filtered display data."
+      ],
+      "stateMachine": [
+        "LOADING -> ASSESSED/UNASSESSED/STALE/RESTRICTED/UNAVAILABLE; UI never asserts ASSESSED from cached values."
+      ],
+      "authorization": {
+        "actions": [
+          "trust:profile:view"
+        ],
+        "dataPartitions": [
+          "CUSTOMER only for its own subject; ADMIN only with the authorized organization/site/branch and target-customer relationship; SYSTEM only for authenticated, purpose-bound service calls."
+        ],
+        "fieldGroups": [
+          "SUMMARY includes status/tier only; TRUST_DETAIL dimensions, FINANCIAL payment facts and INTERNAL_AUDIT source IDs need distinct grants."
+        ]
+      },
+      "failureSemantics": [
+        "Reject missing grants and unrecognized subjects without disclosing existence or protected source facts.",
+        "Absent or stale source/identity/policy version must return explicit unavailable or unassessed state; never infer a positive trust outcome.",
+        "Do not log PII, detailed financial history, raw cleanliness notes, or signed URLs."
+      ],
+      "idempotencyConcurrency": [
+        "Deduplicate ingested events by owner, event ID, source revision and customer; repeated delivery cannot create new facts.",
+        "Externally retried writes use scoped idempotency key, request fingerprint and expected revision; concurrent conflicts expose a stable code.",
+        "Historical facts and decisions are append-only; correction publishes a linked compensating fact rather than overwriting the source."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E23-S03-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "authorized reviewer, approved policy and current profile",
+          "when": "Web/Mobile loads profile",
+          "then": "Finance-provided tier, confidence and asOf are rendered with matching revision"
+        },
+        {
+          "id": "AC02",
+          "given": "foreign site/customer or SUMMARY-only grant",
+          "when": "reviewer opens detail",
+          "then": "dimension, payment and source-private data remain hidden or request is denied"
+        },
+        {
+          "id": "AC03",
+          "given": "stale projection or missing history",
+          "when": "page reloads",
+          "then": "UI explicitly shows STALE or UNASSESSED and cannot display a misleading tier"
+        }
+      ],
+      "tests": [
+        "Run the exact commands in testCases; add positive, cross-customer denial, unavailable-source, duplicate/reorder and compensation cases appropriate to this slice.",
+        "Attach machine-readable CI evidence and source-to-AC mapping; no simulated production approval or live secret is allowed."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm run typecheck",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E23-S03-ST05 focused CI output, denial/replay assertions and fixture version"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E23-S03-ST05 focused CI output, denial/replay assertions and fixture version"
+        }
+      ],
+      "observability": [
+        "Propagate correlation and source event IDs across the named boundary; record bounded result/replay/stale-source counters without customer PII.",
+        "Expose the source version, last successfully consumed watermark and recoverable failure reason to authorized operators."
+      ],
+      "definitionOfDone": [
+        "Named artifacts are committed in the owning repository; focused tests and CI pass.",
+        "Contract owner approves field/action partition matrix and retry/compensation behavior.",
+        "Jira has PR, tests, denial/replay evidence, and rollback/repair instructions; this task does not claim the runtime feature already exists."
+      ],
+      "evidence": [
+        "PR and CI URL for the owning repository.",
+        "Unit/integration result with positive, denial and replay/reordering fixture.",
+        "Contract compatibility and migration/rollback note where applicable."
+      ],
+      "labels": [
+        "repo-frontend-admin",
+        "roadmap-v1-3",
+        "source-vs-e23-s03-st05"
+      ],
+      "decisionNoteVi": "Only frontend_admin owns this slice. Finance alone owns the canonical customer trust facts, policy, score and waiver decision; no new policy values are approved by this spec.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "sourceId": "VS-E23-S03-ST06",
+      "summary": "[VS-E23-S03-ST06] Explain customer own trust tier and evidence gaps",
+      "actor": "Authorized customer or backoffice operator",
+      "outcome": "Customer sees only their own tier, reason categories and available next steps without risk weights, staff audit or unrelated financial history.",
+      "context": "The customer-facing explanation consumes a redacted Finance projection; S05 owns appeals and S04 owns waiver requests.",
+      "inScope": [
+        "Show Finance-provided own tier/UNASSESSED, record asOf, safe reason category and missing verified-email/stay evidence.",
+        "Distinguish cleanliness stayover vs checkout as categories, pending dispute and stale source without revealing staff assessor notes.",
+        "Add customer UI test script, self-only mocked API tests for denied foreign identity and stale policy, in addition to build/lint."
+      ],
+      "outOfScope": [
+        "A customer-side score formula or exposing raw policy weights and unadjudicated conduct allegations."
+      ],
+      "repositories": [
+        "frontend_customer"
+      ],
+      "primaryRepository": "frontend_customer",
+      "repositorySlices": [
+        {
+          "repository": "frontend_customer",
+          "paths": [
+            "src/**"
+          ],
+          "artifacts": [
+            "self profile and safe explanation UI",
+            "package test script with own-only and stale-profile fixtures"
+          ]
+        }
+      ],
+      "interfaces": [
+        "Consume authenticated Finance own-profile projection with safe reason codes and no route-selectable customer ID."
+      ],
+      "dataOwnership": [
+        "Finance owns profile; Customer site only renders permitted own summary."
+      ],
+      "stateMachine": [
+        "LOADING -> OWN_TIER/UNASSESSED/STALE/UNAVAILABLE; denial never falls back to another cached account."
+      ],
+      "authorization": {
+        "actions": [
+          "trust:own-profile:view"
+        ],
+        "dataPartitions": [
+          "CUSTOMER only for its own subject; ADMIN only with the authorized organization/site/branch and target-customer relationship; SYSTEM only for authenticated, purpose-bound service calls."
+        ],
+        "fieldGroups": [
+          "SUMMARY only; TRUST_DETAIL, FINANCIAL and INTERNAL_AUDIT excluded from Customer projection."
+        ]
+      },
+      "failureSemantics": [
+        "Reject missing grants and unrecognized subjects without disclosing existence or protected source facts.",
+        "Absent or stale source/identity/policy version must return explicit unavailable or unassessed state; never infer a positive trust outcome.",
+        "Do not log PII, detailed financial history, raw cleanliness notes, or signed URLs."
+      ],
+      "idempotencyConcurrency": [
+        "Deduplicate ingested events by owner, event ID, source revision and customer; repeated delivery cannot create new facts.",
+        "Externally retried writes use scoped idempotency key, request fingerprint and expected revision; concurrent conflicts expose a stable code.",
+        "Historical facts and decisions are append-only; correction publishes a linked compensating fact rather than overwriting the source."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E23-S03-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E23-S03-ST07",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "signed-in customer with current assessed profile",
+          "when": "customer opens trust explanation",
+          "then": "own tier, safe reason categories and evidence gaps are shown without internal weights"
+        },
+        {
+          "id": "AC02",
+          "given": "customer switches identity or requests another customer ID",
+          "when": "API is called",
+          "then": "server denies and UI clears prior profile rather than showing cross-account data"
+        },
+        {
+          "id": "AC03",
+          "given": "stale policy or insufficient evidence",
+          "when": "customer reloads",
+          "then": "unavailable/UNASSESSED explanation appears without an invented numeric tier"
+        }
+      ],
+      "tests": [
+        "Run the exact commands in testCases; add positive, cross-customer denial, unavailable-source, duplicate/reorder and compensation cases appropriate to this slice.",
+        "Attach machine-readable CI evidence and source-to-AC mapping; no simulated production approval or live secret is allowed."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm run build",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E23-S03-ST06 focused CI output, denial/replay assertions and fixture version"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": "npm run lint && npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E23-S03-ST06 focused CI output, denial/replay assertions and fixture version"
+        }
+      ],
+      "observability": [
+        "Propagate correlation and source event IDs across the named boundary; record bounded result/replay/stale-source counters without customer PII.",
+        "Expose the source version, last successfully consumed watermark and recoverable failure reason to authorized operators."
+      ],
+      "definitionOfDone": [
+        "Named artifacts are committed in the owning repository; focused tests and CI pass.",
+        "Contract owner approves field/action partition matrix and retry/compensation behavior.",
+        "Jira has PR, tests, denial/replay evidence, and rollback/repair instructions; this task does not claim the runtime feature already exists."
+      ],
+      "evidence": [
+        "PR and CI URL for the owning repository.",
+        "Unit/integration result with positive, denial and replay/reordering fixture.",
+        "Contract compatibility and migration/rollback note where applicable."
+      ],
+      "labels": [
+        "repo-frontend-customer",
+        "roadmap-v1-3",
+        "source-vs-e23-s03-st06"
+      ],
+      "decisionNoteVi": "Only frontend_customer owns this slice. Finance alone owns the canonical customer trust facts, policy, score and waiver decision; no new policy values are approved by this spec.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "sourceId": "VS-E23-S03-ST07",
+      "summary": "[VS-E23-S03-ST07] Pin trust projection scoring rounding and confidence contract",
+      "actor": "Authorized internal producer, reviewer or implementation engineer",
+      "outcome": "Contracts publishes a reproducible Finance score/tiers/confidence and redacted profile view with edge fixtures for decay and disputed evidence.",
+      "context": "The proposed E23 four-dimension 30/25/30/15 weights and tier bounds must be applied only through approved S02 policy revision.",
+      "inScope": [
+        "Specify per-fact sign, magnitude from policy, decay class, effective clock, dimension baseline/clamp, weighted composite order and rounding rules as versioned Finance algorithm inputs.",
+        "Define UNASSESSED versus ASSESSED versus STALE, identity/history sufficiency, source-watermark/confidence, blocker reason and audience-specific field sets.",
+        "Pin examples for 0/39/40/59/60/79/80/100 tiers, 24/36-month boundaries, verified email revoked, 3 stays across 90 days, duplicate correction and disputed negative."
+      ],
+      "outOfScope": [
+        "Producing score for real customer or hardcoding unapproved weights as runtime defaults."
+      ],
+      "repositories": [
+        "platform_contracts"
+      ],
+      "primaryRepository": "platform_contracts",
+      "repositorySlices": [
+        {
+          "repository": "platform_contracts",
+          "paths": [
+            "schemas/customer-trust/**",
+            "graphql/backoffice/**",
+            "fixtures/customer-trust/**"
+          ],
+          "artifacts": [
+            "versioned projection and redacted query schemas",
+            "score/decay/confidence boundary fixtures",
+            "compatibility and security tests"
+          ]
+        }
+      ],
+      "interfaces": [
+        "Version Finance profile GraphQL/internal event contract with policy ID, input watermark, explanation, asOf and field-group map."
+      ],
+      "dataOwnership": [
+        "Contracts pins Finance algorithm semantics; Finance alone persists authoritative score and prior policy versions."
+      ],
+      "stateMachine": [
+        "UNASSESSED/STALE are explicit non-eligible outcomes; ASSESSED requires valid approved policy and sufficient current facts."
+      ],
+      "authorization": {
+        "actions": [
+          "trust:profile:contract:publish"
+        ],
+        "dataPartitions": [
+          "CUSTOMER only for its own subject; ADMIN only with the authorized organization/site/branch and target-customer relationship; SYSTEM only for authenticated, purpose-bound service calls."
+        ],
+        "fieldGroups": [
+          "SUMMARY self tier/status; TRUST_DETAIL reasons; FINANCIAL monetary evidence; INTERNAL_AUDIT raw source."
+        ]
+      },
+      "failureSemantics": [
+        "Reject missing grants and unrecognized subjects without disclosing existence or protected source facts.",
+        "Absent or stale source/identity/policy version must return explicit unavailable or unassessed state; never infer a positive trust outcome.",
+        "Do not log PII, detailed financial history, raw cleanliness notes, or signed URLs."
+      ],
+      "idempotencyConcurrency": [
+        "Deduplicate ingested events by owner, event ID, source revision and customer; repeated delivery cannot create new facts.",
+        "Externally retried writes use scoped idempotency key, request fingerprint and expected revision; concurrent conflicts expose a stable code.",
+        "Historical facts and decisions are append-only; correction publishes a linked compensating fact rather than overwriting the source."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E23-S01-ST07",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E23-S02-ST07",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "approved policy and validated fact fixtures",
+          "when": "projection validator runs",
+          "then": "the exact rounding, decay and confidence/eligibility boundary produces reproducible tier and reason codes"
+        },
+        {
+          "id": "AC02",
+          "given": "missing identity, disputed negative or stale source",
+          "when": "negative fixture runs",
+          "then": "policy marks no automatic waiver; disputed negative is not finally deducted"
+        },
+        {
+          "id": "AC03",
+          "given": "old score decision with earlier policy revision",
+          "when": "replay fixture runs",
+          "then": "historical result remains stable and new profile revision links to it without rewriting"
+        }
+      ],
+      "tests": [
+        "Run the exact commands in testCases; add positive, cross-customer denial, unavailable-source, duplicate/reorder and compensation cases appropriate to this slice.",
+        "Attach machine-readable CI evidence and source-to-AC mapping; no simulated production approval or live secret is allowed."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm run validate:schemas",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E23-S03-ST07 focused CI output, denial/replay assertions and fixture version"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E23-S03-ST07 focused CI output, denial/replay assertions and fixture version"
+        }
+      ],
+      "observability": [
+        "Propagate correlation and source event IDs across the named boundary; record bounded result/replay/stale-source counters without customer PII.",
+        "Expose the source version, last successfully consumed watermark and recoverable failure reason to authorized operators."
+      ],
+      "definitionOfDone": [
+        "Named artifacts are committed in the owning repository; focused tests and CI pass.",
+        "Contract owner approves field/action partition matrix and retry/compensation behavior.",
+        "Jira has PR, tests, denial/replay evidence, and rollback/repair instructions; this task does not claim the runtime feature already exists."
+      ],
+      "evidence": [
+        "PR and CI URL for the owning repository.",
+        "Unit/integration result with positive, denial and replay/reordering fixture.",
+        "Contract compatibility and migration/rollback note where applicable."
+      ],
+      "labels": [
+        "repo-platform-contracts",
+        "roadmap-v1-3",
+        "source-vs-e23-s03-st07",
+        "policy-configurable"
+      ],
+      "decisionNoteVi": "Only platform_contracts owns this slice. Finance alone owns the canonical customer trust facts, policy, score and waiver decision; no new policy values are approved by this spec.",
+      "specStatus": "executable",
+      "workKind": "contract",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "sourceId": "VS-E23-S04",
+      "outcome": "S04 evaluates Finance-owned deposit decisions, review workflow, Booking confirmation and self-safe Web/Admin handoff from one versioned, expiry-bound source of truth.",
+      "context": "The auto-waiver switch is effective-dated in S02. ON grants only eligible customers a zero-deposit final waiver; OFF permits eligible customers to request manual review. Unassessed/low-score/blocker/stale evidence requires deposit, and pending review is not a final waiver.",
+      "specStatus": "refined-parent",
+      "dispatchable": false
+    },
+    {
+      "sourceId": "VS-E23-S04-ST01",
+      "summary": "[VS-E23-S04-ST01] Decide booking deposit and adjudicate manual waiver in Finance",
+      "actor": "Authorized internal producer, reviewer or implementation engineer",
+      "outcome": "Finance issues one current customer-and-booking-bound deposit decision, controls manual review and alone changes final payable deposit to zero.",
+      "context": "E23: an approved high-trust customer is auto-waived when switch ON; when OFF, eligible customers can request manual review and staff may approve or require deposit. Low-score, missing customer, hard blocker or stale evidence requires deposit. E08-S03-ST02 remains the final confirmation gate.",
+      "inScope": [
+        "Evaluate policy composite >=80, payment >=70, cleanliness >=65, verified email, three completed stays spanning 90 days and absence of hard blockers, using approved effective policy version rather than client input.",
+        "Persist REQUIRED/REVIEW_AVAILABLE/REVIEW_PENDING/WAIVED_AUTO/WAIVED_MANUAL/REQUIRED_BY_REVIEW/EXPIRED/CONSUMED with booking/customer, quote revision, policy/profile/source revisions, actor, reason, expiry and audit/outbox.",
+        "Accept customer or staff review request only from REVIEW_AVAILABLE; authorize manual approve/require decision with reason, expectedVersion and idempotency. Never allow low-score manual bypass unless a separately approved policy explicitly permits an exception.",
+        "On final waiver atomically record Finance deposit amount 0 and emit versioned E08 confirmation-gate input; pending never implies 0, paid, or confirmed. Handle concurrent payment/waiver through Finance monetary reconciliation without silently refunding or cancelling settled payment."
+      ],
+      "outOfScope": [
+        "Authorizing waiver from UI button, direct Payment write, retroactive modification of previously consumed booking decision or a browser-authored trust score."
+      ],
+      "repositories": [
+        "service_finance"
+      ],
+      "primaryRepository": "service_finance",
+      "repositorySlices": [
+        {
+          "repository": "service_finance",
+          "paths": [
+            "src/main/java/**",
+            "src/main/resources/**",
+            "src/test/java/**"
+          ],
+          "artifacts": [
+            "deposit decision state-machine migration and Finance policy evaluator",
+            "waiver request/review API and authorization tests",
+            "zero-deposit Finance obligation and E08 gate integration"
+          ]
+        }
+      ],
+      "interfaces": [
+        "Version Finance decision, manual request/review and internal reservation-confirmation operations; include ID/revision, quote fingerprint, policy/profile revision, expiry, amount/currency and stable reason code."
+      ],
+      "dataOwnership": [
+        "Finance owns deposit liability, waiver decision, zero amount and confirmation gate; Booking consumes immutable final decision, Payment consumes payable instruction."
+      ],
+      "stateMachine": [
+        "REQUIRED is terminal for current evaluation until a new quote/policy evaluation; REVIEW_AVAILABLE -> REVIEW_PENDING -> WAIVED_MANUAL or REQUIRED_BY_REVIEW.",
+        "Eligible ON -> WAIVED_AUTO; finalized states -> CONSUMED on E08 final confirmation or EXPIRED after quote change/expiry; invalid transitions conflict without money side effects."
+      ],
+      "authorization": {
+        "actions": [
+          "finance:deposit:evaluate",
+          "finance:deposit:review-request",
+          "finance:deposit:review-decide",
+          "finance:deposit:obligation:update"
+        ],
+        "dataPartitions": [
+          "CUSTOMER only for its own subject; ADMIN only with the authorized organization/site/branch and target-customer relationship; SYSTEM only for authenticated, purpose-bound service calls."
+        ],
+        "fieldGroups": [
+          "SUMMARY status and customer-safe next action; FINANCIAL controls amount/payment; TRUST_DETAIL controls internal eligibility reasons; INTERNAL_AUDIT controls review trail."
+        ]
+      },
+      "failureSemantics": [
+        "Reject missing grants and unrecognized subjects without disclosing existence or protected source facts.",
+        "Absent or stale source/identity/policy version must return explicit unavailable or unassessed state; never infer a positive trust outcome.",
+        "Do not log PII, detailed financial history, raw cleanliness notes, or signed URLs."
+      ],
+      "idempotencyConcurrency": [
+        "Deduplicate ingested events by owner, event ID, source revision and customer; repeated delivery cannot create new facts.",
+        "Externally retried writes use scoped idempotency key, request fingerprint and expected revision; concurrent conflicts expose a stable code.",
+        "Historical facts and decisions are append-only; correction publishes a linked compensating fact rather than overwriting the source."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E23-S03-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E23-S04-ST07",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E08-S03-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E00-T03",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "approved policy, fresh eligible profile and matching booking quote",
+          "when": "Finance evaluates switch ON versus OFF",
+          "then": "ON emits WAIVED_AUTO and zero-deposit Finance obligation; OFF emits REVIEW_AVAILABLE with required obligation, and no booking is confirmed from availability alone"
+        },
+        {
+          "id": "AC02",
+          "given": "unassessed/low-score customer, open debt, active chargeback, disputed negative or stale source",
+          "when": "evaluation or manual bypass attempts",
+          "then": "Finance returns REQUIRED or denies bypass with an auditable reason; pending cannot appear as final waiver"
+        },
+        {
+          "id": "AC03",
+          "given": "review and payment arrive concurrently or request is replayed after quote revision",
+          "when": "Finance applies expected revision",
+          "then": "at most one final decision is consumed; settled payment is not reversed by waiver and stale quote/decision is rejected"
+        }
+      ],
+      "tests": [
+        "Run the exact commands in testCases; add positive, cross-customer denial, unavailable-source, duplicate/reorder and compensation cases appropriate to this slice.",
+        "Attach machine-readable CI evidence and source-to-AC mapping; no simulated production approval or live secret is allowed."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*Trust*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E23-S04-ST01 focused CI output, denial/replay assertions and fixture version"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E23-S04-ST01 focused CI output, denial/replay assertions and fixture version"
+        }
+      ],
+      "observability": [
+        "Propagate correlation and source event IDs across the named boundary; record bounded result/replay/stale-source counters without customer PII.",
+        "Expose the source version, last successfully consumed watermark and recoverable failure reason to authorized operators."
+      ],
+      "definitionOfDone": [
+        "Named artifacts are committed in the owning repository; focused tests and CI pass.",
+        "Contract owner approves field/action partition matrix and retry/compensation behavior.",
+        "Jira has PR, tests, denial/replay evidence, and rollback/repair instructions; this task does not claim the runtime feature already exists."
+      ],
+      "evidence": [
+        "PR and CI URL for the owning repository.",
+        "Unit/integration result with positive, denial and replay/reordering fixture.",
+        "Contract compatibility and migration/rollback note where applicable."
+      ],
+      "labels": [
+        "repo-service-finance",
+        "roadmap-v1-3",
+        "source-vs-e23-s04-st01",
+        "policy-configurable"
+      ],
+      "decisionNoteVi": "Only service_finance owns this slice. Finance alone owns the canonical customer trust facts, policy, score and waiver decision; no new policy values are approved by this spec.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "sourceId": "VS-E23-S04-ST02",
+      "summary": "[VS-E23-S04-ST02] Publish verified serious-incident and extreme-care blocker evidence",
+      "actor": "Authorized internal producer, reviewer or implementation engineer",
+      "outcome": "Operations reports current, reviewable serious incidents and extreme-cleanliness source events as candidate hard blockers, never an Operations waiver.",
+      "context": "E23 lists unresolved serious incident and recent no-show/extreme cleanliness among hard blockers; external employee assessment must be authenticated. Finance determines blocker active window from approved policy.",
+      "inScope": [
+        "Publish revisioned incident open/resolved and extreme cleaning classification with responsible customer, booking, source evidence ID and reviewer provenance.",
+        "Distinguish serious unresolved guest-attributed incident from routine maintenance, cleanliness notes or a staff assertion awaiting verification.",
+        "Publish source correction/resolution with linked ID; stop sending an active blocker only when source state and revision justify it."
+      ],
+      "outOfScope": [
+        "Granting deposit waiver, selecting blocker expiry duration or owning Finance score/obligation."
+      ],
+      "repositories": [
+        "service_operations"
+      ],
+      "primaryRepository": "service_operations",
+      "repositorySlices": [
+        {
+          "repository": "service_operations",
+          "paths": [
+            "src/main/java/**",
+            "src/main/resources/**",
+            "src/test/java/**"
+          ],
+          "artifacts": [
+            "incident/extreme-care blocker events",
+            "incident resolution and unattributed source tests"
+          ]
+        }
+      ],
+      "interfaces": [
+        "Publish authenticated incident/care blocker events with source revision, verified status, reason category and resolution event."
+      ],
+      "dataOwnership": [
+        "Operations owns verified incident and assessment evidence; Finance decides blocker policy and deposit state."
+      ],
+      "stateMachine": [
+        "INCIDENT_REPORTED -> VERIFIED_OPEN -> RESOLVED; only VERIFIED_OPEN may signal an active source blocker."
+      ],
+      "authorization": {
+        "actions": [
+          "operations:trust-blocker:publish"
+        ],
+        "dataPartitions": [
+          "CUSTOMER only for its own subject; ADMIN only with the authorized organization/site/branch and target-customer relationship; SYSTEM only for authenticated, purpose-bound service calls."
+        ],
+        "fieldGroups": [
+          "SUMMARY category/status only; DOCUMENT/TRUST_DETAIL and INTERNAL_AUDIT restrict evidence and reporter."
+        ]
+      },
+      "failureSemantics": [
+        "Reject missing grants and unrecognized subjects without disclosing existence or protected source facts.",
+        "Absent or stale source/identity/policy version must return explicit unavailable or unassessed state; never infer a positive trust outcome.",
+        "Do not log PII, detailed financial history, raw cleanliness notes, or signed URLs."
+      ],
+      "idempotencyConcurrency": [
+        "Deduplicate ingested events by owner, event ID, source revision and customer; repeated delivery cannot create new facts.",
+        "Externally retried writes use scoped idempotency key, request fingerprint and expected revision; concurrent conflicts expose a stable code.",
+        "Historical facts and decisions are append-only; correction publishes a linked compensating fact rather than overwriting the source."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E23-S01-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E23-S04-ST07",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "verified serious guest-attributed incident and current extreme checkout assessment",
+          "when": "Operations publishes evidence",
+          "then": "Finance receives distinct incident and cleanliness categories with source revisions"
+        },
+        {
+          "id": "AC02",
+          "given": "unverified report or routine cleaning work order",
+          "when": "Operations evaluates attribution",
+          "then": "no active hard-blocker evidence is published"
+        },
+        {
+          "id": "AC03",
+          "given": "incident is resolved or report corrected",
+          "when": "events redeliver out of order",
+          "then": "Finance can reconstruct linked historical open/resolution without reverting to an obsolete active blocker"
+        }
+      ],
+      "tests": [
+        "Run the exact commands in testCases; add positive, cross-customer denial, unavailable-source, duplicate/reorder and compensation cases appropriate to this slice.",
+        "Attach machine-readable CI evidence and source-to-AC mapping; no simulated production approval or live secret is allowed."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*Trust*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E23-S04-ST02 focused CI output, denial/replay assertions and fixture version"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E23-S04-ST02 focused CI output, denial/replay assertions and fixture version"
+        }
+      ],
+      "observability": [
+        "Propagate correlation and source event IDs across the named boundary; record bounded result/replay/stale-source counters without customer PII.",
+        "Expose the source version, last successfully consumed watermark and recoverable failure reason to authorized operators."
+      ],
+      "definitionOfDone": [
+        "Named artifacts are committed in the owning repository; focused tests and CI pass.",
+        "Contract owner approves field/action partition matrix and retry/compensation behavior.",
+        "Jira has PR, tests, denial/replay evidence, and rollback/repair instructions; this task does not claim the runtime feature already exists."
+      ],
+      "evidence": [
+        "PR and CI URL for the owning repository.",
+        "Unit/integration result with positive, denial and replay/reordering fixture.",
+        "Contract compatibility and migration/rollback note where applicable."
+      ],
+      "labels": [
+        "repo-service-operations",
+        "roadmap-v1-3",
+        "source-vs-e23-s04-st02"
+      ],
+      "decisionNoteVi": "Only service_operations owns this slice. Finance alone owns the canonical customer trust facts, policy, score and waiver decision; no new policy values are approved by this spec.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "sourceId": "VS-E23-S04-ST03",
+      "summary": "[VS-E23-S04-ST03] Enforce current Finance deposit gate at Booking confirmation",
+      "actor": "Authorized internal producer, reviewer or implementation engineer",
+      "outcome": "Booking confirms only with an E08 Finance VERIFIED_PAID or WAIVED_FINAL decision for the exact current customer/quote, then freezes its decision reference.",
+      "context": "S02-ST03 pins policy-reference snapshot fields; this slice implements the E08 confirmation runtime check and invalidation/retry on booking change. E19-S07-ST02 exposes separate customer-safe checkout status.",
+      "inScope": [
+        "Check Finance final gate before confirming quote/hold and verify customer, unit, stay dates, product, price, quote fingerprint, policy/decision revision and expiration.",
+        "Persist final decision ID, version and monetary status in booking snapshot without copying trust score, payment records or internal review notes.",
+        "Invalidate existing pending gate on material booking/customer change and request Finance reassessment; support idempotent replay and deterministic timeout/unavailable failure."
+      ],
+      "outOfScope": [
+        "Confirming on REVIEW_AVAILABLE/REVIEW_PENDING, client-provided WAIVED flag or a zero-value browser field.",
+        "Calculating monetary amount, initiating Payment intent or rewriting previous confirmed booking snapshot."
+      ],
+      "repositories": [
+        "service_booking"
+      ],
+      "primaryRepository": "service_booking",
+      "repositorySlices": [
+        {
+          "repository": "service_booking",
+          "paths": [
+            "src/main/java/**",
+            "src/main/resources/**",
+            "src/test/java/**"
+          ],
+          "artifacts": [
+            "Finance gate adapter and booking-confirmation guard",
+            "final decision snapshot and version fields",
+            "pending/expired/customer-mismatch/replay tests"
+          ]
+        }
+      ],
+      "interfaces": [
+        "Consume Finance getReservationConfirmationDecision from E08-S03-ST02 with customer/quote fingerprint and current decision version; return self-safe status for E19."
+      ],
+      "dataOwnership": [
+        "Booking owns booking confirmation and snapshot; Finance owns deposit and paid/waived finality."
+      ],
+      "stateMachine": [
+        "HOLD -> CONFIRMED only on VERIFIED_PAID/WAIVED_FINAL; PENDING/FAILED/STALE leave the booking unconfirmed.",
+        "Changed quote invalidates pending gate and produces a new decision reference; confirmed booking never silently rebinds to a newer policy."
+      ],
+      "authorization": {
+        "actions": [
+          "booking:reservation:confirm",
+          "booking:deposit-decision:consume"
+        ],
+        "dataPartitions": [
+          "CUSTOMER only for its own subject; ADMIN only with the authorized organization/site/branch and target-customer relationship; SYSTEM only for authenticated, purpose-bound service calls."
+        ],
+        "fieldGroups": [
+          "SUMMARY shows final safe status/decision ID; FINANCIAL amount and TRUST_DETAIL score remain Finance-controlled."
+        ]
+      },
+      "failureSemantics": [
+        "Reject missing grants and unrecognized subjects without disclosing existence or protected source facts.",
+        "Absent or stale source/identity/policy version must return explicit unavailable or unassessed state; never infer a positive trust outcome.",
+        "Do not log PII, detailed financial history, raw cleanliness notes, or signed URLs."
+      ],
+      "idempotencyConcurrency": [
+        "Deduplicate ingested events by owner, event ID, source revision and customer; repeated delivery cannot create new facts.",
+        "Externally retried writes use scoped idempotency key, request fingerprint and expected revision; concurrent conflicts expose a stable code.",
+        "Historical facts and decisions are append-only; correction publishes a linked compensating fact rather than overwriting the source."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E23-S04-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E08-S03-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E23-S02-ST03",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "owned active hold and matching final Finance payment or zero-waiver gate",
+          "when": "customer confirms booking",
+          "then": "Booking freezes ID/version and confirms once without reading Finance tables"
+        },
+        {
+          "id": "AC02",
+          "given": "waiver request pending, customer mismatch, stale quote or Finance unavailable",
+          "when": "confirmation attempts",
+          "then": "booking remains unconfirmed and reports stable PENDING/STALE/DEPENDENCY_UNAVAILABLE outcome"
+        },
+        {
+          "id": "AC03",
+          "given": "duplicate confirmation and concurrent hold mutation",
+          "when": "commands overlap",
+          "then": "only one snapshot/confirmation wins and no prior booking decision is rewritten"
+        }
+      ],
+      "tests": [
+        "Run the exact commands in testCases; add positive, cross-customer denial, unavailable-source, duplicate/reorder and compensation cases appropriate to this slice.",
+        "Attach machine-readable CI evidence and source-to-AC mapping; no simulated production approval or live secret is allowed."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*Trust*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E23-S04-ST03 focused CI output, denial/replay assertions and fixture version"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E23-S04-ST03 focused CI output, denial/replay assertions and fixture version"
+        }
+      ],
+      "observability": [
+        "Propagate correlation and source event IDs across the named boundary; record bounded result/replay/stale-source counters without customer PII.",
+        "Expose the source version, last successfully consumed watermark and recoverable failure reason to authorized operators."
+      ],
+      "definitionOfDone": [
+        "Named artifacts are committed in the owning repository; focused tests and CI pass.",
+        "Contract owner approves field/action partition matrix and retry/compensation behavior.",
+        "Jira has PR, tests, denial/replay evidence, and rollback/repair instructions; this task does not claim the runtime feature already exists."
+      ],
+      "evidence": [
+        "PR and CI URL for the owning repository.",
+        "Unit/integration result with positive, denial and replay/reordering fixture.",
+        "Contract compatibility and migration/rollback note where applicable."
+      ],
+      "labels": [
+        "repo-service-booking",
+        "roadmap-v1-3",
+        "source-vs-e23-s04-st03"
+      ],
+      "decisionNoteVi": "Only service_booking owns this slice. Finance alone owns the canonical customer trust facts, policy, score and waiver decision; no new policy values are approved by this spec.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "sourceId": "VS-E23-S04-ST04",
+      "summary": "[VS-E23-S04-ST04] Authorize customer-subject and staff-partition checks for waiver actions",
+      "actor": "Authorized internal producer, reviewer or implementation engineer",
+      "outcome": "User supplies verified account-type/customer linkage and actor partition assertions for Finance/Payment so staff and customers cannot act for unrelated bookings.",
+      "context": "E19-S07-ST04 Payment requires authenticated own-booking Finance instruction; User cannot declare a Finance waiver or resolve payable amount.",
+      "inScope": [
+        "Provide purpose-scoped authenticated customer-subject mapping and staff organization/site/branch assertions as required by Finance waiver-review and Payment instruction ownership checks.",
+        "Reject employee-created booking being treated as employee trust subject, wrong-realm customer, or foreign branch reviewer.",
+        "Propagate identity-revocation/account merge as new assertion revision; Finance revalidates subject before final waiver or payment instruction."
+      ],
+      "outOfScope": [
+        "Creating payment intent, rewriting deposit policy or storing decision review queue in User."
+      ],
+      "repositories": [
+        "service_user"
+      ],
+      "primaryRepository": "service_user",
+      "repositorySlices": [
+        {
+          "repository": "service_user",
+          "paths": [
+            "src/main/java/**",
+            "src/main/resources/**",
+            "src/test/java/**"
+          ],
+          "artifacts": [
+            "subject/actor linkage assertion boundary",
+            "staff-branch and cross-customer denial tests"
+          ]
+        }
+      ],
+      "interfaces": [
+        "Purpose-scoped User identity assertion to Finance and Payment with customer ID/account type, reviewer partition, assertion revision and bounded expiry."
+      ],
+      "dataOwnership": [
+        "User owns Keycloak-subject/account-type mapping and access grants; Finance owns waiver and Payment owns only intents."
+      ],
+      "stateMachine": [
+        "ACTIVE assertion -> REVOKED/CONFLICTED by new identity revision; stale assertions fail closed."
+      ],
+      "authorization": {
+        "actions": [
+          "user:identity:assert-subject",
+          "user:authorization:check-partition"
+        ],
+        "dataPartitions": [
+          "CUSTOMER only for its own subject; ADMIN only with the authorized organization/site/branch and target-customer relationship; SYSTEM only for authenticated, purpose-bound service calls."
+        ],
+        "fieldGroups": [
+          "SUMMARY returns opaque customer/partition assertion; PII and INTERNAL_AUDIT remain User-only."
+        ]
+      },
+      "failureSemantics": [
+        "Reject missing grants and unrecognized subjects without disclosing existence or protected source facts.",
+        "Absent or stale source/identity/policy version must return explicit unavailable or unassessed state; never infer a positive trust outcome.",
+        "Do not log PII, detailed financial history, raw cleanliness notes, or signed URLs."
+      ],
+      "idempotencyConcurrency": [
+        "Deduplicate ingested events by owner, event ID, source revision and customer; repeated delivery cannot create new facts.",
+        "Externally retried writes use scoped idempotency key, request fingerprint and expected revision; concurrent conflicts expose a stable code.",
+        "Historical facts and decisions are append-only; correction publishes a linked compensating fact rather than overwriting the source."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E23-S01-ST04",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E23-S04-ST07",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E00-T03",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "customer owns quote and reviewer has explicit site/branch grant",
+          "when": "Finance or Payment checks authorization",
+          "then": "correct customer/actor partition assertion and expiry are returned with no score or obligation"
+        },
+        {
+          "id": "AC02",
+          "given": "wrong realm, employee substituted as customer or foreign branch",
+          "when": "waiver review/intent calls User",
+          "then": "identity/partition assertion is denied without leaking other booking data"
+        },
+        {
+          "id": "AC03",
+          "given": "revocation occurs while two requests race",
+          "when": "assertion is rechecked",
+          "then": "stale revision cannot authorize a new waiver or payable intent"
+        }
+      ],
+      "tests": [
+        "Run the exact commands in testCases; add positive, cross-customer denial, unavailable-source, duplicate/reorder and compensation cases appropriate to this slice.",
+        "Attach machine-readable CI evidence and source-to-AC mapping; no simulated production approval or live secret is allowed."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*Trust*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E23-S04-ST04 focused CI output, denial/replay assertions and fixture version"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E23-S04-ST04 focused CI output, denial/replay assertions and fixture version"
+        }
+      ],
+      "observability": [
+        "Propagate correlation and source event IDs across the named boundary; record bounded result/replay/stale-source counters without customer PII.",
+        "Expose the source version, last successfully consumed watermark and recoverable failure reason to authorized operators."
+      ],
+      "definitionOfDone": [
+        "Named artifacts are committed in the owning repository; focused tests and CI pass.",
+        "Contract owner approves field/action partition matrix and retry/compensation behavior.",
+        "Jira has PR, tests, denial/replay evidence, and rollback/repair instructions; this task does not claim the runtime feature already exists."
+      ],
+      "evidence": [
+        "PR and CI URL for the owning repository.",
+        "Unit/integration result with positive, denial and replay/reordering fixture.",
+        "Contract compatibility and migration/rollback note where applicable."
+      ],
+      "labels": [
+        "repo-service-user",
+        "roadmap-v1-3",
+        "source-vs-e23-s04-st04"
+      ],
+      "decisionNoteVi": "Only service_user owns this slice. Finance alone owns the canonical customer trust facts, policy, score and waiver decision; no new policy values are approved by this spec.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "sourceId": "VS-E23-S04-ST05",
+      "summary": "[VS-E23-S04-ST05] Operate authorized manual waiver queue in Admin Web and Mobile",
+      "actor": "Authorized customer or backoffice operator",
+      "outcome": "Authorized staff sees Finance decisions and can approve or require deposit only for eligible review-pending cases, with reason and server revision.",
+      "context": "When auto-waiver is OFF, eligible requests need staff action; ON high-trust customers are waived automatically. Admin UI never derives eligibility or overrides hard blockers on its own.",
+      "inScope": [
+        "Show Web and Mobile case queue with customer-safe booking ID, eligibility status, policy version, expiry and scoped reviewer grant.",
+        "Allow authorized reviewer to approve/require deposit with required reason, expectedVersion, idempotency key and Finance response; re-fetch after conflict.",
+        "Hide decision controls for REQUIRED/WAIVED_AUTO/expired/foreign branch and distinguish REVIEW_AVAILABLE from REVIEW_PENDING."
+      ],
+      "outOfScope": [
+        "Browser-side deposit 0 assignment, customer-score editing, reviewer actions without server grant."
+      ],
+      "repositories": [
+        "frontend_admin"
+      ],
+      "primaryRepository": "frontend_admin",
+      "repositorySlices": [
+        {
+          "repository": "frontend_admin",
+          "paths": [
+            "apps/web/src/**",
+            "apps/mobile/src/**"
+          ],
+          "artifacts": [
+            "Web and Mobile waiver review queue and decision action",
+            "role/branch/replay/stale-decision UI tests"
+          ]
+        }
+      ],
+      "interfaces": [
+        "Consume Finance reviewer-list/get/decide contract; server enforces action, customer/branch partition and field groups regardless of disabled UI."
+      ],
+      "dataOwnership": [
+        "Finance owns case state, amounts, staff decision audit; Admin is a filtered client."
+      ],
+      "stateMachine": [
+        "AVAILABLE -> PENDING -> WAIVED_MANUAL/REQUIRED_BY_REVIEW or EXPIRED; UI reads Finance response rather than optimistically finalizing."
+      ],
+      "authorization": {
+        "actions": [
+          "finance:deposit:review-list",
+          "finance:deposit:review-decide"
+        ],
+        "dataPartitions": [
+          "CUSTOMER only for its own subject; ADMIN only with the authorized organization/site/branch and target-customer relationship; SYSTEM only for authenticated, purpose-bound service calls."
+        ],
+        "fieldGroups": [
+          "SUMMARY queue status only; TRUST_DETAIL eligibility reasons, FINANCIAL amounts and INTERNAL_AUDIT reviewer history separately guarded."
+        ]
+      },
+      "failureSemantics": [
+        "Reject missing grants and unrecognized subjects without disclosing existence or protected source facts.",
+        "Absent or stale source/identity/policy version must return explicit unavailable or unassessed state; never infer a positive trust outcome.",
+        "Do not log PII, detailed financial history, raw cleanliness notes, or signed URLs."
+      ],
+      "idempotencyConcurrency": [
+        "Deduplicate ingested events by owner, event ID, source revision and customer; repeated delivery cannot create new facts.",
+        "Externally retried writes use scoped idempotency key, request fingerprint and expected revision; concurrent conflicts expose a stable code.",
+        "Historical facts and decisions are append-only; correction publishes a linked compensating fact rather than overwriting the source."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E23-S04-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E23-S04-ST07",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "eligible pending case and authorized reviewer in correct branch",
+          "when": "Web/Mobile reviewer approves or requires deposit",
+          "then": "Finance final decision, reason/audit and revised payable instruction are rendered from server"
+        },
+        {
+          "id": "AC02",
+          "given": "foreign branch, low-score REQUIRED or missing review grant",
+          "when": "actor opens or posts decision",
+          "then": "case details and action are denied without inventing manual eligibility"
+        },
+        {
+          "id": "AC03",
+          "given": "case expires or other reviewer wins race",
+          "when": "UI submits stale revision",
+          "then": "conflict or EXPIRED is shown, no optimistic zero-deposit or booking confirmation appears"
+        }
+      ],
+      "tests": [
+        "Run the exact commands in testCases; add positive, cross-customer denial, unavailable-source, duplicate/reorder and compensation cases appropriate to this slice.",
+        "Attach machine-readable CI evidence and source-to-AC mapping; no simulated production approval or live secret is allowed."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm run typecheck",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E23-S04-ST05 focused CI output, denial/replay assertions and fixture version"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E23-S04-ST05 focused CI output, denial/replay assertions and fixture version"
+        }
+      ],
+      "observability": [
+        "Propagate correlation and source event IDs across the named boundary; record bounded result/replay/stale-source counters without customer PII.",
+        "Expose the source version, last successfully consumed watermark and recoverable failure reason to authorized operators."
+      ],
+      "definitionOfDone": [
+        "Named artifacts are committed in the owning repository; focused tests and CI pass.",
+        "Contract owner approves field/action partition matrix and retry/compensation behavior.",
+        "Jira has PR, tests, denial/replay evidence, and rollback/repair instructions; this task does not claim the runtime feature already exists."
+      ],
+      "evidence": [
+        "PR and CI URL for the owning repository.",
+        "Unit/integration result with positive, denial and replay/reordering fixture.",
+        "Contract compatibility and migration/rollback note where applicable."
+      ],
+      "labels": [
+        "repo-frontend-admin",
+        "roadmap-v1-3",
+        "source-vs-e23-s04-st05"
+      ],
+      "decisionNoteVi": "Only frontend_admin owns this slice. Finance alone owns the canonical customer trust facts, policy, score and waiver decision; no new policy values are approved by this spec.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "sourceId": "VS-E23-S04-ST06",
+      "summary": "[VS-E23-S04-ST06] Request eligible deposit waiver from Customer checkout",
+      "actor": "Authorized customer or backoffice operator",
+      "outcome": "Customer checkout presents Finance-required deposit, auto-final waiver, or staff-review request and never turns pending approval into zero due.",
+      "context": "E19-S07 customer checkout reuses E23 waiver request and appeal status; Payment intents are created only from Finance payable instructions, not Customer UI.",
+      "inScope": [
+        "Display Finance current required amount/currency and expiry, or explicit final zero amount for WAIVED_AUTO/WAIVED_MANUAL; show REVIEW_AVAILABLE as a request action only when Finance offers it.",
+        "Submit own-booking review request once with idempotency key and quote revision; show REVIEW_PENDING, final require/waive, expired and source-unavailable paths.",
+        "Add customer test script and tests for foreign customer, low score, switch ON/OFF, duplicate request, quote change and no payment intent while pending/final waived."
+      ],
+      "outOfScope": [
+        "Computing score, making zero-deposit promises from cached switch/score or creating zero-amount QR.",
+        "Treating an appeal as final deposit waiver or retroactively refunding paid money."
+      ],
+      "repositories": [
+        "frontend_customer"
+      ],
+      "primaryRepository": "frontend_customer",
+      "repositorySlices": [
+        {
+          "repository": "frontend_customer",
+          "paths": [
+            "src/**"
+          ],
+          "artifacts": [
+            "own checkout waiver request and status UI",
+            "package test script with own-booking, stale and replay cases"
+          ]
+        }
+      ],
+      "interfaces": [
+        "Consume own-quote Finance decision/request and E19 checkout status with ID/revision; pass no customer-chosen eligible flag or amount."
+      ],
+      "dataOwnership": [
+        "Finance owns payable amount and decision; Booking owns quote; Payment creates intent only for payable Finance instruction."
+      ],
+      "stateMachine": [
+        "REQUIRED -> payment path; REVIEW_AVAILABLE -> REVIEW_PENDING -> WAIVED_MANUAL/REQUIRED_BY_REVIEW; WAIVED_AUTO displays final zero; EXPIRED requires new evaluation."
+      ],
+      "authorization": {
+        "actions": [
+          "finance:deposit:own-view",
+          "finance:deposit:review-request"
+        ],
+        "dataPartitions": [
+          "CUSTOMER only for its own subject; ADMIN only with the authorized organization/site/branch and target-customer relationship; SYSTEM only for authenticated, purpose-bound service calls."
+        ],
+        "fieldGroups": [
+          "SUMMARY self booking/status and customer-safe next action; FINANCIAL own amount guarded; no TRUST_DETAIL or INTERNAL_AUDIT."
+        ]
+      },
+      "failureSemantics": [
+        "Reject missing grants and unrecognized subjects without disclosing existence or protected source facts.",
+        "Absent or stale source/identity/policy version must return explicit unavailable or unassessed state; never infer a positive trust outcome.",
+        "Do not log PII, detailed financial history, raw cleanliness notes, or signed URLs."
+      ],
+      "idempotencyConcurrency": [
+        "Deduplicate ingested events by owner, event ID, source revision and customer; repeated delivery cannot create new facts.",
+        "Externally retried writes use scoped idempotency key, request fingerprint and expected revision; concurrent conflicts expose a stable code.",
+        "Historical facts and decisions are append-only; correction publishes a linked compensating fact rather than overwriting the source."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E23-S04-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E23-S04-ST07",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E19-S07-ST02",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "Finance says switch ON eligible or switch OFF review-eligible",
+          "when": "customer opens own checkout",
+          "then": "ON renders final zero only from Finance; OFF permits one request and pending remains unpaid/non-final"
+        },
+        {
+          "id": "AC02",
+          "given": "low-score, foreign booking, stale quote or Finance unavailable",
+          "when": "customer attempts request",
+          "then": "server denies or requires deposit and UI cannot fabricate a waived outcome"
+        },
+        {
+          "id": "AC03",
+          "given": "customer retries request or staff finalizes during refresh",
+          "when": "customer reloads",
+          "then": "one durable case/status displays and no extra payable/intent is inferred client-side"
+        }
+      ],
+      "tests": [
+        "Run the exact commands in testCases; add positive, cross-customer denial, unavailable-source, duplicate/reorder and compensation cases appropriate to this slice.",
+        "Attach machine-readable CI evidence and source-to-AC mapping; no simulated production approval or live secret is allowed."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm run build",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E23-S04-ST06 focused CI output, denial/replay assertions and fixture version"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": "npm run lint && npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E23-S04-ST06 focused CI output, denial/replay assertions and fixture version"
+        }
+      ],
+      "observability": [
+        "Propagate correlation and source event IDs across the named boundary; record bounded result/replay/stale-source counters without customer PII.",
+        "Expose the source version, last successfully consumed watermark and recoverable failure reason to authorized operators."
+      ],
+      "definitionOfDone": [
+        "Named artifacts are committed in the owning repository; focused tests and CI pass.",
+        "Contract owner approves field/action partition matrix and retry/compensation behavior.",
+        "Jira has PR, tests, denial/replay evidence, and rollback/repair instructions; this task does not claim the runtime feature already exists."
+      ],
+      "evidence": [
+        "PR and CI URL for the owning repository.",
+        "Unit/integration result with positive, denial and replay/reordering fixture.",
+        "Contract compatibility and migration/rollback note where applicable."
+      ],
+      "labels": [
+        "repo-frontend-customer",
+        "roadmap-v1-3",
+        "source-vs-e23-s04-st06"
+      ],
+      "decisionNoteVi": "Only frontend_customer owns this slice. Finance alone owns the canonical customer trust facts, policy, score and waiver decision; no new policy values are approved by this spec.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "sourceId": "VS-E23-S04-ST07",
+      "summary": "[VS-E23-S04-ST07] Version deposit-decision, waiver and Finance zero-obligation contract",
+      "actor": "Authorized internal producer, reviewer or implementation engineer",
+      "outcome": "Contracts pins the E23 Finance decision state machine and E08/E09 handoff so only final paid or final waived state can confirm booking.",
+      "context": "E08-S03-ST02 owns final reservation confirmation gate; E19-S07-ST03/-ST04 consume Finance payable amount and Payment creates intent only for non-waived current instructions.",
+      "inScope": [
+        "Define authenticated decision/request/review query/command with own-booking reference, actor, policy/profile/quote version, current amount/currency, expiry and stable state/reason codes.",
+        "Map REQUIRED, REVIEW_AVAILABLE, REVIEW_PENDING, WAIVED_AUTO, WAIVED_MANUAL, REQUIRED_BY_REVIEW, EXPIRED, CONSUMED to E08 VERIFIED_PAID/WAIVED_FINAL/PENDING/STALE; final waiver yields Finance amount 0.",
+        "Pin negative fixtures for switch ON/OFF, unassessed/low-score, blocker, stale projection, wrong customer/branch, quote change, double review, already paid/chargeback and pending payment intent.",
+        "Specify Finance reconciliation for payment-success/waiver race and cancellation of only unpaid Payment intents; no automatic refund of a successful transfer."
+      ],
+      "outOfScope": [
+        "Adding a second Finance/Booking trust policy or assuming client status is a settlement event."
+      ],
+      "repositories": [
+        "platform_contracts"
+      ],
+      "primaryRepository": "platform_contracts",
+      "repositorySlices": [
+        {
+          "repository": "platform_contracts",
+          "paths": [
+            "schemas/customer-trust/**",
+            "graphql/backoffice/**",
+            "fixtures/customer-trust/**"
+          ],
+          "artifacts": [
+            "versioned Finance decision and E08/E09 handoff schemas",
+            "state transition/authorization/paid-race fixtures",
+            "Postman/Newman flow contract notes"
+          ]
+        }
+      ],
+      "interfaces": [
+        "Version Finance GraphQL/internal decision API, E08 confirmation decision and E09 payable instruction statuses with owner, timeout and compatibility."
+      ],
+      "dataOwnership": [
+        "Contracts defines boundaries; Finance owns monetary deposit decision, Booking confirms, Payment owns intents."
+      ],
+      "stateMachine": [
+        "REQUIRED/REVIEW_AVAILABLE/REVIEW_PENDING -> final WAIVED_AUTO/WAIVED_MANUAL/REQUIRED_BY_REVIEW as policy permits; EXPIRED forbids consumption.",
+        "Only PAID final or WAIVED_FINAL may drive E08 confirmation; review pending is never a final state."
+      ],
+      "authorization": {
+        "actions": [
+          "finance:deposit:contract:publish"
+        ],
+        "dataPartitions": [
+          "CUSTOMER only for its own subject; ADMIN only with the authorized organization/site/branch and target-customer relationship; SYSTEM only for authenticated, purpose-bound service calls."
+        ],
+        "fieldGroups": [
+          "SUMMARY safe state; FINANCIAL own due/paid, TRUST_DETAIL risk reasons and INTERNAL_AUDIT review evidence require distinct access."
+        ]
+      },
+      "failureSemantics": [
+        "Reject missing grants and unrecognized subjects without disclosing existence or protected source facts.",
+        "Absent or stale source/identity/policy version must return explicit unavailable or unassessed state; never infer a positive trust outcome.",
+        "Do not log PII, detailed financial history, raw cleanliness notes, or signed URLs."
+      ],
+      "idempotencyConcurrency": [
+        "Deduplicate ingested events by owner, event ID, source revision and customer; repeated delivery cannot create new facts.",
+        "Externally retried writes use scoped idempotency key, request fingerprint and expected revision; concurrent conflicts expose a stable code.",
+        "Historical facts and decisions are append-only; correction publishes a linked compensating fact rather than overwriting the source."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E23-S03-ST07",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E08-S03-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E00-T03",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "fresh eligible customer and active switch ON/OFF",
+          "when": "contract fixtures run",
+          "then": "only ON returns automatic zero; OFF offers review, and final reviewer approval is distinct from pending request"
+        },
+        {
+          "id": "AC02",
+          "given": "low score, hard blocker, expired quote, other customer or already-successful payment",
+          "when": "negative fixtures run",
+          "then": "no unauthorized waiver, booking confirmation, fresh zero QR, or implicit paid refund occurs"
+        },
+        {
+          "id": "AC03",
+          "given": "duplicate command and simultaneous payment/waiver events",
+          "when": "replay fixture runs",
+          "then": "one final decision/Finance obligation revision wins, with auditable reconciliation and frozen booking snapshot"
+        }
+      ],
+      "tests": [
+        "Run the exact commands in testCases; add positive, cross-customer denial, unavailable-source, duplicate/reorder and compensation cases appropriate to this slice.",
+        "Attach machine-readable CI evidence and source-to-AC mapping; no simulated production approval or live secret is allowed."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm run validate:schemas",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E23-S04-ST07 focused CI output, denial/replay assertions and fixture version"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E23-S04-ST07 focused CI output, denial/replay assertions and fixture version"
+        }
+      ],
+      "observability": [
+        "Propagate correlation and source event IDs across the named boundary; record bounded result/replay/stale-source counters without customer PII.",
+        "Expose the source version, last successfully consumed watermark and recoverable failure reason to authorized operators."
+      ],
+      "definitionOfDone": [
+        "Named artifacts are committed in the owning repository; focused tests and CI pass.",
+        "Contract owner approves field/action partition matrix and retry/compensation behavior.",
+        "Jira has PR, tests, denial/replay evidence, and rollback/repair instructions; this task does not claim the runtime feature already exists."
+      ],
+      "evidence": [
+        "PR and CI URL for the owning repository.",
+        "Unit/integration result with positive, denial and replay/reordering fixture.",
+        "Contract compatibility and migration/rollback note where applicable."
+      ],
+      "labels": [
+        "repo-platform-contracts",
+        "roadmap-v1-3",
+        "source-vs-e23-s04-st07",
+        "policy-configurable"
       ],
       "decisionNoteVi": "Only platform_contracts owns this slice. Finance alone owns the canonical customer trust facts, policy, score and waiver decision; no new policy values are approved by this spec.",
       "specStatus": "executable",
