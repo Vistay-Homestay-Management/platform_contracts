@@ -72711,8 +72711,8 @@
       "summary": "[VS-E23] Customer Trust, Deposit Eligibility and Appeals",
       "manageDescription": true,
       "actor": "Customer, booking employee, finance risk reviewer, or operations reviewer",
-      "outcome": "Customer Trust, Deposit Eligibility and Appeals is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This epic is part of the ViStay VS-E23 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "Finance owns the versioned trust ledger, scoring policy, profile, waiver decision and appeals; six stories separate immutable source facts, policy, projection, deposit, appeals and scoped investigation.",
+      "context": "This is delivery planning, not a claim that trust tables, endpoints or weights have been implemented. The epic baseline proposes initial score weights/thresholds subject to effective-dated policy approval; every downstream source retains its own authority.",
       "inScope": [
         "Implement and verify: Customer Trust, Deposit Eligibility and Appeals.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -72828,7 +72828,7 @@
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
       "jiraKey": "SCRUM-612",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "web",
       "dispatchable": false,
       "testCases": [],
@@ -72843,8 +72843,8 @@
       "parentSourceId": "VS-E23",
       "manageDescription": true,
       "actor": "Customer, booking employee, finance risk reviewer, or operations reviewer",
-      "outcome": "Normalize immutable customer trust facts from source services is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E23 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "S01 normalizes payment, booking, cleanliness and identity source evidence into an append-only Finance trust fact ledger, with read-only UI provenance and versioned contracts.",
+      "context": "Cleaning scores must be supplied by the external employee system through Operations, and stayover vs checkout cleanliness remain distinguishable. No customer or Admin browser may author trust facts.",
       "inScope": [
         "Implement and verify: Normalize immutable customer trust facts from source services.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -72969,7 +72969,7 @@
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
       "jiraKey": "SCRUM-613",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "web",
       "dispatchable": false,
       "testCases": [],
@@ -72980,21 +72980,20 @@
     {
       "sourceId": "VS-E23-S01-ST01",
       "issueType": "Subtask",
-      "summary": "[VS-E23-S01-ST01] service_finance delivery slice for Normalize immutable customer trust facts from source services",
+      "summary": "[VS-E23-S01-ST01] Ingest append-only customer trust facts in Finance",
       "parentSourceId": "VS-E23-S01",
       "manageDescription": true,
-      "actor": "Repository ServiceOwner and implementing engineer",
-      "outcome": "service_finance supplies its bounded contract, implementation, tests, and evidence for parent VS-E23-S01.",
-      "context": "This is the service_finance implementation slice of VS-E23-S01. It must not duplicate authority assigned to another repository.",
+      "actor": "Authorized internal producer, reviewer or implementation engineer",
+      "outcome": "Finance stores immutable customer-scoped facts from authenticated source owners without calculating a second source ledger in User or Booking.",
+      "context": "E23 assigns normalized trust-fact ownership to Finance. Payment reversals and overdue obligations originate in Finance; Booking supplies completed stays/no-shows, Operations supplies signed cleanliness assessments, User supplies verified identity.",
       "inScope": [
-        "Change only service_finance plus generated artifacts explicitly owned by it.",
-        "Implement the service_finance responsibilities and interfaces stated in parent VS-E23-S01.",
-        "Attach focused unit/integration evidence and compatibility or rollback notes."
+        "Define durable source-event inbox and canonical fact identity (source owner, event ID, revision, responsible customer, category, occurredAt, evidence reference).",
+        "Normalize payment/booking/cleanliness/conduct facts with stayover versus checkout evidence explicitly separated; record pending dispute without final point deduction.",
+        "Append compensating correction referencing the original fact; retain a source watermark, hard-blocker provenance, reprocessing and non-destructive migration."
       ],
       "outOfScope": [
-        "Implementing another repository ownership slice.",
-        "Cross-service database access or copying an authoritative aggregate.",
-        "Closing the parent without end-to-end and Postman/Newman evidence."
+        "Direct reads of Booking/Operations/User tables.",
+        "Inventing cleanliness evidence or adjusting published policy/score as part of ingestion."
       ],
       "businessRules": [
         "The trust subject is the responsible customer account, not the employee who creates the booking; an absent customer account is UNASSESSED and requires full deposit.",
@@ -73010,82 +73009,89 @@
         "service_finance"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Consume versioned producer events through authenticated inbox with explicit schema version, subject ID, source revision and source evidence ID.",
+        "Reject unrecognized/mismatched customer identities and source owners with stable codes; report lag and rejected events."
       ],
       "dataOwnership": [
-        "Finance owns normalized trust facts, effective-dated scoring policies, trust profile/tier/confidence, deposit decision, and appeal ledger; Operations owns raw cleanliness evidence; User owns identity; Booking freezes the decision snapshot."
+        "Finance owns normalized immutable facts; each producer retains raw evidence and must authorize dereference."
       ],
       "stateMachine": [
-        "Model legal states and transitions for service_finance delivery slice for Normalize immutable customer trust facts from source services; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "RECEIVED -> VALIDATED -> APPLIED or QUARANTINED; retries never rewrite an APPLIED fact.",
+        "A correction produces a new LINKED_REVERSAL fact; a disputed negative fact is flagged pending and blocks automatic waiver until resolved."
       ],
       "authorization": {
         "actions": [
-          "vs-e23-s01-st01:view",
-          "vs-e23-s01-st01:manage"
+          "trust:fact:ingest",
+          "trust:fact:read-provenance"
         ],
         "dataPartitions": [
-          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+          "CUSTOMER only for its own subject; ADMIN only with the authorized organization/site/branch and target-customer relationship; SYSTEM only for authenticated, purpose-bound service calls."
         ],
         "fieldGroups": [
-          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+          "SUMMARY excludes raw source evidence; TRUST_DETAIL and FINANCIAL require separate grants; INTERNAL_AUDIT controls source payload/replay."
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Reject missing grants and unrecognized subjects without disclosing existence or protected source facts.",
+        "Absent or stale source/identity/policy version must return explicit unavailable or unassessed state; never infer a positive trust outcome.",
+        "Do not log PII, detailed financial history, raw cleanliness notes, or signed URLs."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Deduplicate ingested events by owner, event ID, source revision and customer; repeated delivery cannot create new facts.",
+        "Externally retried writes use scoped idempotency key, request fingerprint and expected revision; concurrent conflicts expose a stable code.",
+        "Historical facts and decisions are append-only; correction publishes a linked compensating fact rather than overwriting the source."
       ],
-      "dependencies": [],
+      "dependencies": [
+        {
+          "sourceId": "VS-E23-S01-ST07",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E09-T08",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E12-S07",
+          "relation": "is-blocked-by"
+        }
+      ],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for service_finance delivery slice for Normalize immutable customer trust facts from source services",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "authenticated payment, completed-booking and two different cleaning events for one responsible customer",
+          "when": "the inbox processes each event",
+          "then": "Finance stores four uniquely sourced facts, distinct stayover/checkout categories and one committed outbox transition per fact"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "wrong producer, absent customer or cross-customer evidence reference",
+          "when": "normalization runs",
+          "then": "input is quarantined without creating an eligible profile or exposing source payload"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "same event is retried or an earlier revision/correction arrives out of order",
+          "when": "replay runs",
+          "then": "only the valid append-only revision graph survives and the original source fact remains immutable"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Run the exact commands in testCases; add positive, cross-customer denial, unavailable-source, duplicate/reorder and compensation cases appropriate to this slice.",
+        "Attach machine-readable CI evidence and source-to-AC mapping; no simulated production approval or live secret is allowed."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Propagate correlation and source event IDs across the named boundary; record bounded result/replay/stale-source counters without customer PII.",
+        "Expose the source version, last successfully consumed watermark and recoverable failure reason to authorized operators."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "Named artifacts are committed in the owning repository; focused tests and CI pass.",
+        "Contract owner approves field/action partition matrix and retry/compensation behavior.",
+        "Jira has PR, tests, denial/replay evidence, and rollback/repair instructions; this task does not claim the runtime feature already exists."
       ],
       "evidence": [
-        "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "PR and CI URL for the owning repository.",
+        "Unit/integration result with positive, denial and replay/reordering fixture.",
+        "Contract compatibility and migration/rollback note where applicable."
       ],
       "externalBlockers": [],
       "labels": [
@@ -73093,34 +73099,71 @@
         "roadmap-v1-3",
         "source-vs-e23-s01-st01"
       ],
-      "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo service_finance cho VS-E23-S01; không được lấy quyền sở hữu dữ liệu của service khác.",
+      "decisionNoteVi": "Only service_finance owns this slice. Finance alone owns the canonical customer trust facts, policy, score and waiver decision; no new policy values are approved by this spec.",
       "jiraKey": "SCRUM-614",
-      "specStatus": "needs-refinement",
+      "specStatus": "executable",
       "workKind": "service",
-      "dispatchable": false,
-      "testCases": [],
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*Trust*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E23-S01-ST01 focused CI output, denial/replay assertions and fixture version"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E23-S01-ST01 focused CI output, denial/replay assertions and fixture version"
+        }
+      ],
       "decisions": [],
       "implementationBlockers": [],
-      "activationBlockers": []
+      "activationBlockers": [],
+      "primaryRepository": "service_finance",
+      "repositorySlices": [
+        {
+          "repository": "service_finance",
+          "paths": [
+            "src/main/java/**",
+            "src/main/resources/**",
+            "src/test/java/**"
+          ],
+          "artifacts": [
+            "trust-fact/inbox persistence and outbox",
+            "normalizer, source adapter and migration",
+            "duplicate/reorder/compensation integration tests"
+          ]
+        }
+      ]
     },
     {
       "sourceId": "VS-E23-S01-ST02",
       "issueType": "Subtask",
-      "summary": "[VS-E23-S01-ST02] service_operations delivery slice for Normalize immutable customer trust facts from source services",
+      "summary": "[VS-E23-S01-ST02] Publish separately signed stayover and checkout care evidence",
       "parentSourceId": "VS-E23-S01",
       "manageDescription": true,
-      "actor": "Repository ServiceOwner and implementing engineer",
-      "outcome": "service_operations supplies its bounded contract, implementation, tests, and evidence for parent VS-E23-S01.",
-      "context": "This is the service_operations implementation slice of VS-E23-S01. It must not duplicate authority assigned to another repository.",
+      "actor": "Authorized internal producer, reviewer or implementation engineer",
+      "outcome": "Operations exports authorized, revisioned guest-care evidence to Finance without assuming raw cleaning notes equal guest fault.",
+      "context": "E12-S07 supplies external employee-system assessments; missing or unauthenticated external input is not evidence. Housekeeping stayover and checkout are distinct kinds with separately configurable points in Finance policy.",
       "inScope": [
-        "Change only service_operations plus generated artifacts explicitly owned by it.",
-        "Implement the service_operations responsibilities and interfaces stated in parent VS-E23-S01.",
-        "Attach focused unit/integration evidence and compatibility or rollback notes."
+        "Map external employee-system stayover/checkout assessment to booking, responsible customer, assessor identity, evidence type and event revision.",
+        "Expose a reviewable correction/refutation for erroneous cleaning evidence and emit an outbox event; suppress cleaning-staff operational notes not attributable to the guest.",
+        "Emit no event when assessment source is unauthenticated or booking/customer ownership cannot be proven."
       ],
       "outOfScope": [
-        "Implementing another repository ownership slice.",
-        "Cross-service database access or copying an authoritative aggregate.",
-        "Closing the parent without end-to-end and Postman/Newman evidence."
+        "Calculating scores or copying Finance policy into Operations.",
+        "Treating the presence of a dirty room as verified guest misconduct without assessor provenance."
       ],
       "businessRules": [
         "The trust subject is the responsible customer account, not the employee who creates the booking; an absent customer account is UNASSESSED and requires full deposit.",
@@ -73136,82 +73179,82 @@
         "service_operations"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Version and publish guest-care fact/correction events from the authorized Operations assessment with source event ID and signed origin."
       ],
       "dataOwnership": [
-        "Finance owns normalized trust facts, effective-dated scoring policies, trust profile/tier/confidence, deposit decision, and appeal ledger; Operations owns raw cleanliness evidence; User owns identity; Booking freezes the decision snapshot."
+        "Operations owns raw assessment and source attribution; Finance owns trust category and score."
       ],
       "stateMachine": [
-        "Model legal states and transitions for service_operations delivery slice for Normalize immutable customer trust facts from source services; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "EVIDENCE_ACCEPTED -> PUBLISHED or CORRECTED_BY_LINKED_EVENT; rejected external payload is not published."
       ],
       "authorization": {
         "actions": [
-          "vs-e23-s01-st02:view",
-          "vs-e23-s01-st02:manage"
+          "operations:care-evidence:publish"
         ],
         "dataPartitions": [
-          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+          "CUSTOMER only for its own subject; ADMIN only with the authorized organization/site/branch and target-customer relationship; SYSTEM only for authenticated, purpose-bound service calls."
         ],
         "fieldGroups": [
-          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+          "SUMMARY only for event status; TRUST_DETAIL/DOCUMENT for assessment provenance; raw notes stay restricted."
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Reject missing grants and unrecognized subjects without disclosing existence or protected source facts.",
+        "Absent or stale source/identity/policy version must return explicit unavailable or unassessed state; never infer a positive trust outcome.",
+        "Do not log PII, detailed financial history, raw cleanliness notes, or signed URLs."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Deduplicate ingested events by owner, event ID, source revision and customer; repeated delivery cannot create new facts.",
+        "Externally retried writes use scoped idempotency key, request fingerprint and expected revision; concurrent conflicts expose a stable code.",
+        "Historical facts and decisions are append-only; correction publishes a linked compensating fact rather than overwriting the source."
       ],
-      "dependencies": [],
+      "dependencies": [
+        {
+          "sourceId": "VS-E12-S07",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E23-S01-ST07",
+          "relation": "is-blocked-by"
+        }
+      ],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for service_operations delivery slice for Normalize immutable customer trust facts from source services",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "two verified assessments, one stayover and one checkout, attributable to the same booking",
+          "when": "Operations publishes events",
+          "then": "the two types, evidence references and revisions are distinct and Finance can consume them"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "external assessor unsigned, booking mismatch or guest attribution uncertain",
+          "when": "event mapping runs",
+          "then": "no trust event is emitted and a repairable reason is recorded"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "assessment is amended and same outbox event is redelivered",
+          "when": "Finance consumes it",
+          "then": "only one linked correction is applied and the first assessment stays auditable"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Run the exact commands in testCases; add positive, cross-customer denial, unavailable-source, duplicate/reorder and compensation cases appropriate to this slice.",
+        "Attach machine-readable CI evidence and source-to-AC mapping; no simulated production approval or live secret is allowed."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Propagate correlation and source event IDs across the named boundary; record bounded result/replay/stale-source counters without customer PII.",
+        "Expose the source version, last successfully consumed watermark and recoverable failure reason to authorized operators."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "Named artifacts are committed in the owning repository; focused tests and CI pass.",
+        "Contract owner approves field/action partition matrix and retry/compensation behavior.",
+        "Jira has PR, tests, denial/replay evidence, and rollback/repair instructions; this task does not claim the runtime feature already exists."
       ],
       "evidence": [
-        "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "PR and CI URL for the owning repository.",
+        "Unit/integration result with positive, denial and replay/reordering fixture.",
+        "Contract compatibility and migration/rollback note where applicable."
       ],
       "externalBlockers": [],
       "labels": [
@@ -73219,34 +73262,69 @@
         "roadmap-v1-3",
         "source-vs-e23-s01-st02"
       ],
-      "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo service_operations cho VS-E23-S01; không được lấy quyền sở hữu dữ liệu của service khác.",
+      "decisionNoteVi": "Only service_operations owns this slice. Finance alone owns the canonical customer trust facts, policy, score and waiver decision; no new policy values are approved by this spec.",
       "jiraKey": "SCRUM-615",
-      "specStatus": "needs-refinement",
-      "workKind": "operations",
-      "dispatchable": false,
-      "testCases": [],
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*Trust*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E23-S01-ST02 focused CI output, denial/replay assertions and fixture version"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E23-S01-ST02 focused CI output, denial/replay assertions and fixture version"
+        }
+      ],
       "decisions": [],
       "implementationBlockers": [],
-      "activationBlockers": []
+      "activationBlockers": [],
+      "primaryRepository": "service_operations",
+      "repositorySlices": [
+        {
+          "repository": "service_operations",
+          "paths": [
+            "src/main/java/**",
+            "src/main/resources/**",
+            "src/test/java/**"
+          ],
+          "artifacts": [
+            "stayover/checkout assessment outbound event",
+            "assessment attribution and correction tests"
+          ]
+        }
+      ]
     },
     {
       "sourceId": "VS-E23-S01-ST03",
       "issueType": "Subtask",
-      "summary": "[VS-E23-S01-ST03] service_booking delivery slice for Normalize immutable customer trust facts from source services",
+      "summary": "[VS-E23-S01-ST03] Publish completed-stay cancellation and no-show trust evidence",
       "parentSourceId": "VS-E23-S01",
       "manageDescription": true,
-      "actor": "Repository ServiceOwner and implementing engineer",
-      "outcome": "service_booking supplies its bounded contract, implementation, tests, and evidence for parent VS-E23-S01.",
-      "context": "This is the service_booking implementation slice of VS-E23-S01. It must not duplicate authority assigned to another repository.",
+      "actor": "Authorized internal producer, reviewer or implementation engineer",
+      "outcome": "Booking publishes responsible-customer booking events for Finance trust normalization while retaining booking-state authority.",
+      "context": "Staff creator is not the trust subject. A confirmed booking does not imply a completed stay; no-show and cancellation are distinct and may be disputed.",
       "inScope": [
-        "Change only service_booking plus generated artifacts explicitly owned by it.",
-        "Implement the service_booking responsibilities and interfaces stated in parent VS-E23-S01.",
-        "Attach focused unit/integration evidence and compatibility or rollback notes."
+        "Emit stable completed-stay and no-show events with booking ID, responsible customer ID, stay end and source revision.",
+        "Emit cancellation/adjustment and subsequent correction events with unambiguous linked IDs and event ordering.",
+        "Reject events without a responsible customer association; keep employee creator as provenance only."
       ],
       "outOfScope": [
-        "Implementing another repository ownership slice.",
-        "Cross-service database access or copying an authoritative aggregate.",
-        "Closing the parent without end-to-end and Postman/Newman evidence."
+        "Mutating Finance score or converting a booking quote into a trust fact."
       ],
       "businessRules": [
         "The trust subject is the responsible customer account, not the employee who creates the booking; an absent customer account is UNASSESSED and requires full deposit.",
@@ -73262,82 +73340,78 @@
         "service_booking"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Version Booking completed/cancelled/no-show and linked correction events; use transactional outbox and stable booking revision."
       ],
       "dataOwnership": [
-        "Finance owns normalized trust facts, effective-dated scoring policies, trust profile/tier/confidence, deposit decision, and appeal ledger; Operations owns raw cleanliness evidence; User owns identity; Booking freezes the decision snapshot."
+        "Booking owns booking state and booking/customer attribution; Finance owns interpreted trust facts."
       ],
       "stateMachine": [
-        "Model legal states and transitions for service_booking delivery slice for Normalize immutable customer trust facts from source services; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "Only authoritative booking transition emits a fact; corrected source state emits a linked new event rather than changing the original."
       ],
       "authorization": {
         "actions": [
-          "vs-e23-s01-st03:view",
-          "vs-e23-s01-st03:manage"
+          "booking:trust-evidence:publish"
         ],
         "dataPartitions": [
-          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+          "CUSTOMER only for its own subject; ADMIN only with the authorized organization/site/branch and target-customer relationship; SYSTEM only for authenticated, purpose-bound service calls."
         ],
         "fieldGroups": [
-          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+          "SUMMARY includes booking reference; INTERNAL_AUDIT alone includes source revision/history."
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Reject missing grants and unrecognized subjects without disclosing existence or protected source facts.",
+        "Absent or stale source/identity/policy version must return explicit unavailable or unassessed state; never infer a positive trust outcome.",
+        "Do not log PII, detailed financial history, raw cleanliness notes, or signed URLs."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Deduplicate ingested events by owner, event ID, source revision and customer; repeated delivery cannot create new facts.",
+        "Externally retried writes use scoped idempotency key, request fingerprint and expected revision; concurrent conflicts expose a stable code.",
+        "Historical facts and decisions are append-only; correction publishes a linked compensating fact rather than overwriting the source."
       ],
-      "dependencies": [],
+      "dependencies": [
+        {
+          "sourceId": "VS-E23-S01-ST07",
+          "relation": "is-blocked-by"
+        }
+      ],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for service_booking delivery slice for Normalize immutable customer trust facts from source services",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "a staff-created booking assigned to a customer is completed",
+          "when": "booking outbox publishes",
+          "then": "the customer, not the employee, is the trust subject and a completed-stay fact is available"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "no responsible customer, or cancelled booking represented as completed",
+          "when": "producer attempts publication",
+          "then": "no completed-stay trust event is emitted"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "a no-show is disputed or event is redelivered after correction",
+          "when": "source replays events",
+          "then": "Finance can distinguish original, dispute and linked correction without double-counting"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Run the exact commands in testCases; add positive, cross-customer denial, unavailable-source, duplicate/reorder and compensation cases appropriate to this slice.",
+        "Attach machine-readable CI evidence and source-to-AC mapping; no simulated production approval or live secret is allowed."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Propagate correlation and source event IDs across the named boundary; record bounded result/replay/stale-source counters without customer PII.",
+        "Expose the source version, last successfully consumed watermark and recoverable failure reason to authorized operators."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "Named artifacts are committed in the owning repository; focused tests and CI pass.",
+        "Contract owner approves field/action partition matrix and retry/compensation behavior.",
+        "Jira has PR, tests, denial/replay evidence, and rollback/repair instructions; this task does not claim the runtime feature already exists."
       ],
       "evidence": [
-        "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "PR and CI URL for the owning repository.",
+        "Unit/integration result with positive, denial and replay/reordering fixture.",
+        "Contract compatibility and migration/rollback note where applicable."
       ],
       "externalBlockers": [],
       "labels": [
@@ -73345,34 +73419,70 @@
         "roadmap-v1-3",
         "source-vs-e23-s01-st03"
       ],
-      "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo service_booking cho VS-E23-S01; không được lấy quyền sở hữu dữ liệu của service khác.",
+      "decisionNoteVi": "Only service_booking owns this slice. Finance alone owns the canonical customer trust facts, policy, score and waiver decision; no new policy values are approved by this spec.",
       "jiraKey": "SCRUM-616",
-      "specStatus": "needs-refinement",
+      "specStatus": "executable",
       "workKind": "service",
-      "dispatchable": false,
-      "testCases": [],
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*Trust*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E23-S01-ST03 focused CI output, denial/replay assertions and fixture version"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E23-S01-ST03 focused CI output, denial/replay assertions and fixture version"
+        }
+      ],
       "decisions": [],
       "implementationBlockers": [],
-      "activationBlockers": []
+      "activationBlockers": [],
+      "primaryRepository": "service_booking",
+      "repositorySlices": [
+        {
+          "repository": "service_booking",
+          "paths": [
+            "src/main/java/**",
+            "src/main/resources/**",
+            "src/test/java/**"
+          ],
+          "artifacts": [
+            "outbox booking trust events",
+            "responsible-customer attribution fixture",
+            "cancel/no-show/replay tests"
+          ]
+        }
+      ]
     },
     {
       "sourceId": "VS-E23-S01-ST04",
       "issueType": "Subtask",
-      "summary": "[VS-E23-S01-ST04] service_user delivery slice for Normalize immutable customer trust facts from source services",
+      "summary": "[VS-E23-S01-ST04] Expose verified customer identity and account linkage as trust gate",
       "parentSourceId": "VS-E23-S01",
       "manageDescription": true,
-      "actor": "Repository ServiceOwner and implementing engineer",
-      "outcome": "service_user supplies its bounded contract, implementation, tests, and evidence for parent VS-E23-S01.",
-      "context": "This is the service_user implementation slice of VS-E23-S01. It must not duplicate authority assigned to another repository.",
+      "actor": "Authorized internal producer, reviewer or implementation engineer",
+      "outcome": "User supplies versioned customer identity/verified-email and account-linkage assertions, never its own score.",
+      "context": "Unassessed customers and staff-created bookings must not be assigned a staff trust profile; verified identity/history affects confidence and eligibility, not score points.",
       "inScope": [
-        "Change only service_user plus generated artifacts explicitly owned by it.",
-        "Implement the service_user responsibilities and interfaces stated in parent VS-E23-S01.",
-        "Attach focused unit/integration evidence and compatibility or rollback notes."
+        "Publish verified-email status, customer account subject and revocation/merge change with trusted identity source revision.",
+        "Ensure only a customer account can be associated with a trust subject; propagate revocations as linked events.",
+        "Provide authorized purpose-bound identity lookup for Finance without exposing Keycloak credentials or cross-customer PII."
       ],
       "outOfScope": [
-        "Implementing another repository ownership slice.",
-        "Cross-service database access or copying an authoritative aggregate.",
-        "Closing the parent without end-to-end and Postman/Newman evidence."
+        "Creating trust tables or assigning Finance tier/waiver in User."
       ],
       "businessRules": [
         "The trust subject is the responsible customer account, not the employee who creates the booking; an absent customer account is UNASSESSED and requires full deposit.",
@@ -73388,82 +73498,78 @@
         "service_user"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Purpose-scoped customer identity assertion and verification-change event consumed by Finance with source revision."
       ],
       "dataOwnership": [
-        "Finance owns normalized trust facts, effective-dated scoring policies, trust profile/tier/confidence, deposit decision, and appeal ledger; Operations owns raw cleanliness evidence; User owns identity; Booking freezes the decision snapshot."
+        "User owns account linkage and verified identity, Keycloak owns authentication; Finance owns trust profile."
       ],
       "stateMachine": [
-        "Model legal states and transitions for service_user delivery slice for Normalize immutable customer trust facts from source services; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "UNVERIFIED -> VERIFIED -> REVOKED as new revisioned assertions; no hard-delete of identity provenance."
       ],
       "authorization": {
         "actions": [
-          "vs-e23-s01-st04:view",
-          "vs-e23-s01-st04:manage"
+          "user:identity:trust-assert"
         ],
         "dataPartitions": [
-          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+          "CUSTOMER only for its own subject; ADMIN only with the authorized organization/site/branch and target-customer relationship; SYSTEM only for authenticated, purpose-bound service calls."
         ],
         "fieldGroups": [
-          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+          "SUMMARY signals verified flag only; PII and INTERNAL_AUDIT are restricted and not shipped in trust events."
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Reject missing grants and unrecognized subjects without disclosing existence or protected source facts.",
+        "Absent or stale source/identity/policy version must return explicit unavailable or unassessed state; never infer a positive trust outcome.",
+        "Do not log PII, detailed financial history, raw cleanliness notes, or signed URLs."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Deduplicate ingested events by owner, event ID, source revision and customer; repeated delivery cannot create new facts.",
+        "Externally retried writes use scoped idempotency key, request fingerprint and expected revision; concurrent conflicts expose a stable code.",
+        "Historical facts and decisions are append-only; correction publishes a linked compensating fact rather than overwriting the source."
       ],
-      "dependencies": [],
+      "dependencies": [
+        {
+          "sourceId": "VS-E23-S01-ST07",
+          "relation": "is-blocked-by"
+        }
+      ],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for service_user delivery slice for Normalize immutable customer trust facts from source services",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "verified customer email and a staff-created booking linked to that customer",
+          "when": "Finance requests identity assertion",
+          "then": "customer identity and verification revision are returned, with no employee score created"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "employee subject, unrecognized customer or missing service grant",
+          "when": "lookup is attempted",
+          "then": "request fails closed without any cross-account email or trust disclosure"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "verification is revoked or accounts are corrected",
+          "when": "identity event is replayed",
+          "then": "Finance sees a newer revision and invalidates stale eligibility without replacing historical assertions"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Run the exact commands in testCases; add positive, cross-customer denial, unavailable-source, duplicate/reorder and compensation cases appropriate to this slice.",
+        "Attach machine-readable CI evidence and source-to-AC mapping; no simulated production approval or live secret is allowed."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Propagate correlation and source event IDs across the named boundary; record bounded result/replay/stale-source counters without customer PII.",
+        "Expose the source version, last successfully consumed watermark and recoverable failure reason to authorized operators."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "Named artifacts are committed in the owning repository; focused tests and CI pass.",
+        "Contract owner approves field/action partition matrix and retry/compensation behavior.",
+        "Jira has PR, tests, denial/replay evidence, and rollback/repair instructions; this task does not claim the runtime feature already exists."
       ],
       "evidence": [
-        "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "PR and CI URL for the owning repository.",
+        "Unit/integration result with positive, denial and replay/reordering fixture.",
+        "Contract compatibility and migration/rollback note where applicable."
       ],
       "externalBlockers": [],
       "labels": [
@@ -73471,34 +73577,68 @@
         "roadmap-v1-3",
         "source-vs-e23-s01-st04"
       ],
-      "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo service_user cho VS-E23-S01; không được lấy quyền sở hữu dữ liệu của service khác.",
+      "decisionNoteVi": "Only service_user owns this slice. Finance alone owns the canonical customer trust facts, policy, score and waiver decision; no new policy values are approved by this spec.",
       "jiraKey": "SCRUM-617",
-      "specStatus": "needs-refinement",
+      "specStatus": "executable",
       "workKind": "service",
-      "dispatchable": false,
-      "testCases": [],
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*Trust*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E23-S01-ST04 focused CI output, denial/replay assertions and fixture version"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E23-S01-ST04 focused CI output, denial/replay assertions and fixture version"
+        }
+      ],
       "decisions": [],
       "implementationBlockers": [],
-      "activationBlockers": []
+      "activationBlockers": [],
+      "primaryRepository": "service_user",
+      "repositorySlices": [
+        {
+          "repository": "service_user",
+          "paths": [
+            "src/main/java/**",
+            "src/main/resources/**",
+            "src/test/java/**"
+          ],
+          "artifacts": [
+            "identity assertion versioned event/lookup",
+            "customer-vs-employee and verification-revocation tests"
+          ]
+        }
+      ]
     },
     {
       "sourceId": "VS-E23-S01-ST05",
       "issueType": "Subtask",
-      "summary": "[VS-E23-S01-ST05] frontend_admin delivery slice for Normalize immutable customer trust facts from source services",
+      "summary": "[VS-E23-S01-ST05] Show restricted trust source provenance in Admin Web and Mobile",
       "parentSourceId": "VS-E23-S01",
       "manageDescription": true,
-      "actor": "Repository ServiceOwner and implementing engineer",
-      "outcome": "frontend_admin supplies its bounded contract, implementation, tests, and evidence for parent VS-E23-S01.",
-      "context": "This is the frontend_admin implementation slice of VS-E23-S01. It must not duplicate authority assigned to another repository.",
+      "actor": "Authorized customer or backoffice operator",
+      "outcome": "An authorized reviewer can distinguish payment, booking and two cleanliness sources and missing provenance without raw cross-customer disclosure.",
+      "context": "This is a read-only investigation view of Finance projections; Admin cannot create raw evidence in a browser.",
       "inScope": [
-        "Change only frontend_admin plus generated artifacts explicitly owned by it.",
-        "Implement the frontend_admin responsibilities and interfaces stated in parent VS-E23-S01.",
-        "Attach focused unit/integration evidence and compatibility or rollback notes."
+        "Add Admin Web and Mobile read-only evidence provenance with source kind, timestamp, freshness and restricted redacted detail.",
+        "Display missing, disputed, stale and unavailable evidence distinctly and link an authorized follow-up investigation."
       ],
       "outOfScope": [
-        "Implementing another repository ownership slice.",
-        "Cross-service database access or copying an authoritative aggregate.",
-        "Closing the parent without end-to-end and Postman/Newman evidence."
+        "A score editor, raw assessment publisher or another trust aggregation in frontend_admin."
       ],
       "businessRules": [
         "The trust subject is the responsible customer account, not the employee who creates the booking; an absent customer account is UNASSESSED and requires full deposit.",
@@ -73514,82 +73654,78 @@
         "frontend_admin"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Consume Finance evidence summary contract, requesting TRUST_DETAIL only after explicit grant."
       ],
       "dataOwnership": [
-        "Finance owns normalized trust facts, effective-dated scoring policies, trust profile/tier/confidence, deposit decision, and appeal ledger; Operations owns raw cleanliness evidence; User owns identity; Booking freezes the decision snapshot."
+        "Finance is source of canonical fact detail; Admin keeps no authoritative scores or raw cleanliness documents."
       ],
       "stateMachine": [
-        "Model legal states and transitions for frontend_admin delivery slice for Normalize immutable customer trust facts from source services; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "LOADING -> AVAILABLE or RESTRICTED/STALE/UNAVAILABLE; these UI states never create a fact."
       ],
       "authorization": {
         "actions": [
-          "vs-e23-s01-st05:view",
-          "vs-e23-s01-st05:manage"
+          "trust:evidence:view"
         ],
         "dataPartitions": [
-          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+          "CUSTOMER only for its own subject; ADMIN only with the authorized organization/site/branch and target-customer relationship; SYSTEM only for authenticated, purpose-bound service calls."
         ],
         "fieldGroups": [
-          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+          "SUMMARY includes source kind/status only; TRUST_DETAIL, FINANCIAL and INTERNAL_AUDIT are filtered by Finance."
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Reject missing grants and unrecognized subjects without disclosing existence or protected source facts.",
+        "Absent or stale source/identity/policy version must return explicit unavailable or unassessed state; never infer a positive trust outcome.",
+        "Do not log PII, detailed financial history, raw cleanliness notes, or signed URLs."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Deduplicate ingested events by owner, event ID, source revision and customer; repeated delivery cannot create new facts.",
+        "Externally retried writes use scoped idempotency key, request fingerprint and expected revision; concurrent conflicts expose a stable code.",
+        "Historical facts and decisions are append-only; correction publishes a linked compensating fact rather than overwriting the source."
       ],
-      "dependencies": [],
+      "dependencies": [
+        {
+          "sourceId": "VS-E23-S01-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for frontend_admin delivery slice for Normalize immutable customer trust facts from source services",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "authorized reviewer and four fact categories including both cleaning types",
+          "when": "Admin Web/Mobile displays evidence",
+          "then": "provenance and dispute status are distinguishable without exposing raw notes"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "foreign branch, no TRUST_DETAIL grant or unrelated customer",
+          "when": "reviewer opens record",
+          "then": "only permitted summary or non-enumerating denial appears"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "Finance is stale or unavailable",
+          "when": "screen refreshes",
+          "then": "clear stale/unavailable state appears and no previous projection is presented as current"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Run the exact commands in testCases; add positive, cross-customer denial, unavailable-source, duplicate/reorder and compensation cases appropriate to this slice.",
+        "Attach machine-readable CI evidence and source-to-AC mapping; no simulated production approval or live secret is allowed."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Propagate correlation and source event IDs across the named boundary; record bounded result/replay/stale-source counters without customer PII.",
+        "Expose the source version, last successfully consumed watermark and recoverable failure reason to authorized operators."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "Named artifacts are committed in the owning repository; focused tests and CI pass.",
+        "Contract owner approves field/action partition matrix and retry/compensation behavior.",
+        "Jira has PR, tests, denial/replay evidence, and rollback/repair instructions; this task does not claim the runtime feature already exists."
       ],
       "evidence": [
-        "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "PR and CI URL for the owning repository.",
+        "Unit/integration result with positive, denial and replay/reordering fixture.",
+        "Contract compatibility and migration/rollback note where applicable."
       ],
       "externalBlockers": [],
       "labels": [
@@ -73597,34 +73733,67 @@
         "roadmap-v1-3",
         "source-vs-e23-s01-st05"
       ],
-      "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo frontend_admin cho VS-E23-S01; không được lấy quyền sở hữu dữ liệu của service khác.",
+      "decisionNoteVi": "Only frontend_admin owns this slice. Finance alone owns the canonical customer trust facts, policy, score and waiver decision; no new policy values are approved by this spec.",
       "jiraKey": "SCRUM-618",
-      "specStatus": "needs-refinement",
+      "specStatus": "executable",
       "workKind": "web",
-      "dispatchable": false,
-      "testCases": [],
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm run typecheck",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E23-S01-ST05 focused CI output, denial/replay assertions and fixture version"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E23-S01-ST05 focused CI output, denial/replay assertions and fixture version"
+        }
+      ],
       "decisions": [],
       "implementationBlockers": [],
-      "activationBlockers": []
+      "activationBlockers": [],
+      "primaryRepository": "frontend_admin",
+      "repositorySlices": [
+        {
+          "repository": "frontend_admin",
+          "paths": [
+            "apps/web/src/**",
+            "apps/mobile/src/**"
+          ],
+          "artifacts": [
+            "read-only evidence timeline on web/mobile",
+            "permission/stale-state UI tests"
+          ]
+        }
+      ]
     },
     {
       "sourceId": "VS-E23-S01-ST06",
       "issueType": "Subtask",
-      "summary": "[VS-E23-S01-ST06] frontend_customer delivery slice for Normalize immutable customer trust facts from source services",
+      "summary": "[VS-E23-S01-ST06] Explain customer trust evidence categories without private source notes",
       "parentSourceId": "VS-E23-S01",
       "manageDescription": true,
-      "actor": "Repository ServiceOwner and implementing engineer",
-      "outcome": "frontend_customer supplies its bounded contract, implementation, tests, and evidence for parent VS-E23-S01.",
-      "context": "This is the frontend_customer implementation slice of VS-E23-S01. It must not duplicate authority assigned to another repository.",
+      "actor": "Authorized customer or backoffice operator",
+      "outcome": "Customer sees their own evidence categories, recorded status and dispute entry point, without other-customer or employee-private facts.",
+      "context": "This is transparency only; specific score explanations and appeal commands are scoped in S03/S05.",
       "inScope": [
-        "Change only frontend_customer plus generated artifacts explicitly owned by it.",
-        "Implement the frontend_customer responsibilities and interfaces stated in parent VS-E23-S01.",
-        "Attach focused unit/integration evidence and compatibility or rollback notes."
+        "Expose a self-only customer evidence category/status view for payment, bookings, stayover and checkout care.",
+        "Show pending dispute, pending correction and missing evidence with an explicit unavailable state."
       ],
       "outOfScope": [
-        "Implementing another repository ownership slice.",
-        "Cross-service database access or copying an authoritative aggregate.",
-        "Closing the parent without end-to-end and Postman/Newman evidence."
+        "Publishing cleanliness assessments, editing source records or implementing S05 appeal review."
       ],
       "businessRules": [
         "The trust subject is the responsible customer account, not the employee who creates the booking; an absent customer account is UNASSESSED and requires full deposit.",
@@ -73640,82 +73809,78 @@
         "frontend_customer"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Consume customer-self Finance summary with authenticated customer identity and no employee source payload."
       ],
       "dataOwnership": [
-        "Finance owns normalized trust facts, effective-dated scoring policies, trust profile/tier/confidence, deposit decision, and appeal ledger; Operations owns raw cleanliness evidence; User owns identity; Booking freezes the decision snapshot."
+        "Finance owns normalized fact; Customer UI stores no raw provenance or score."
       ],
       "stateMachine": [
-        "Model legal states and transitions for frontend_customer delivery slice for Normalize immutable customer trust facts from source services; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "LOADING -> OWN_SUMMARY or NOT_ASSESSED/UNAVAILABLE; pending dispute is a read-only badge."
       ],
       "authorization": {
         "actions": [
-          "vs-e23-s01-st06:view",
-          "vs-e23-s01-st06:manage"
+          "trust:own-evidence:view"
         ],
         "dataPartitions": [
-          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+          "CUSTOMER only for its own subject; ADMIN only with the authorized organization/site/branch and target-customer relationship; SYSTEM only for authenticated, purpose-bound service calls."
         ],
         "fieldGroups": [
-          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+          "SUMMARY only; raw staff notes, financial amounts and INTERNAL_AUDIT are never rendered."
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Reject missing grants and unrecognized subjects without disclosing existence or protected source facts.",
+        "Absent or stale source/identity/policy version must return explicit unavailable or unassessed state; never infer a positive trust outcome.",
+        "Do not log PII, detailed financial history, raw cleanliness notes, or signed URLs."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Deduplicate ingested events by owner, event ID, source revision and customer; repeated delivery cannot create new facts.",
+        "Externally retried writes use scoped idempotency key, request fingerprint and expected revision; concurrent conflicts expose a stable code.",
+        "Historical facts and decisions are append-only; correction publishes a linked compensating fact rather than overwriting the source."
       ],
-      "dependencies": [],
+      "dependencies": [
+        {
+          "sourceId": "VS-E23-S01-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for frontend_customer delivery slice for Normalize immutable customer trust facts from source services",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "customer with recorded stayover and checkout evidence",
+          "when": "customer opens own evidence",
+          "then": "both categories and statuses are distinct without exposing staff raw notes"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "other customer ID is inserted in route or response",
+          "when": "customer requests detail",
+          "then": "server denies and UI reveals no protected fields"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "no data, pending dispute or failed Finance lookup",
+          "when": "customer reloads",
+          "then": "UNASSESSED, PENDING or UNAVAILABLE state appears without a fabricated rating"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Run the exact commands in testCases; add positive, cross-customer denial, unavailable-source, duplicate/reorder and compensation cases appropriate to this slice.",
+        "Attach machine-readable CI evidence and source-to-AC mapping; no simulated production approval or live secret is allowed."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Propagate correlation and source event IDs across the named boundary; record bounded result/replay/stale-source counters without customer PII.",
+        "Expose the source version, last successfully consumed watermark and recoverable failure reason to authorized operators."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "Named artifacts are committed in the owning repository; focused tests and CI pass.",
+        "Contract owner approves field/action partition matrix and retry/compensation behavior.",
+        "Jira has PR, tests, denial/replay evidence, and rollback/repair instructions; this task does not claim the runtime feature already exists."
       ],
       "evidence": [
-        "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "PR and CI URL for the owning repository.",
+        "Unit/integration result with positive, denial and replay/reordering fixture.",
+        "Contract compatibility and migration/rollback note where applicable."
       ],
       "externalBlockers": [],
       "labels": [
@@ -73723,34 +73888,67 @@
         "roadmap-v1-3",
         "source-vs-e23-s01-st06"
       ],
-      "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo frontend_customer cho VS-E23-S01; không được lấy quyền sở hữu dữ liệu của service khác.",
+      "decisionNoteVi": "Only frontend_customer owns this slice. Finance alone owns the canonical customer trust facts, policy, score and waiver decision; no new policy values are approved by this spec.",
       "jiraKey": "SCRUM-619",
-      "specStatus": "needs-refinement",
+      "specStatus": "executable",
       "workKind": "web",
-      "dispatchable": false,
-      "testCases": [],
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm run build",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E23-S01-ST06 focused CI output, denial/replay assertions and fixture version"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": "npm run lint",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E23-S01-ST06 focused CI output, denial/replay assertions and fixture version"
+        }
+      ],
       "decisions": [],
       "implementationBlockers": [],
-      "activationBlockers": []
+      "activationBlockers": [],
+      "primaryRepository": "frontend_customer",
+      "repositorySlices": [
+        {
+          "repository": "frontend_customer",
+          "paths": [
+            "src/**"
+          ],
+          "artifacts": [
+            "self-only evidence status panel",
+            "masked-category and denial fixtures"
+          ]
+        }
+      ]
     },
     {
       "sourceId": "VS-E23-S01-ST07",
       "issueType": "Subtask",
-      "summary": "[VS-E23-S01-ST07] platform_contracts delivery slice for Normalize immutable customer trust facts from source services",
+      "summary": "[VS-E23-S01-ST07] Version customer trust source event and evidence fixtures",
       "parentSourceId": "VS-E23-S01",
       "manageDescription": true,
-      "actor": "Repository ServiceOwner and implementing engineer",
-      "outcome": "platform_contracts supplies its bounded contract, implementation, tests, and evidence for parent VS-E23-S01.",
-      "context": "This is the platform_contracts implementation slice of VS-E23-S01. It must not duplicate authority assigned to another repository.",
+      "actor": "Authorized internal producer, reviewer or implementation engineer",
+      "outcome": "Contract fixtures prove owner-to-Finance evidence identity, attribution, correction and stayover/checkout separation before implementations consume events.",
+      "context": "The current contract repo has no E23 trust schema; publishing contracts precedes producer and Finance consumer integration.",
       "inScope": [
-        "Change only platform_contracts plus generated artifacts explicitly owned by it.",
-        "Implement the platform_contracts responsibilities and interfaces stated in parent VS-E23-S01.",
-        "Attach focused unit/integration evidence and compatibility or rollback notes."
+        "Add versioned payment, completed/no-show booking, stayover/checkout cleaning, verified identity and linked correction envelopes.",
+        "Specify required customer/booking/source IDs, occurrence and effective timestamps, event ID, source revision, producer schema version, confidentiality and ordering.",
+        "Add positive/negative fixtures for staff-created booking, unsigned employee evidence, missing subject, duplicate, out-of-order and correction."
       ],
       "outOfScope": [
-        "Implementing another repository ownership slice.",
-        "Cross-service database access or copying an authoritative aggregate.",
-        "Closing the parent without end-to-end and Postman/Newman evidence."
+        "Production policy activation or assigning unapproved trust scores in fixtures."
       ],
       "businessRules": [
         "The trust subject is the responsible customer account, not the employee who creates the booking; an absent customer account is UNASSESSED and requires full deposit.",
@@ -73766,98 +73964,128 @@
         "platform_contracts"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Publish versioned Kafka event schemas and owner/caller compatibility notes; Finance consumer rejects unsupported required semantics."
       ],
       "dataOwnership": [
-        "Finance owns normalized trust facts, effective-dated scoring policies, trust profile/tier/confidence, deposit decision, and appeal ledger; Operations owns raw cleanliness evidence; User owns identity; Booking freezes the decision snapshot."
+        "Contracts pins producer/consumer data exchange; source services retain raw rows and Finance retains normalized ledger."
       ],
       "stateMachine": [
-        "Model legal states and transitions for platform_contracts delivery slice for Normalize immutable customer trust facts from source services; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "DRAFT -> VALIDATED -> PUBLISHED; incompatible changes require new version and old decisions retain their source schema version."
       ],
       "authorization": {
         "actions": [
-          "vs-e23-s01-st07:view",
-          "vs-e23-s01-st07:manage"
+          "trust:contract:publish"
         ],
         "dataPartitions": [
-          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+          "CUSTOMER only for its own subject; ADMIN only with the authorized organization/site/branch and target-customer relationship; SYSTEM only for authenticated, purpose-bound service calls."
         ],
         "fieldGroups": [
-          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+          "SUMMARY envelope has IDs/status, sensitive source fields require TRUST_DETAIL/FINANCIAL or INTERNAL_AUDIT classification."
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Reject missing grants and unrecognized subjects without disclosing existence or protected source facts.",
+        "Absent or stale source/identity/policy version must return explicit unavailable or unassessed state; never infer a positive trust outcome.",
+        "Do not log PII, detailed financial history, raw cleanliness notes, or signed URLs."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Deduplicate ingested events by owner, event ID, source revision and customer; repeated delivery cannot create new facts.",
+        "Externally retried writes use scoped idempotency key, request fingerprint and expected revision; concurrent conflicts expose a stable code.",
+        "Historical facts and decisions are append-only; correction publishes a linked compensating fact rather than overwriting the source."
       ],
       "dependencies": [],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for platform_contracts delivery slice for Normalize immutable customer trust facts from source services",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "all four source owners and stayover/checkout evidence types",
+          "when": "contract fixtures validate",
+          "then": "schema identifies each owner, responsible customer, event revision and linked correction"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "unsigned cleaner, missing customer, employee as customer or out-of-order correction",
+          "when": "negative fixtures run",
+          "then": "validation rejects or flags the exact source/subject problem without publishing eligible trust fact"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "identical fixture or previous schema version is replayed",
+          "when": "compatibility validation runs",
+          "then": "fingerprint remains stable and supported historical events remain processable"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Run the exact commands in testCases; add positive, cross-customer denial, unavailable-source, duplicate/reorder and compensation cases appropriate to this slice.",
+        "Attach machine-readable CI evidence and source-to-AC mapping; no simulated production approval or live secret is allowed."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Propagate correlation and source event IDs across the named boundary; record bounded result/replay/stale-source counters without customer PII.",
+        "Expose the source version, last successfully consumed watermark and recoverable failure reason to authorized operators."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "Named artifacts are committed in the owning repository; focused tests and CI pass.",
+        "Contract owner approves field/action partition matrix and retry/compensation behavior.",
+        "Jira has PR, tests, denial/replay evidence, and rollback/repair instructions; this task does not claim the runtime feature already exists."
       ],
       "evidence": [
-        "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "PR and CI URL for the owning repository.",
+        "Unit/integration result with positive, denial and replay/reordering fixture.",
+        "Contract compatibility and migration/rollback note where applicable."
       ],
       "externalBlockers": [],
       "labels": [
         "repo-platform-contracts",
         "roadmap-v1-3",
-        "source-vs-e23-s01-st07"
+        "source-vs-e23-s01-st07",
+        "policy-configurable"
       ],
-      "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo platform_contracts cho VS-E23-S01; không được lấy quyền sở hữu dữ liệu của service khác.",
+      "decisionNoteVi": "Only platform_contracts owns this slice. Finance alone owns the canonical customer trust facts, policy, score and waiver decision; no new policy values are approved by this spec.",
       "jiraKey": "SCRUM-620",
-      "specStatus": "needs-refinement",
+      "specStatus": "executable",
       "workKind": "contract",
-      "dispatchable": false,
-      "testCases": [],
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm run validate:schemas",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E23-S01-ST07 focused CI output, denial/replay assertions and fixture version"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E23-S01-ST07 focused CI output, denial/replay assertions and fixture version"
+        }
+      ],
       "decisions": [],
       "implementationBlockers": [],
-      "activationBlockers": []
+      "activationBlockers": [],
+      "primaryRepository": "platform_contracts",
+      "repositorySlices": [
+        {
+          "repository": "platform_contracts",
+          "paths": [
+            "schemas/customer-trust/**",
+            "graphql/backoffice/**",
+            "fixtures/customer-trust/**"
+          ],
+          "artifacts": [
+            "versioned trust source envelope schemas",
+            "positive/negative and replay fixtures",
+            "compatibility and field classification matrix"
+          ]
+        }
+      ]
     },
     {
       "sourceId": "VS-E23-S02",
@@ -73866,8 +74094,8 @@
       "parentSourceId": "VS-E23",
       "manageDescription": true,
       "actor": "Customer, booking employee, finance risk reviewer, or operations reviewer",
-      "outcome": "Configure simulate approve and publish trust policies is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E23 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "S02 gives Finance the only policy writer, effective dating, simulation and maker-checker publication, with consumer validation and restricted Admin review screens.",
+      "context": "The existing E23 policy numbers are an initial configurable proposal, not evidence of an active production policy. Publishing requires approved version and fixtures; Consumers do not publish or score independently.",
       "inScope": [
         "Implement and verify: Configure simulate approve and publish trust policies.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -73983,7 +74211,7 @@
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
       "jiraKey": "SCRUM-621",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "web",
       "dispatchable": false,
       "testCases": [],
@@ -73994,21 +74222,21 @@
     {
       "sourceId": "VS-E23-S02-ST01",
       "issueType": "Subtask",
-      "summary": "[VS-E23-S02-ST01] service_finance delivery slice for Configure simulate approve and publish trust policies",
+      "summary": "[VS-E23-S02-ST01] Implement maker-checker versioned trust policy in Finance",
       "parentSourceId": "VS-E23-S02",
       "manageDescription": true,
-      "actor": "Repository ServiceOwner and implementing engineer",
-      "outcome": "service_finance supplies its bounded contract, implementation, tests, and evidence for parent VS-E23-S02.",
-      "context": "This is the service_finance implementation slice of VS-E23-S02. It must not duplicate authority assigned to another repository.",
+      "actor": "Authorized internal producer, reviewer or implementation engineer",
+      "outcome": "Finance exclusively creates, simulates, approves and publishes effective-dated trust policies and deposit-waiver switch, leaving prior decisions frozen.",
+      "context": "Epic baseline specifies 30/25/30/15 dimensions, score bands, initial eligibility gates and decay periods; those are initial configurable proposal values, not proof of production activation.",
       "inScope": [
-        "Change only service_finance plus generated artifacts explicitly owned by it.",
-        "Implement the service_finance responsibilities and interfaces stated in parent VS-E23-S02.",
-        "Attach focused unit/integration evidence and compatibility or rollback notes."
+        "Store policy draft, simulation fingerprint, reviewer, approval and effective interval with non-overlap and immutable published revision.",
+        "Validate dimension weights total 100%, clamp bands/gates, separate stayover versus checkout cleanliness weights and decay, pending dispute and hard-blocker handling.",
+        "Simulate impacted existing profiles without mutating live score, require independent maker/checker and show changed eligibility count with redacted examples.",
+        "Publish/disable automatic waiver flag and approval-gated replacement policy only at approved effective time."
       ],
       "outOfScope": [
-        "Implementing another repository ownership slice.",
-        "Cross-service database access or copying an authoritative aggregate.",
-        "Closing the parent without end-to-end and Postman/Newman evidence."
+        "Writing booking price or finance cash payment on policy publish.",
+        "Silently activating default threshold numbers without ServiceOwner approval."
       ],
       "businessRules": [
         "The trust subject is the responsible customer account, not the employee who creates the booking; an absent customer account is UNASSESSED and requires full deposit.",
@@ -74024,117 +74252,157 @@
         "service_finance"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Expose Finance policy create/simulate/approve/publish operations with expectedVersion and approval actor; publish effective-version event for consumers."
       ],
       "dataOwnership": [
-        "Finance owns normalized trust facts, effective-dated scoring policies, trust profile/tier/confidence, deposit decision, and appeal ledger; Operations owns raw cleanliness evidence; User owns identity; Booking freezes the decision snapshot."
+        "Finance alone owns scoring and waiver policy; source services only supply events."
       ],
       "stateMachine": [
-        "Model legal states and transitions for service_finance delivery slice for Configure simulate approve and publish trust policies; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "DRAFT -> SIMULATED -> APPROVED -> SCHEDULED -> ACTIVE -> SUPERSEDED; rejected drafts remain auditable and maker cannot check own draft."
       ],
       "authorization": {
         "actions": [
-          "vs-e23-s02-st01:view",
-          "vs-e23-s02-st01:manage"
+          "trust:policy:draft",
+          "trust:policy:simulate",
+          "trust:policy:approve",
+          "trust:policy:publish"
         ],
         "dataPartitions": [
-          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+          "CUSTOMER only for its own subject; ADMIN only with the authorized organization/site/branch and target-customer relationship; SYSTEM only for authenticated, purpose-bound service calls."
         ],
         "fieldGroups": [
-          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+          "SUMMARY hides segment impacts; TRUST_DETAIL and INTERNAL_AUDIT required for simulation details and approver identity."
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Reject missing grants and unrecognized subjects without disclosing existence or protected source facts.",
+        "Absent or stale source/identity/policy version must return explicit unavailable or unassessed state; never infer a positive trust outcome.",
+        "Do not log PII, detailed financial history, raw cleanliness notes, or signed URLs."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Deduplicate ingested events by owner, event ID, source revision and customer; repeated delivery cannot create new facts.",
+        "Externally retried writes use scoped idempotency key, request fingerprint and expected revision; concurrent conflicts expose a stable code.",
+        "Historical facts and decisions are append-only; correction publishes a linked compensating fact rather than overwriting the source."
       ],
-      "dependencies": [],
+      "dependencies": [
+        {
+          "sourceId": "VS-E23-S02-ST07",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E23-S01-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for service_finance delivery slice for Configure simulate approve and publish trust policies",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "valid proposed version, complete simulation and independent checker",
+          "when": "effective time arrives",
+          "then": "exactly one approved active Finance policy exists and previously frozen decision keeps its old version"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "weights !=100%, overlap, missing approved simulation or same maker/checker",
+          "when": "publish is attempted",
+          "then": "stable validation/forbidden code and no active revision is created"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "two publish commands race or identical request is replayed",
+          "when": "concurrent processing occurs",
+          "then": "one policy revision wins, loser sees conflict and no duplicated activation event"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Run the exact commands in testCases; add positive, cross-customer denial, unavailable-source, duplicate/reorder and compensation cases appropriate to this slice.",
+        "Attach machine-readable CI evidence and source-to-AC mapping; no simulated production approval or live secret is allowed."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Propagate correlation and source event IDs across the named boundary; record bounded result/replay/stale-source counters without customer PII.",
+        "Expose the source version, last successfully consumed watermark and recoverable failure reason to authorized operators."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "Named artifacts are committed in the owning repository; focused tests and CI pass.",
+        "Contract owner approves field/action partition matrix and retry/compensation behavior.",
+        "Jira has PR, tests, denial/replay evidence, and rollback/repair instructions; this task does not claim the runtime feature already exists."
       ],
       "evidence": [
-        "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "PR and CI URL for the owning repository.",
+        "Unit/integration result with positive, denial and replay/reordering fixture.",
+        "Contract compatibility and migration/rollback note where applicable."
       ],
       "externalBlockers": [],
       "labels": [
         "repo-service-finance",
         "roadmap-v1-3",
-        "source-vs-e23-s02-st01"
+        "source-vs-e23-s02-st01",
+        "policy-configurable",
+        "business-review-needed"
       ],
-      "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo service_finance cho VS-E23-S02; không được lấy quyền sở hữu dữ liệu của service khác.",
+      "decisionNoteVi": "Only service_finance owns this slice. Finance alone owns the canonical customer trust facts, policy, score and waiver decision; no new policy values are approved by this spec.",
       "jiraKey": "SCRUM-622",
-      "specStatus": "needs-refinement",
+      "specStatus": "executable",
       "workKind": "service",
-      "dispatchable": false,
-      "testCases": [],
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*Trust*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E23-S02-ST01 focused CI output, denial/replay assertions and fixture version"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E23-S02-ST01 focused CI output, denial/replay assertions and fixture version"
+        }
+      ],
       "decisions": [],
       "implementationBlockers": [],
-      "activationBlockers": []
+      "activationBlockers": [],
+      "primaryRepository": "service_finance",
+      "repositorySlices": [
+        {
+          "repository": "service_finance",
+          "paths": [
+            "src/main/java/**",
+            "src/main/resources/**",
+            "src/test/java/**"
+          ],
+          "artifacts": [
+            "trust_policy migration and revisioned commands",
+            "simulation and maker-checker tests",
+            "policy publish audit/outbox"
+          ]
+        }
+      ]
     },
     {
       "sourceId": "VS-E23-S02-ST02",
       "issueType": "Subtask",
-      "summary": "[VS-E23-S02-ST02] service_operations delivery slice for Configure simulate approve and publish trust policies",
+      "summary": "[VS-E23-S02-ST02] Constrain Operations care evidence to Finance policy event taxonomy",
       "parentSourceId": "VS-E23-S02",
       "manageDescription": true,
-      "actor": "Repository ServiceOwner and implementing engineer",
-      "outcome": "service_operations supplies its bounded contract, implementation, tests, and evidence for parent VS-E23-S02.",
-      "context": "This is the service_operations implementation slice of VS-E23-S02. It must not duplicate authority assigned to another repository.",
+      "actor": "Authorized internal producer, reviewer or implementation engineer",
+      "outcome": "Operations validates its stayover and checkout care event kinds against published contracts without owning point weights.",
+      "context": "E12-S07 external employee assessment remains source authority. Finance may revise scoring weights; Operations must not cache these weights as business truth.",
       "inScope": [
-        "Change only service_operations plus generated artifacts explicitly owned by it.",
-        "Implement the service_operations responsibilities and interfaces stated in parent VS-E23-S02.",
-        "Attach focused unit/integration evidence and compatibility or rollback notes."
+        "Map local assessment kinds to versioned Finance-consumable categories without assigning points.",
+        "Mark unrecognized/unsigned external evidence quarantined and surface a repair reason; keep old event version readable."
       ],
       "outOfScope": [
-        "Implementing another repository ownership slice.",
-        "Cross-service database access or copying an authoritative aggregate.",
-        "Closing the parent without end-to-end and Postman/Newman evidence."
+        "Own policy publishing, points or guest trust tier in Operations."
       ],
       "businessRules": [
         "The trust subject is the responsible customer account, not the employee who creates the booking; an absent customer account is UNASSESSED and requires full deposit.",
@@ -74150,82 +74418,82 @@
         "service_operations"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Validate Operations outbound evidence kinds using S01 versioned schema and preserve producer schema version across changes."
       ],
       "dataOwnership": [
-        "Finance owns normalized trust facts, effective-dated scoring policies, trust profile/tier/confidence, deposit decision, and appeal ledger; Operations owns raw cleanliness evidence; User owns identity; Booking freezes the decision snapshot."
+        "Operations owns source assessment classification; Finance owns weighting and eligibility."
       ],
       "stateMachine": [
-        "Model legal states and transitions for service_operations delivery slice for Configure simulate approve and publish trust policies; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "MAPPED -> PUBLISHED; unrecognized -> QUARANTINED, and repair publishes a linked revision only."
       ],
       "authorization": {
         "actions": [
-          "vs-e23-s02-st02:view",
-          "vs-e23-s02-st02:manage"
+          "operations:care-evidence:classify"
         ],
         "dataPartitions": [
-          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+          "CUSTOMER only for its own subject; ADMIN only with the authorized organization/site/branch and target-customer relationship; SYSTEM only for authenticated, purpose-bound service calls."
         ],
         "fieldGroups": [
-          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+          "SUMMARY conveys category only; TRUST_DETAIL and DOCUMENT require restricted source access."
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Reject missing grants and unrecognized subjects without disclosing existence or protected source facts.",
+        "Absent or stale source/identity/policy version must return explicit unavailable or unassessed state; never infer a positive trust outcome.",
+        "Do not log PII, detailed financial history, raw cleanliness notes, or signed URLs."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Deduplicate ingested events by owner, event ID, source revision and customer; repeated delivery cannot create new facts.",
+        "Externally retried writes use scoped idempotency key, request fingerprint and expected revision; concurrent conflicts expose a stable code.",
+        "Historical facts and decisions are append-only; correction publishes a linked compensating fact rather than overwriting the source."
       ],
-      "dependencies": [],
+      "dependencies": [
+        {
+          "sourceId": "VS-E23-S01-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E23-S02-ST07",
+          "relation": "is-blocked-by"
+        }
+      ],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for service_operations delivery slice for Configure simulate approve and publish trust policies",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "two verified assessments with different cleaning kinds",
+          "when": "category mapper runs",
+          "then": "stable stayover and checkout event kinds are emitted without score points"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "new/unrecognized kind or absent external signature",
+          "when": "mapper runs",
+          "then": "event quarantines and does not reach Finance as trustworthy evidence"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "Finance changes weights without changing producer schema",
+          "when": "events are replayed",
+          "then": "the same Operations facts are emitted and no Operations score changes"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Run the exact commands in testCases; add positive, cross-customer denial, unavailable-source, duplicate/reorder and compensation cases appropriate to this slice.",
+        "Attach machine-readable CI evidence and source-to-AC mapping; no simulated production approval or live secret is allowed."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Propagate correlation and source event IDs across the named boundary; record bounded result/replay/stale-source counters without customer PII.",
+        "Expose the source version, last successfully consumed watermark and recoverable failure reason to authorized operators."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "Named artifacts are committed in the owning repository; focused tests and CI pass.",
+        "Contract owner approves field/action partition matrix and retry/compensation behavior.",
+        "Jira has PR, tests, denial/replay evidence, and rollback/repair instructions; this task does not claim the runtime feature already exists."
       ],
       "evidence": [
-        "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "PR and CI URL for the owning repository.",
+        "Unit/integration result with positive, denial and replay/reordering fixture.",
+        "Contract compatibility and migration/rollback note where applicable."
       ],
       "externalBlockers": [],
       "labels": [
@@ -74233,34 +74501,68 @@
         "roadmap-v1-3",
         "source-vs-e23-s02-st02"
       ],
-      "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo service_operations cho VS-E23-S02; không được lấy quyền sở hữu dữ liệu của service khác.",
+      "decisionNoteVi": "Only service_operations owns this slice. Finance alone owns the canonical customer trust facts, policy, score and waiver decision; no new policy values are approved by this spec.",
       "jiraKey": "SCRUM-623",
-      "specStatus": "needs-refinement",
-      "workKind": "operations",
-      "dispatchable": false,
-      "testCases": [],
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*Trust*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E23-S02-ST02 focused CI output, denial/replay assertions and fixture version"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E23-S02-ST02 focused CI output, denial/replay assertions and fixture version"
+        }
+      ],
       "decisions": [],
       "implementationBlockers": [],
-      "activationBlockers": []
+      "activationBlockers": [],
+      "primaryRepository": "service_operations",
+      "repositorySlices": [
+        {
+          "repository": "service_operations",
+          "paths": [
+            "src/main/java/**",
+            "src/main/resources/**",
+            "src/test/java/**"
+          ],
+          "artifacts": [
+            "event-category mapping tests",
+            "unrecognized external category quarantine fixture"
+          ]
+        }
+      ]
     },
     {
       "sourceId": "VS-E23-S02-ST03",
       "issueType": "Subtask",
-      "summary": "[VS-E23-S02-ST03] service_booking delivery slice for Configure simulate approve and publish trust policies",
+      "summary": "[VS-E23-S02-ST03] Pin Finance trust policy reference in Booking decision snapshot",
       "parentSourceId": "VS-E23-S02",
       "manageDescription": true,
-      "actor": "Repository ServiceOwner and implementing engineer",
-      "outcome": "service_booking supplies its bounded contract, implementation, tests, and evidence for parent VS-E23-S02.",
-      "context": "This is the service_booking implementation slice of VS-E23-S02. It must not duplicate authority assigned to another repository.",
+      "actor": "Authorized internal producer, reviewer or implementation engineer",
+      "outcome": "Booking preserves the Finance policy ID and decision revision used at confirmation, not its own trust rules.",
+      "context": "Historical booking decisions must not change when Finance later activates a different trust policy.",
       "inScope": [
-        "Change only service_booking plus generated artifacts explicitly owned by it.",
-        "Implement the service_booking responsibilities and interfaces stated in parent VS-E23-S02.",
-        "Attach focused unit/integration evidence and compatibility or rollback notes."
+        "Record policy version and Finance decision ID when booking consumes an approved deposit decision.",
+        "Require non-expired, customer-matching decision revision at confirmation; do not copy score thresholds into Booking."
       ],
       "outOfScope": [
-        "Implementing another repository ownership slice.",
-        "Cross-service database access or copying an authoritative aggregate.",
-        "Closing the parent without end-to-end and Postman/Newman evidence."
+        "Owning or publishing score/deposit-waiver policy in Booking."
       ],
       "businessRules": [
         "The trust subject is the responsible customer account, not the employee who creates the booking; an absent customer account is UNASSESSED and requires full deposit.",
@@ -74276,82 +74578,82 @@
         "service_booking"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Consume authenticated Finance decision envelope with policy version and decision expiry, without retrieving policy internals."
       ],
       "dataOwnership": [
-        "Finance owns normalized trust facts, effective-dated scoring policies, trust profile/tier/confidence, deposit decision, and appeal ledger; Operations owns raw cleanliness evidence; User owns identity; Booking freezes the decision snapshot."
+        "Booking owns immutable booking commercial snapshot; Finance owns trust/waiver policy and decision."
       ],
       "stateMachine": [
-        "Model legal states and transitions for service_booking delivery slice for Configure simulate approve and publish trust policies; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "PENDING_DECISION -> SNAPSHOTTED or REJECTED; subsequent Finance policy changes do not rewrite snapshots."
       ],
       "authorization": {
         "actions": [
-          "vs-e23-s02-st03:view",
-          "vs-e23-s02-st03:manage"
+          "booking:deposit-decision:snapshot"
         ],
         "dataPartitions": [
-          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+          "CUSTOMER only for its own subject; ADMIN only with the authorized organization/site/branch and target-customer relationship; SYSTEM only for authenticated, purpose-bound service calls."
         ],
         "fieldGroups": [
-          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+          "SUMMARY stores decision ID/status; TRUST_DETAIL and FINANCIAL remain Finance-only."
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Reject missing grants and unrecognized subjects without disclosing existence or protected source facts.",
+        "Absent or stale source/identity/policy version must return explicit unavailable or unassessed state; never infer a positive trust outcome.",
+        "Do not log PII, detailed financial history, raw cleanliness notes, or signed URLs."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Deduplicate ingested events by owner, event ID, source revision and customer; repeated delivery cannot create new facts.",
+        "Externally retried writes use scoped idempotency key, request fingerprint and expected revision; concurrent conflicts expose a stable code.",
+        "Historical facts and decisions are append-only; correction publishes a linked compensating fact rather than overwriting the source."
       ],
-      "dependencies": [],
+      "dependencies": [
+        {
+          "sourceId": "VS-E23-S02-ST07",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E23-S02-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for service_booking delivery slice for Configure simulate approve and publish trust policies",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "current customer-matching Finance waiver decision and approved policy version",
+          "when": "booking confirms",
+          "then": "booking snapshot preserves exact decision and effective policy version"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "different customer, expired decision or missing version",
+          "when": "confirmation attempts",
+          "then": "no confirmation claims waived deposit and stable failure is returned"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "policy changes after booking confirmation",
+          "when": "new decision is produced elsewhere",
+          "then": "old booking decision snapshot remains unchanged and auditable"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Run the exact commands in testCases; add positive, cross-customer denial, unavailable-source, duplicate/reorder and compensation cases appropriate to this slice.",
+        "Attach machine-readable CI evidence and source-to-AC mapping; no simulated production approval or live secret is allowed."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Propagate correlation and source event IDs across the named boundary; record bounded result/replay/stale-source counters without customer PII.",
+        "Expose the source version, last successfully consumed watermark and recoverable failure reason to authorized operators."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "Named artifacts are committed in the owning repository; focused tests and CI pass.",
+        "Contract owner approves field/action partition matrix and retry/compensation behavior.",
+        "Jira has PR, tests, denial/replay evidence, and rollback/repair instructions; this task does not claim the runtime feature already exists."
       ],
       "evidence": [
-        "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "PR and CI URL for the owning repository.",
+        "Unit/integration result with positive, denial and replay/reordering fixture.",
+        "Contract compatibility and migration/rollback note where applicable."
       ],
       "externalBlockers": [],
       "labels": [
@@ -74359,34 +74661,68 @@
         "roadmap-v1-3",
         "source-vs-e23-s02-st03"
       ],
-      "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo service_booking cho VS-E23-S02; không được lấy quyền sở hữu dữ liệu của service khác.",
+      "decisionNoteVi": "Only service_booking owns this slice. Finance alone owns the canonical customer trust facts, policy, score and waiver decision; no new policy values are approved by this spec.",
       "jiraKey": "SCRUM-624",
-      "specStatus": "needs-refinement",
+      "specStatus": "executable",
       "workKind": "service",
-      "dispatchable": false,
-      "testCases": [],
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*Trust*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E23-S02-ST03 focused CI output, denial/replay assertions and fixture version"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E23-S02-ST03 focused CI output, denial/replay assertions and fixture version"
+        }
+      ],
       "decisions": [],
       "implementationBlockers": [],
-      "activationBlockers": []
+      "activationBlockers": [],
+      "primaryRepository": "service_booking",
+      "repositorySlices": [
+        {
+          "repository": "service_booking",
+          "paths": [
+            "src/main/java/**",
+            "src/main/resources/**",
+            "src/test/java/**"
+          ],
+          "artifacts": [
+            "decision snapshot version fields",
+            "stale/mismatched policy snapshot tests"
+          ]
+        }
+      ]
     },
     {
       "sourceId": "VS-E23-S02-ST04",
       "issueType": "Subtask",
-      "summary": "[VS-E23-S02-ST04] service_user delivery slice for Configure simulate approve and publish trust policies",
+      "summary": "[VS-E23-S02-ST04] Publish identity-gate changes without setting trust policy in User",
       "parentSourceId": "VS-E23-S02",
       "manageDescription": true,
-      "actor": "Repository ServiceOwner and implementing engineer",
-      "outcome": "service_user supplies its bounded contract, implementation, tests, and evidence for parent VS-E23-S02.",
-      "context": "This is the service_user implementation slice of VS-E23-S02. It must not duplicate authority assigned to another repository.",
+      "actor": "Authorized internal producer, reviewer or implementation engineer",
+      "outcome": "User supplies fresh verified-identity revisions to Finance so policy evaluation can gate eligibility without adding identity points.",
+      "context": "E23 policy states identity/history are eligibility and confidence gates, not score dimensions. User is not a second policy store.",
       "inScope": [
-        "Change only service_user plus generated artifacts explicitly owned by it.",
-        "Implement the service_user responsibilities and interfaces stated in parent VS-E23-S02.",
-        "Attach focused unit/integration evidence and compatibility or rollback notes."
+        "Emit verified-email revocation and customer-identity-link changes with event revision and source effective time.",
+        "Document stale/missing identity assertion behavior for Finance fail-closed evaluation."
       ],
       "outOfScope": [
-        "Implementing another repository ownership slice.",
-        "Cross-service database access or copying an authoritative aggregate.",
-        "Closing the parent without end-to-end and Postman/Newman evidence."
+        "Configuring score weights or waiver auto-mode in User database."
       ],
       "businessRules": [
         "The trust subject is the responsible customer account, not the employee who creates the booking; an absent customer account is UNASSESSED and requires full deposit.",
@@ -74402,82 +74738,82 @@
         "service_user"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Version identity assertion and revocation events independent of Finance policy activation."
       ],
       "dataOwnership": [
-        "Finance owns normalized trust facts, effective-dated scoring policies, trust profile/tier/confidence, deposit decision, and appeal ledger; Operations owns raw cleanliness evidence; User owns identity; Booking freezes the decision snapshot."
+        "User owns identity gate assertions; Finance owns how current policy interprets them."
       ],
       "stateMachine": [
-        "Model legal states and transitions for service_user delivery slice for Configure simulate approve and publish trust policies; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "VERIFIED -> REVOKED/unrecognized with revisioned event; Finance consumes without changing identity history."
       ],
       "authorization": {
         "actions": [
-          "vs-e23-s02-st04:view",
-          "vs-e23-s02-st04:manage"
+          "user:identity:trust-assert"
         ],
         "dataPartitions": [
-          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+          "CUSTOMER only for its own subject; ADMIN only with the authorized organization/site/branch and target-customer relationship; SYSTEM only for authenticated, purpose-bound service calls."
         ],
         "fieldGroups": [
-          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+          "SUMMARY verified flag only; email address PII restricted."
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Reject missing grants and unrecognized subjects without disclosing existence or protected source facts.",
+        "Absent or stale source/identity/policy version must return explicit unavailable or unassessed state; never infer a positive trust outcome.",
+        "Do not log PII, detailed financial history, raw cleanliness notes, or signed URLs."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Deduplicate ingested events by owner, event ID, source revision and customer; repeated delivery cannot create new facts.",
+        "Externally retried writes use scoped idempotency key, request fingerprint and expected revision; concurrent conflicts expose a stable code.",
+        "Historical facts and decisions are append-only; correction publishes a linked compensating fact rather than overwriting the source."
       ],
-      "dependencies": [],
+      "dependencies": [
+        {
+          "sourceId": "VS-E23-S01-ST04",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E23-S02-ST07",
+          "relation": "is-blocked-by"
+        }
+      ],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for service_user delivery slice for Configure simulate approve and publish trust policies",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "verified customer identity at current source revision",
+          "when": "Finance evaluates trust gate",
+          "then": "User supplies verification status without a score or tier"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "missing assertion or revoked email",
+          "when": "Finance tries eligibility",
+          "then": "gate fails closed without claiming auto-waiver"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "published Finance policy changes",
+          "when": "User republishes same verified assertion",
+          "then": "identity source content and version remain independent from policy weights"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Run the exact commands in testCases; add positive, cross-customer denial, unavailable-source, duplicate/reorder and compensation cases appropriate to this slice.",
+        "Attach machine-readable CI evidence and source-to-AC mapping; no simulated production approval or live secret is allowed."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Propagate correlation and source event IDs across the named boundary; record bounded result/replay/stale-source counters without customer PII.",
+        "Expose the source version, last successfully consumed watermark and recoverable failure reason to authorized operators."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "Named artifacts are committed in the owning repository; focused tests and CI pass.",
+        "Contract owner approves field/action partition matrix and retry/compensation behavior.",
+        "Jira has PR, tests, denial/replay evidence, and rollback/repair instructions; this task does not claim the runtime feature already exists."
       ],
       "evidence": [
-        "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "PR and CI URL for the owning repository.",
+        "Unit/integration result with positive, denial and replay/reordering fixture.",
+        "Contract compatibility and migration/rollback note where applicable."
       ],
       "externalBlockers": [],
       "labels": [
@@ -74485,34 +74821,69 @@
         "roadmap-v1-3",
         "source-vs-e23-s02-st04"
       ],
-      "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo service_user cho VS-E23-S02; không được lấy quyền sở hữu dữ liệu của service khác.",
+      "decisionNoteVi": "Only service_user owns this slice. Finance alone owns the canonical customer trust facts, policy, score and waiver decision; no new policy values are approved by this spec.",
       "jiraKey": "SCRUM-625",
-      "specStatus": "needs-refinement",
+      "specStatus": "executable",
       "workKind": "service",
-      "dispatchable": false,
-      "testCases": [],
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*Trust*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E23-S02-ST04 focused CI output, denial/replay assertions and fixture version"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E23-S02-ST04 focused CI output, denial/replay assertions and fixture version"
+        }
+      ],
       "decisions": [],
       "implementationBlockers": [],
-      "activationBlockers": []
+      "activationBlockers": [],
+      "primaryRepository": "service_user",
+      "repositorySlices": [
+        {
+          "repository": "service_user",
+          "paths": [
+            "src/main/java/**",
+            "src/main/resources/**",
+            "src/test/java/**"
+          ],
+          "artifacts": [
+            "identity assertion compatibility tests",
+            "verification revocation event"
+          ]
+        }
+      ]
     },
     {
       "sourceId": "VS-E23-S02-ST05",
       "issueType": "Subtask",
-      "summary": "[VS-E23-S02-ST05] frontend_admin delivery slice for Configure simulate approve and publish trust policies",
+      "summary": "[VS-E23-S02-ST05] Build restricted Admin Web policy simulation and approval workspace",
       "parentSourceId": "VS-E23-S02",
       "manageDescription": true,
-      "actor": "Repository ServiceOwner and implementing engineer",
-      "outcome": "frontend_admin supplies its bounded contract, implementation, tests, and evidence for parent VS-E23-S02.",
-      "context": "This is the frontend_admin implementation slice of VS-E23-S02. It must not duplicate authority assigned to another repository.",
+      "actor": "Authorized customer or backoffice operator",
+      "outcome": "Admin Web allows distinct authorized maker and checker to inspect, simulate and approve Finance policy revisions without fabricating local results.",
+      "context": "Policy is effective-dated and configuration-controlled; Mobile should show policy status read-only unless an explicit approval action is separately authorized.",
       "inScope": [
-        "Change only frontend_admin plus generated artifacts explicitly owned by it.",
-        "Implement the frontend_admin responsibilities and interfaces stated in parent VS-E23-S02.",
-        "Attach focused unit/integration evidence and compatibility or rollback notes."
+        "Build Web draft, changed-weight/eligibility diff, simulation preview and maker-checker decision workflow.",
+        "Show scheduled/active version, auto-waiver switch, previous immutable revision and provenance; Mobile shows status read-only.",
+        "Block publish affordance for unauthorized/own-draft approver and display stale/conflict/failed-simulation states."
       ],
       "outOfScope": [
-        "Implementing another repository ownership slice.",
-        "Cross-service database access or copying an authoritative aggregate.",
-        "Closing the parent without end-to-end and Postman/Newman evidence."
+        "Frontend-local scoring or activating policy from a browser-only flag."
       ],
       "businessRules": [
         "The trust subject is the responsible customer account, not the employee who creates the booking; an absent customer account is UNASSESSED and requires full deposit.",
@@ -74528,117 +74899,150 @@
         "frontend_admin"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Consume Finance versioned policy/diff/approval operations with expectedVersion and idempotency key."
       ],
       "dataOwnership": [
-        "Finance owns normalized trust facts, effective-dated scoring policies, trust profile/tier/confidence, deposit decision, and appeal ledger; Operations owns raw cleanliness evidence; User owns identity; Booking freezes the decision snapshot."
+        "Finance owns policy and simulation output; Admin is an authenticated client only."
       ],
       "stateMachine": [
-        "Model legal states and transitions for frontend_admin delivery slice for Configure simulate approve and publish trust policies; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "DRAFT -> SIMULATING -> REVIEWABLE -> SCHEDULED/ACTIVE or REJECTED; UI reflects server state on reload."
       ],
       "authorization": {
         "actions": [
-          "vs-e23-s02-st05:view",
-          "vs-e23-s02-st05:manage"
+          "trust:policy:draft",
+          "trust:policy:simulate",
+          "trust:policy:approve"
         ],
         "dataPartitions": [
-          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+          "CUSTOMER only for its own subject; ADMIN only with the authorized organization/site/branch and target-customer relationship; SYSTEM only for authenticated, purpose-bound service calls."
         ],
         "fieldGroups": [
-          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+          "SUMMARY status only; TRUST_DETAIL and INTERNAL_AUDIT required for policy impact and reviewer identity."
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Reject missing grants and unrecognized subjects without disclosing existence or protected source facts.",
+        "Absent or stale source/identity/policy version must return explicit unavailable or unassessed state; never infer a positive trust outcome.",
+        "Do not log PII, detailed financial history, raw cleanliness notes, or signed URLs."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Deduplicate ingested events by owner, event ID, source revision and customer; repeated delivery cannot create new facts.",
+        "Externally retried writes use scoped idempotency key, request fingerprint and expected revision; concurrent conflicts expose a stable code.",
+        "Historical facts and decisions are append-only; correction publishes a linked compensating fact rather than overwriting the source."
       ],
-      "dependencies": [],
+      "dependencies": [
+        {
+          "sourceId": "VS-E23-S02-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for frontend_admin delivery slice for Configure simulate approve and publish trust policies",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "distinct authorized maker/checker and approved simulation",
+          "when": "Web operators draft and approve",
+          "then": "UI reflects server-stored scheduled version and Mobile displays status"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "same maker/checker or missing action/grant",
+          "when": "reviewer tries approval",
+          "then": "no publish action succeeds and confidential simulation detail remains hidden"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "simulation fails or policy revision becomes stale",
+          "when": "Web refreshes",
+          "then": "visible error/conflict and no locally assumed ACTIVE status"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Run the exact commands in testCases; add positive, cross-customer denial, unavailable-source, duplicate/reorder and compensation cases appropriate to this slice.",
+        "Attach machine-readable CI evidence and source-to-AC mapping; no simulated production approval or live secret is allowed."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Propagate correlation and source event IDs across the named boundary; record bounded result/replay/stale-source counters without customer PII.",
+        "Expose the source version, last successfully consumed watermark and recoverable failure reason to authorized operators."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "Named artifacts are committed in the owning repository; focused tests and CI pass.",
+        "Contract owner approves field/action partition matrix and retry/compensation behavior.",
+        "Jira has PR, tests, denial/replay evidence, and rollback/repair instructions; this task does not claim the runtime feature already exists."
       ],
       "evidence": [
-        "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "PR and CI URL for the owning repository.",
+        "Unit/integration result with positive, denial and replay/reordering fixture.",
+        "Contract compatibility and migration/rollback note where applicable."
       ],
       "externalBlockers": [],
       "labels": [
         "repo-frontend-admin",
         "roadmap-v1-3",
-        "source-vs-e23-s02-st05"
+        "source-vs-e23-s02-st05",
+        "policy-configurable"
       ],
-      "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo frontend_admin cho VS-E23-S02; không được lấy quyền sở hữu dữ liệu của service khác.",
+      "decisionNoteVi": "Only frontend_admin owns this slice. Finance alone owns the canonical customer trust facts, policy, score and waiver decision; no new policy values are approved by this spec.",
       "jiraKey": "SCRUM-626",
-      "specStatus": "needs-refinement",
+      "specStatus": "executable",
       "workKind": "web",
-      "dispatchable": false,
-      "testCases": [],
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm run typecheck",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E23-S02-ST05 focused CI output, denial/replay assertions and fixture version"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E23-S02-ST05 focused CI output, denial/replay assertions and fixture version"
+        }
+      ],
       "decisions": [],
       "implementationBlockers": [],
-      "activationBlockers": []
+      "activationBlockers": [],
+      "primaryRepository": "frontend_admin",
+      "repositorySlices": [
+        {
+          "repository": "frontend_admin",
+          "paths": [
+            "apps/web/src/**",
+            "apps/mobile/src/**"
+          ],
+          "artifacts": [
+            "apps/web policy simulation and maker-checker UI",
+            "apps/mobile read-only policy status",
+            "action/partition/security UI fixtures"
+          ]
+        }
+      ]
     },
     {
       "sourceId": "VS-E23-S02-ST06",
       "issueType": "Subtask",
-      "summary": "[VS-E23-S02-ST06] frontend_customer delivery slice for Configure simulate approve and publish trust policies",
+      "summary": "[VS-E23-S02-ST06] Explain effective customer waiver policy without internal scoring weights",
       "parentSourceId": "VS-E23-S02",
       "manageDescription": true,
-      "actor": "Repository ServiceOwner and implementing engineer",
-      "outcome": "frontend_customer supplies its bounded contract, implementation, tests, and evidence for parent VS-E23-S02.",
-      "context": "This is the frontend_customer implementation slice of VS-E23-S02. It must not duplicate authority assigned to another repository.",
+      "actor": "Authorized customer or backoffice operator",
+      "outcome": "Customer sees whether the current process is automatic or request-for-review, with no disclosure of risk model or staff audit.",
+      "context": "E23-S04 owns the actual waiver request UI; this slice only consumes the versioned public policy explanation.",
       "inScope": [
-        "Change only frontend_customer plus generated artifacts explicitly owned by it.",
-        "Implement the frontend_customer responsibilities and interfaces stated in parent VS-E23-S02.",
-        "Attach focused unit/integration evidence and compatibility or rollback notes."
+        "Show customer-safe auto-eligible versus staff-review route and policy effective date/version from Finance public projection.",
+        "Render unavailable/unassessed state and direct the customer to the request flow only when Finance indicates it is available."
       ],
       "outOfScope": [
-        "Implementing another repository ownership slice.",
-        "Cross-service database access or copying an authoritative aggregate.",
-        "Closing the parent without end-to-end and Postman/Newman evidence."
+        "Publishing policies, revealing internal score weights or allowing customers to force eligibility."
       ],
       "businessRules": [
         "The trust subject is the responsible customer account, not the employee who creates the booking; an absent customer account is UNASSESSED and requires full deposit.",
@@ -74654,117 +75058,151 @@
         "frontend_customer"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Consume customer-safe Finance policy mode projection; never derive switch state from build-time config."
       ],
       "dataOwnership": [
-        "Finance owns normalized trust facts, effective-dated scoring policies, trust profile/tier/confidence, deposit decision, and appeal ledger; Operations owns raw cleanliness evidence; User owns identity; Booking freezes the decision snapshot."
+        "Finance owns public policy projection; Customer Web never stores private weights or decision authority."
       ],
       "stateMachine": [
-        "Model legal states and transitions for frontend_customer delivery slice for Configure simulate approve and publish trust policies; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "unrecognized -> CURRENT or UNAVAILABLE; switch transition refreshes from Finance, not cached config."
       ],
       "authorization": {
         "actions": [
-          "vs-e23-s02-st06:view",
-          "vs-e23-s02-st06:manage"
+          "trust:own-policy:view"
         ],
         "dataPartitions": [
-          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+          "CUSTOMER only for its own subject; ADMIN only with the authorized organization/site/branch and target-customer relationship; SYSTEM only for authenticated, purpose-bound service calls."
         ],
         "fieldGroups": [
-          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+          "SUMMARY contains only mode and safe explanation; TRUST_DETAIL/INTERNAL_AUDIT prohibited."
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Reject missing grants and unrecognized subjects without disclosing existence or protected source facts.",
+        "Absent or stale source/identity/policy version must return explicit unavailable or unassessed state; never infer a positive trust outcome.",
+        "Do not log PII, detailed financial history, raw cleanliness notes, or signed URLs."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Deduplicate ingested events by owner, event ID, source revision and customer; repeated delivery cannot create new facts.",
+        "Externally retried writes use scoped idempotency key, request fingerprint and expected revision; concurrent conflicts expose a stable code.",
+        "Historical facts and decisions are append-only; correction publishes a linked compensating fact rather than overwriting the source."
       ],
-      "dependencies": [],
+      "dependencies": [
+        {
+          "sourceId": "VS-E23-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E23-S02-ST07",
+          "relation": "is-blocked-by"
+        }
+      ],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for frontend_customer delivery slice for Configure simulate approve and publish trust policies",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "Finance policy auto-waiver mode is ON or OFF",
+          "when": "customer reads explanation",
+          "then": "UI shows automatic eligibility route or staff-review request route based on authoritative mode"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "policy projection unavailable or customer unauthorized",
+          "when": "page loads",
+          "then": "no private weights or false promise of automatic waiver is displayed"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "mode switches between published versions",
+          "when": "customer refreshes",
+          "then": "new effective mode displays without changing historical booking decisions"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Run the exact commands in testCases; add positive, cross-customer denial, unavailable-source, duplicate/reorder and compensation cases appropriate to this slice.",
+        "Attach machine-readable CI evidence and source-to-AC mapping; no simulated production approval or live secret is allowed."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Propagate correlation and source event IDs across the named boundary; record bounded result/replay/stale-source counters without customer PII.",
+        "Expose the source version, last successfully consumed watermark and recoverable failure reason to authorized operators."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "Named artifacts are committed in the owning repository; focused tests and CI pass.",
+        "Contract owner approves field/action partition matrix and retry/compensation behavior.",
+        "Jira has PR, tests, denial/replay evidence, and rollback/repair instructions; this task does not claim the runtime feature already exists."
       ],
       "evidence": [
-        "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "PR and CI URL for the owning repository.",
+        "Unit/integration result with positive, denial and replay/reordering fixture.",
+        "Contract compatibility and migration/rollback note where applicable."
       ],
       "externalBlockers": [],
       "labels": [
         "repo-frontend-customer",
         "roadmap-v1-3",
-        "source-vs-e23-s02-st06"
+        "source-vs-e23-s02-st06",
+        "policy-configurable"
       ],
-      "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo frontend_customer cho VS-E23-S02; không được lấy quyền sở hữu dữ liệu của service khác.",
+      "decisionNoteVi": "Only frontend_customer owns this slice. Finance alone owns the canonical customer trust facts, policy, score and waiver decision; no new policy values are approved by this spec.",
       "jiraKey": "SCRUM-627",
-      "specStatus": "needs-refinement",
+      "specStatus": "executable",
       "workKind": "web",
-      "dispatchable": false,
-      "testCases": [],
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm run build",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E23-S02-ST06 focused CI output, denial/replay assertions and fixture version"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": "npm run lint",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E23-S02-ST06 focused CI output, denial/replay assertions and fixture version"
+        }
+      ],
       "decisions": [],
       "implementationBlockers": [],
-      "activationBlockers": []
+      "activationBlockers": [],
+      "primaryRepository": "frontend_customer",
+      "repositorySlices": [
+        {
+          "repository": "frontend_customer",
+          "paths": [
+            "src/**"
+          ],
+          "artifacts": [
+            "public policy explanation component",
+            "accessibility and unavailable-policy tests"
+          ]
+        }
+      ]
     },
     {
       "sourceId": "VS-E23-S02-ST07",
       "issueType": "Subtask",
-      "summary": "[VS-E23-S02-ST07] platform_contracts delivery slice for Configure simulate approve and publish trust policies",
+      "summary": "[VS-E23-S02-ST07] Specify approved trust policy version and simulation fixtures",
       "parentSourceId": "VS-E23-S02",
       "manageDescription": true,
-      "actor": "Repository ServiceOwner and implementing engineer",
-      "outcome": "platform_contracts supplies its bounded contract, implementation, tests, and evidence for parent VS-E23-S02.",
-      "context": "This is the platform_contracts implementation slice of VS-E23-S02. It must not duplicate authority assigned to another repository.",
+      "actor": "Authorized internal producer, reviewer or implementation engineer",
+      "outcome": "Contracts pins dimension formula, eligibility gates, decay, effective timing and maker-checker API without falsely activating unapproved defaults.",
+      "context": "Existing E23 epic proposes Payment 30%, Booking 25%, cleanliness 30%, Conduct 15%, 50-point initial dimensions and score bands. All values must be configurable/versioned and explicitly approved before production activation.",
       "inScope": [
-        "Change only platform_contracts plus generated artifacts explicitly owned by it.",
-        "Implement the platform_contracts responsibilities and interfaces stated in parent VS-E23-S02.",
-        "Attach focused unit/integration evidence and compatibility or rollback notes."
+        "Version Finance policy schema with per-dimension weight, distinct stayover/checkout cleanliness weights, decay classes, history/identity gates, blocker taxonomy, auto-waiver switch and effective intervals.",
+        "Define simulation request/result and approval semantics with maker/checker separation; forbid overlapping active windows.",
+        "Add deterministic fixtures for 0/39/40/59/60/79/80/100 tier edges, confidence insufficient evidence, stale source, active blocker, disputed negative and old policy replay."
       ],
       "outOfScope": [
-        "Implementing another repository ownership slice.",
-        "Cross-service database access or copying an authoritative aggregate.",
-        "Closing the parent without end-to-end and Postman/Newman evidence."
+        "Committing production policy activation or live secret into fixtures."
       ],
       "businessRules": [
         "The trust subject is the responsible customer account, not the employee who creates the booking; an absent customer account is UNASSESSED and requires full deposit.",
@@ -74780,98 +75218,134 @@
         "platform_contracts"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Version Finance-owned policy/GraphQL and event schema with effective time, immutable published revision, owner and consumer compatibility."
       ],
       "dataOwnership": [
-        "Finance owns normalized trust facts, effective-dated scoring policies, trust profile/tier/confidence, deposit decision, and appeal ledger; Operations owns raw cleanliness evidence; User owns identity; Booking freezes the decision snapshot."
+        "Contracts defines Finance policy format; only Finance stores active approved policies."
       ],
       "stateMachine": [
-        "Model legal states and transitions for platform_contracts delivery slice for Configure simulate approve and publish trust policies; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "DRAFT -> SIMULATED -> APPROVED -> SCHEDULED -> ACTIVE -> SUPERSEDED; missing checker cannot transition to ACTIVE."
       ],
       "authorization": {
         "actions": [
-          "vs-e23-s02-st07:view",
-          "vs-e23-s02-st07:manage"
+          "trust:policy:contract:publish"
         ],
         "dataPartitions": [
-          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+          "CUSTOMER only for its own subject; ADMIN only with the authorized organization/site/branch and target-customer relationship; SYSTEM only for authenticated, purpose-bound service calls."
         ],
         "fieldGroups": [
-          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+          "SUMMARY exposes safe mode; TRUST_DETAIL and INTERNAL_AUDIT classify scoring weights, simulation examples and approvals."
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Reject missing grants and unrecognized subjects without disclosing existence or protected source facts.",
+        "Absent or stale source/identity/policy version must return explicit unavailable or unassessed state; never infer a positive trust outcome.",
+        "Do not log PII, detailed financial history, raw cleanliness notes, or signed URLs."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Deduplicate ingested events by owner, event ID, source revision and customer; repeated delivery cannot create new facts.",
+        "Externally retried writes use scoped idempotency key, request fingerprint and expected revision; concurrent conflicts expose a stable code.",
+        "Historical facts and decisions are append-only; correction publishes a linked compensating fact rather than overwriting the source."
       ],
-      "dependencies": [],
+      "dependencies": [
+        {
+          "sourceId": "VS-E23-S01-ST07",
+          "relation": "is-blocked-by"
+        }
+      ],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for platform_contracts delivery slice for Configure simulate approve and publish trust policies",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "E23 initial proposal and separated stayover/checkout weights",
+          "when": "contract validator runs",
+          "then": "all weights, score bands, history gates, decay, version, checker and effective interval are unambiguously specified"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "weight sum invalid, policy overlap, maker equals checker or dispute counted as final deduction",
+          "when": "negative fixtures run",
+          "then": "contract validation rejects the candidate with actionable diagnostic"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "historical decision has old policy ID and a replacement is published",
+          "when": "replay fixture runs",
+          "then": "old decision stays frozen and its scoring can be reconstructed under recorded version"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Run the exact commands in testCases; add positive, cross-customer denial, unavailable-source, duplicate/reorder and compensation cases appropriate to this slice.",
+        "Attach machine-readable CI evidence and source-to-AC mapping; no simulated production approval or live secret is allowed."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Propagate correlation and source event IDs across the named boundary; record bounded result/replay/stale-source counters without customer PII.",
+        "Expose the source version, last successfully consumed watermark and recoverable failure reason to authorized operators."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "Named artifacts are committed in the owning repository; focused tests and CI pass.",
+        "Contract owner approves field/action partition matrix and retry/compensation behavior.",
+        "Jira has PR, tests, denial/replay evidence, and rollback/repair instructions; this task does not claim the runtime feature already exists."
       ],
       "evidence": [
-        "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "PR and CI URL for the owning repository.",
+        "Unit/integration result with positive, denial and replay/reordering fixture.",
+        "Contract compatibility and migration/rollback note where applicable."
       ],
       "externalBlockers": [],
       "labels": [
         "repo-platform-contracts",
         "roadmap-v1-3",
-        "source-vs-e23-s02-st07"
+        "source-vs-e23-s02-st07",
+        "policy-configurable",
+        "business-review-needed"
       ],
-      "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo platform_contracts cho VS-E23-S02; không được lấy quyền sở hữu dữ liệu của service khác.",
+      "decisionNoteVi": "Only platform_contracts owns this slice. Finance alone owns the canonical customer trust facts, policy, score and waiver decision; no new policy values are approved by this spec.",
       "jiraKey": "SCRUM-628",
-      "specStatus": "needs-refinement",
+      "specStatus": "executable",
       "workKind": "contract",
-      "dispatchable": false,
-      "testCases": [],
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm run validate:schemas",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E23-S02-ST07 focused CI output, denial/replay assertions and fixture version"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E23-S02-ST07 focused CI output, denial/replay assertions and fixture version"
+        }
+      ],
       "decisions": [],
       "implementationBlockers": [],
-      "activationBlockers": []
+      "activationBlockers": [],
+      "primaryRepository": "platform_contracts",
+      "repositorySlices": [
+        {
+          "repository": "platform_contracts",
+          "paths": [
+            "schemas/customer-trust/**",
+            "graphql/backoffice/**",
+            "fixtures/customer-trust/**"
+          ],
+          "artifacts": [
+            "versioned trust policy schemas and examples",
+            "simulation/maker-checker fixture matrix",
+            "effective-date and replay compatibility tests"
+          ]
+        }
+      ]
     },
     {
       "sourceId": "VS-E23-S03",
