@@ -20919,8 +20919,8 @@
       "summary": "[VS-E07] CRM, Booking Requests & Attribution",
       "manageDescription": true,
       "actor": "Sales or booking employee",
-      "outcome": "CRM, Booking Requests & Attribution is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This epic is part of the ViStay VS-E07 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "CRM and booking-request delivery is decomposed into four Booking workflow leaves, User authorization/reference lookup, versioned contracts, Admin Web/Mobile, and Postman evidence.",
+      "context": "Only the executable Task/Subtask records are assignable; Stories and Epic remain non-dispatchable outcome boundaries.",
       "inScope": [
         "Implement and verify: CRM, Booking Requests & Attribution.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -21027,7 +21027,7 @@
         "source-vs-e07"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "web",
       "dispatchable": false,
       "testCases": [],
@@ -21043,8 +21043,8 @@
       "parentSourceId": "VS-E07",
       "manageDescription": true,
       "actor": "Sales or booking employee",
-      "outcome": "Capture/search lead contact with duplicate hints and PII controls is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E07 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "S01 is implemented by its explicit service_booking child and prerequisite contract/authorization slices.",
+      "context": "The Story owns the business outcome; implementation and evidence belong on the executable child.",
       "inScope": [
         "Implement and verify: Capture/search lead contact with duplicate hints and PII controls.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -21160,13 +21160,190 @@
         "source-vs-e07-s01"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "web",
       "dispatchable": false,
       "testCases": [],
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E07-S01-ST01",
+      "jiraKey": "SCRUM-708",
+      "issueType": "Subtask",
+      "summary": "[VS-E07-S01-ST01] Implement privacy-safe lead capture and duplicate hints",
+      "parentSourceId": "VS-E07-S01",
+      "manageDescription": true,
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Booking Service captures a privacy-safe pre-customer lead and returns partition-filtered duplicate hints without automatically merging people or claiming that a lead is a User profile.",
+      "context": "No lead table or CRM API currently exists. Create an additive V10 model using encrypted contact display values and keyed normalized lookup hashes; do not log or expose raw PII in events.",
+      "inScope": [
+        "Add lead_contacts with encrypted name/phone/email, HMAC lookup hashes, consent/source metadata, linked customerProfileId reference, owner/branch, lifecycle, revision, and configured retention class.",
+        "Add createLead, updateLeadContact, linkLeadToCustomer, lead, and searchLeads GraphQL operations with cursor pagination and expectedVersion.",
+        "Generate exact/near duplicate hints from normalized hashes and bounded non-PII signals; require explicit authorized merge/link action and preserve both histories.",
+        "Write redacted audit/outbox records and support configured anonymization without deleting financial/booking references."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "businessRules": [
+        "Lead PII is purpose-limited and duplicate hints never auto-merge people.",
+        "A request does not consume inventory until an explicit hold succeeds.",
+        "Assignment, stage, loss reason, source, campaign, and responsible employee are audited."
+      ],
+      "repositories": [
+        "service_booking"
+      ],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "Booking owns pre-customer lead contact envelopes, inquiries, booking requests, attribution, follow-up, quote/hold references, and their lifecycle audit. User owns account/customer profile identity; Booking stores only its stable reference after linkage."
+      ],
+      "stateMachine": [
+        "Lead is NEW -> ACTIVE -> CONVERTED or CLOSED; configured anonymization changes contact fields to ANONYMIZED without removing references/audit.",
+        "Duplicate hint is advisory and never changes identity or ownership.",
+        "Linking to a User customer profile is explicit, revision-checked, and immutable except through an audited unlink/correction command."
+      ],
+      "authorization": {
+        "actions": [
+          "crm:lead:create",
+          "crm:lead:view",
+          "crm:lead:update",
+          "crm:lead:link-customer"
+        ],
+        "dataPartitions": [
+          "ADMIN organization plus assigned EMPLOYEE_SELF/TEAM or SITE/BRANCH scope derived from the request; SYSTEM is restricted to authenticated internal repair."
+        ],
+        "fieldGroups": [
+          "CRM_SUMMARY is baseline; PII_CONTACT, CRM_ATTRIBUTION, FINANCIAL, and INTERNAL_AUDIT each require an explicit field-group grant."
+        ]
+      },
+      "failureSemantics": [
+        "Reject invalid or unauthorized CRM commands before persisting PII or lifecycle changes and never reveal duplicate candidates outside the caller partition.",
+        "Map duplicate idempotency key mismatch, stale revision, invalid transition, inventory conflict, and dependency failure to distinct stable codes.",
+        "Retry only transient customer-reference, authorization, outbox, or inventory dependencies; never retry a business conflict as a new command."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E07-T03",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E07-T05",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized employee submits valid contact data and consent/source metadata",
+          "when": "createLead executes",
+          "then": "one encrypted lead with lookup hashes, owner partition, audit/outbox evidence, and redacted duplicate hints is returned"
+        },
+        {
+          "id": "AC02",
+          "given": "the caller lacks PII_CONTACT/partition or searches a matching contact outside scope",
+          "when": "create/search/read executes",
+          "then": "raw contact and out-of-scope candidate existence are not exposed and unauthorized mutation commits nothing"
+        },
+        {
+          "id": "AC03",
+          "given": "an identical command is replayed or a link/merge races with another revision",
+          "when": "processing completes",
+          "then": "one lead/link effect remains and conflict/replay returns stable evidence without losing either history"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-booking",
+        "roadmap-v1-3",
+        "source-vs-e07-s01-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E07-S01-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*LeadService*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *LeadService*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*LeadService*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *LeadService*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "service_booking",
+      "repositorySlices": [
+        {
+          "repository": "service_booking",
+          "paths": [
+            "src/main/resources/db/migration/V10__crm_leads.sql",
+            "src/main/resources/graphql/schema.graphqls",
+            "src/main/java/com/vistay/booking/domain/crm/lead/**",
+            "src/main/java/com/vistay/booking/application/LeadService.java",
+            "src/main/java/com/vistay/booking/adapter/in/graphql/LeadController.java",
+            "src/main/java/com/vistay/booking/adapter/out/persistence/**",
+            "src/main/java/com/vistay/booking/config/CrmPrivacyConfiguration.java",
+            "src/test/java/com/vistay/booking/application/LeadServiceIntegrationTest.java"
+          ],
+          "artifacts": [
+            "encrypted lead-contact persistence",
+            "lead GraphQL commands and search",
+            "duplicate-hint policy",
+            "PII authorization/anonymization tests"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E07-S02",
@@ -21176,8 +21353,8 @@
       "parentSourceId": "VS-E07",
       "manageDescription": true,
       "actor": "Sales or booking employee",
-      "outcome": "Record inquiry requirements, source/campaign/channel and follow-up is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E07 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "S02 is implemented by its explicit service_booking child and prerequisite contract/authorization slices.",
+      "context": "The Story owns the business outcome; implementation and evidence belong on the executable child.",
       "inScope": [
         "Implement and verify: Record inquiry requirements, source/campaign/channel and follow-up.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -21297,13 +21474,190 @@
         "source-vs-e07-s02"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "web",
       "dispatchable": false,
       "testCases": [],
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E07-S02-ST01",
+      "jiraKey": "SCRUM-709",
+      "issueType": "Subtask",
+      "summary": "[VS-E07-S02-ST01] Implement inquiry requirements attribution and follow-up",
+      "parentSourceId": "VS-E07-S02",
+      "manageDescription": true,
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Booking Service records a lead inquiry with stay requirements, source/campaign/channel attribution, assigned follow-up, and immutable attribution history.",
+      "context": "This is a new V11 aggregate linked to a lead, not a Booking. Property/date/budget preferences are requirements only and never reserve inventory.",
+      "inScope": [
+        "Add inquiries, attribution touchpoints, and follow-up activities with lead reference, desired location/property, local dates, guest count, stay product, budget range, notes, source, channel, campaign, owner, due time, and revision.",
+        "Add create/update/search inquiry and schedule/complete/cancel follow-up GraphQL operations.",
+        "Preserve first-touch, last-touch, and staff-entered attribution separately; corrections append a new effective record.",
+        "Emit reminder-ready events containing identifiers and due time but no contact PII or free-text notes."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "businessRules": [
+        "Lead PII is purpose-limited and duplicate hints never auto-merge people.",
+        "A request does not consume inventory until an explicit hold succeeds.",
+        "Assignment, stage, loss reason, source, campaign, and responsible employee are audited."
+      ],
+      "repositories": [
+        "service_booking"
+      ],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "Booking owns pre-customer lead contact envelopes, inquiries, booking requests, attribution, follow-up, quote/hold references, and their lifecycle audit. User owns account/customer profile identity; Booking stores only its stable reference after linkage."
+      ],
+      "stateMachine": [
+        "Inquiry is OPEN -> QUALIFIED -> REQUEST_CREATED or LOST/CLOSED.",
+        "Follow-up is SCHEDULED -> COMPLETED, CANCELLED, or OVERDUE; reschedule appends reason and new due time.",
+        "Attribution records are effective-dated and append-only; a correction supersedes rather than edits the prior record."
+      ],
+      "authorization": {
+        "actions": [
+          "crm:inquiry:create",
+          "crm:inquiry:view",
+          "crm:inquiry:update",
+          "crm:follow-up:manage",
+          "crm:attribution:view"
+        ],
+        "dataPartitions": [
+          "ADMIN organization plus assigned EMPLOYEE_SELF/TEAM or SITE/BRANCH scope derived from the request; SYSTEM is restricted to authenticated internal repair."
+        ],
+        "fieldGroups": [
+          "CRM_SUMMARY is baseline; PII_CONTACT, CRM_ATTRIBUTION, FINANCIAL, and INTERNAL_AUDIT each require an explicit field-group grant."
+        ]
+      },
+      "failureSemantics": [
+        "Reject invalid or unauthorized CRM commands before persisting PII or lifecycle changes and never reveal duplicate candidates outside the caller partition.",
+        "Map duplicate idempotency key mismatch, stale revision, invalid transition, inventory conflict, and dependency failure to distinct stable codes.",
+        "Retry only transient customer-reference, authorization, outbox, or inventory dependencies; never retry a business conflict as a new command."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E07-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E07-T03",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized employee supplies valid lead, requirements, attribution, and follow-up",
+          "when": "the inquiry is created",
+          "then": "the inquiry and first follow-up persist once with separate attribution records and redacted event evidence"
+        },
+        {
+          "id": "AC02",
+          "given": "dates/guests/budget/follow-up are invalid or attribution/PII grant is absent",
+          "when": "a command/query executes",
+          "then": "a stable validation/forbidden result occurs with no partial activity or restricted attribution leakage"
+        },
+        {
+          "id": "AC03",
+          "given": "follow-up or attribution update is replayed or races",
+          "when": "processing completes",
+          "then": "one revision wins and prior attribution/activity history remains immutable"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-booking",
+        "roadmap-v1-3",
+        "source-vs-e07-s02-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E07-S02-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*InquiryService*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *InquiryService*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*InquiryService*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *InquiryService*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "service_booking",
+      "repositorySlices": [
+        {
+          "repository": "service_booking",
+          "paths": [
+            "src/main/resources/db/migration/V11__crm_inquiries.sql",
+            "src/main/resources/graphql/schema.graphqls",
+            "src/main/java/com/vistay/booking/domain/crm/inquiry/**",
+            "src/main/java/com/vistay/booking/application/InquiryService.java",
+            "src/main/java/com/vistay/booking/adapter/in/graphql/InquiryController.java",
+            "src/main/java/com/vistay/booking/adapter/out/persistence/**",
+            "src/test/java/com/vistay/booking/application/InquiryServiceIntegrationTest.java"
+          ],
+          "artifacts": [
+            "inquiry and attribution persistence",
+            "inquiry/follow-up GraphQL API",
+            "append-only attribution history",
+            "follow-up event and tests"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E07-S03",
@@ -21313,8 +21667,8 @@
       "parentSourceId": "VS-E07",
       "manageDescription": true,
       "actor": "Sales or booking employee",
-      "outcome": "Assign/advance/drop request with reason and audit is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E07 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "S03 is implemented by its explicit service_booking child and prerequisite contract/authorization slices.",
+      "context": "The Story owns the business outcome; implementation and evidence belong on the executable child.",
       "inScope": [
         "Implement and verify: Assign/advance/drop request with reason and audit.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -21434,13 +21788,191 @@
         "source-vs-e07-s03"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "web",
       "dispatchable": false,
       "testCases": [],
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E07-S03-ST01",
+      "jiraKey": "SCRUM-710",
+      "issueType": "Subtask",
+      "summary": "[VS-E07-S03-ST01] Implement booking-request assignment and lifecycle",
+      "parentSourceId": "VS-E07-S03",
+      "manageDescription": true,
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Booking Service creates and advances an auditable booking request with explicit owner/team assignment, reasoned transitions, SLA timestamps, and no inventory side effect.",
+      "context": "A booking request is a CRM workflow aggregate created from a qualified inquiry. It is not a booking, quote, or inventory block and must not be returned by availability as occupancy.",
+      "inScope": [
+        "Add booking_requests, assignment history, status history, SLA timestamps, close/loss reasons, idempotency evidence, and optimistic revision.",
+        "Add createBookingRequest, assignBookingRequest, advanceBookingRequest, dropBookingRequest, reopenBookingRequest, and branch/assignee queue queries.",
+        "Require reason for assignment transfer, drop, loss, reopen, and exception transitions.",
+        "Record creator/current owner/team attribution separately from later booking_attributions."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "businessRules": [
+        "Lead PII is purpose-limited and duplicate hints never auto-merge people.",
+        "A request does not consume inventory until an explicit hold succeeds.",
+        "Assignment, stage, loss reason, source, campaign, and responsible employee are audited."
+      ],
+      "repositories": [
+        "service_booking"
+      ],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "Booking owns pre-customer lead contact envelopes, inquiries, booking requests, attribution, follow-up, quote/hold references, and their lifecycle audit. User owns account/customer profile identity; Booking stores only its stable reference after linkage."
+      ],
+      "stateMachine": [
+        "Request is NEW -> QUALIFYING -> READY_TO_QUOTE -> QUOTED -> HOLD_OPTIONAL -> CONVERTED; NEW/QUALIFYING/READY_TO_QUOTE/QUOTED may become LOST or CLOSED with reason.",
+        "Assignment changes do not change status and append effective owner history.",
+        "Reopen is allowed only from LOST/CLOSED with explicit reason and expectedVersion; CONVERTED is terminal."
+      ],
+      "authorization": {
+        "actions": [
+          "booking-request:create",
+          "booking-request:view",
+          "booking-request:assign",
+          "booking-request:advance",
+          "booking-request:drop",
+          "booking-request:reopen"
+        ],
+        "dataPartitions": [
+          "ADMIN organization plus assigned EMPLOYEE_SELF/TEAM or SITE/BRANCH scope derived from the request; SYSTEM is restricted to authenticated internal repair."
+        ],
+        "fieldGroups": [
+          "CRM_SUMMARY is baseline; PII_CONTACT, CRM_ATTRIBUTION, FINANCIAL, and INTERNAL_AUDIT each require an explicit field-group grant."
+        ]
+      },
+      "failureSemantics": [
+        "Reject invalid or unauthorized CRM commands before persisting PII or lifecycle changes and never reveal duplicate candidates outside the caller partition.",
+        "Map duplicate idempotency key mismatch, stale revision, invalid transition, inventory conflict, and dependency failure to distinct stable codes.",
+        "Retry only transient customer-reference, authorization, outbox, or inventory dependencies; never retry a business conflict as a new command."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E07-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E07-T03",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "a qualified inquiry and authorized assignee in scope",
+          "when": "the request is created/assigned/advanced through legal states",
+          "then": "revision, SLA, owner, history, audit, and outbox evidence update atomically without an inventory block"
+        },
+        {
+          "id": "AC02",
+          "given": "an illegal transition, missing reason/grant, out-of-scope assignee, or stale revision",
+          "when": "the command executes",
+          "then": "the request remains unchanged and returns a stable non-leaking validation/forbidden/conflict code"
+        },
+        {
+          "id": "AC03",
+          "given": "assignment or transition is replayed or concurrent",
+          "when": "processing completes",
+          "then": "one deterministic revision/effect remains and full assignment/status history is preserved"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-booking",
+        "roadmap-v1-3",
+        "source-vs-e07-s03-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E07-S03-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*BookingRequestService*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *BookingRequestService*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*BookingRequestService*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *BookingRequestService*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "service_booking",
+      "repositorySlices": [
+        {
+          "repository": "service_booking",
+          "paths": [
+            "src/main/resources/db/migration/V12__booking_requests.sql",
+            "src/main/resources/graphql/schema.graphqls",
+            "src/main/java/com/vistay/booking/domain/request/**",
+            "src/main/java/com/vistay/booking/application/BookingRequestService.java",
+            "src/main/java/com/vistay/booking/adapter/in/graphql/BookingRequestController.java",
+            "src/main/java/com/vistay/booking/adapter/out/persistence/**",
+            "src/test/java/com/vistay/booking/application/BookingRequestServiceIntegrationTest.java"
+          ],
+          "artifacts": [
+            "booking-request aggregate",
+            "assignment/status history",
+            "request queue and commands",
+            "transition/authorization/concurrency tests"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E07-S04",
@@ -21450,8 +21982,8 @@
       "parentSourceId": "VS-E07",
       "manageDescription": true,
       "actor": "Sales or booking employee",
-      "outcome": "Convert request into quote/hold without silently blocking inventory is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E07 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "S04 is implemented by its explicit service_booking child and prerequisite contract/authorization slices.",
+      "context": "The Story owns the business outcome; implementation and evidence belong on the executable child.",
       "inScope": [
         "Implement and verify: Convert request into quote/hold without silently blocking inventory.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -21579,13 +22111,194 @@
         "source-vs-e07-s04"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "web",
       "dispatchable": false,
       "testCases": [],
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E07-S04-ST01",
+      "jiraKey": "SCRUM-711",
+      "issueType": "Subtask",
+      "summary": "[VS-E07-S04-ST01] Convert request to quote or explicit inventory hold",
+      "parentSourceId": "VS-E07-S04",
+      "manageDescription": true,
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Booking Service converts a ready request into an immutable quote and, only when explicitly requested, a time-bounded tentative inventory hold using existing pricing and inventory contracts.",
+      "context": "Quote creation must not silently block inventory. A hold is a separate authorized command with its own idempotency key, expected inventory revision, expiry, and visible release path.",
+      "inScope": [
+        "Add createQuoteFromRequest using an explicit published pricing version and persist request/lead/attribution references without copying mutable profiles.",
+        "Add createHoldFromRequest that calls the existing inventory block path with TENTATIVE status, policy-bounded expiry, correlation/idempotency key, and expected inventory revision.",
+        "Add releaseRequestHold and expiration reconciliation; quote-only flow leaves inventory unchanged.",
+        "On booking conversion, copy explicit creator/owner/sale attribution into booking_attributions with effective evidence and mark the request CONVERTED atomically."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "businessRules": [
+        "Lead PII is purpose-limited and duplicate hints never auto-merge people.",
+        "A request does not consume inventory until an explicit hold succeeds.",
+        "Assignment, stage, loss reason, source, campaign, and responsible employee are audited."
+      ],
+      "repositories": [
+        "service_booking"
+      ],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "Booking owns pre-customer lead contact envelopes, inquiries, booking requests, attribution, follow-up, quote/hold references, and their lifecycle audit. User owns account/customer profile identity; Booking stores only its stable reference after linkage."
+      ],
+      "stateMachine": [
+        "Quote is ACTIVE -> USED, EXPIRED, or CANCELLED and never implies a hold.",
+        "Explicit hold is TENTATIVE -> ACTIVE on confirmed booking or RELEASED/CANCELLED on release/expiry; it uses existing overlap constraints.",
+        "Request becomes CONVERTED only after booking plus attribution commit succeeds; failed quote/hold never advances it falsely."
+      ],
+      "authorization": {
+        "actions": [
+          "booking-request:quote",
+          "booking-request:hold",
+          "booking-request:convert",
+          "inventory:block",
+          "pricing:quote-snapshot:create"
+        ],
+        "dataPartitions": [
+          "ADMIN organization plus assigned EMPLOYEE_SELF/TEAM or SITE/BRANCH scope derived from the request; SYSTEM is restricted to authenticated internal repair."
+        ],
+        "fieldGroups": [
+          "CRM_SUMMARY is baseline; PII_CONTACT, CRM_ATTRIBUTION, FINANCIAL, and INTERNAL_AUDIT each require an explicit field-group grant."
+        ]
+      },
+      "failureSemantics": [
+        "Reject invalid or unauthorized CRM commands before persisting PII or lifecycle changes and never reveal duplicate candidates outside the caller partition.",
+        "Map duplicate idempotency key mismatch, stale revision, invalid transition, inventory conflict, and dependency failure to distinct stable codes.",
+        "Retry only transient customer-reference, authorization, outbox, or inventory dependencies; never retry a business conflict as a new command."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E07-S03-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E05-T01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E07-T03",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "a READY_TO_QUOTE request and authorized actor",
+          "when": "quote-only conversion executes",
+          "then": "an immutable priced quote is linked and inventory block count remains unchanged"
+        },
+        {
+          "id": "AC02",
+          "given": "the actor explicitly requests a hold with current inventory revision and available dates",
+          "when": "hold creation executes",
+          "then": "one expiring TENTATIVE block is linked; conflict/stale revision creates no quote/hold partial state"
+        },
+        {
+          "id": "AC03",
+          "given": "conversion/release/expiry is replayed or a booking conversion races",
+          "when": "processing completes",
+          "then": "one quote/hold/booking effect remains and request plus booking attribution histories reconcile"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-booking",
+        "roadmap-v1-3",
+        "source-vs-e07-s04-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E07-S04-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*BookingRequestConversion*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *BookingRequestConversion*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*BookingRequestConversion*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *BookingRequestConversion*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "service_booking",
+      "repositorySlices": [
+        {
+          "repository": "service_booking",
+          "paths": [
+            "src/main/resources/db/migration/V13__booking_request_conversion.sql",
+            "src/main/resources/graphql/schema.graphqls",
+            "src/main/java/com/vistay/booking/application/BookingRequestConversionService.java",
+            "src/main/java/com/vistay/booking/adapter/in/graphql/BookingRequestConversionController.java",
+            "src/main/java/com/vistay/booking/application/InventoryBlockCommandService.java",
+            "src/main/java/com/vistay/booking/application/PricingQuoteSnapshotService.java",
+            "src/test/java/com/vistay/booking/application/BookingRequestConversionIntegrationTest.java"
+          ],
+          "artifacts": [
+            "request-to-quote command",
+            "explicit tentative hold command",
+            "hold expiry/release reconciliation",
+            "booking attribution conversion tests"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E07-T01",
@@ -21594,18 +22307,19 @@
       "summary": "[VS-E07-T01] Deliver Admin Web lead and booking-request workspace",
       "parentSourceId": "VS-E07",
       "manageDescription": true,
-      "actor": "Sales or booking employee",
-      "outcome": "Deliver Admin Web lead and booking-request workspace is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This task is part of the ViStay VS-E07 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Admin Web provides a branch/team-scoped lead, inquiry, follow-up, booking-request, attribution, quote, and explicit-hold workspace with privacy-aware fields and authoritative revisions.",
+      "context": "Consume the new Booking CRM contract through the shared API client. The UI must label quote-only versus hold explicitly and never infer inventory reservation from request status.",
       "inScope": [
-        "Implement and verify: Deliver Admin Web lead and booking-request workspace.",
-        "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
-        "Provide repository-specific automated tests and Postman/Newman evidence for callable APIs."
+        "Add typed CRM operations and stable error mapping to the shared API client.",
+        "Build lead search/capture, duplicate-hint review, inquiry/follow-up, request queue/detail/assignment/lifecycle, quote, explicit hold/release, and conversion views.",
+        "Apply action, employee/team/branch partition, PII_CONTACT, CRM_ATTRIBUTION, and FINANCIAL field visibility.",
+        "Cover loading, empty, validation, forbidden, dependency failure, stale revision, conflict, replay result, and success refresh."
       ],
       "outOfScope": [
-        "Unlisted provider credentials and production policy values.",
-        "Direct cross-service database reads or duplicated ownership.",
-        "Unreviewed workflow transitions, historical rewrites, or destructive migration shortcuts."
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
       ],
       "businessRules": [
         "Lead PII is purpose-limited and duplicate hints never auto-merge people.",
@@ -21613,124 +22327,183 @@
         "Assignment, stage, loss reason, source, campaign, and responsible employee are audited."
       ],
       "repositories": [
-        "service_booking",
-        "service_user",
-        "frontend_admin",
-        "platform_contracts"
+        "frontend_admin"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
       ],
       "dataOwnership": [
-        "Booking owns leads, inquiries, attribution, assignments, and conversion references; User owns employee/customer identity."
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
       ],
       "stateMachine": [
-        "Model legal states and transitions for Deliver Admin Web lead and booking-request workspace; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
       ],
       "authorization": {
         "actions": [
-          "vs-e07-t01:view",
-          "vs-e07-t01:manage"
+          "crm:lead:view",
+          "crm:lead:update",
+          "crm:inquiry:update",
+          "crm:follow-up:manage",
+          "booking-request:view",
+          "booking-request:assign",
+          "booking-request:advance",
+          "booking-request:quote",
+          "booking-request:hold"
         ],
         "dataPartitions": [
-          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
         ],
         "fieldGroups": [
-          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
       ],
       "dependencies": [
         {
-          "sourceId": "VS-E07-S01",
+          "sourceId": "VS-E07-S01-ST01",
           "relation": "is-blocked-by"
         },
         {
-          "sourceId": "VS-E07-S02",
+          "sourceId": "VS-E07-S02-ST01",
           "relation": "is-blocked-by"
         },
         {
-          "sourceId": "VS-E07-S03",
+          "sourceId": "VS-E07-S03-ST01",
           "relation": "is-blocked-by"
         },
         {
-          "sourceId": "VS-E07-S04",
+          "sourceId": "VS-E07-S04-ST01",
           "relation": "is-blocked-by"
         },
         {
-          "sourceId": "VS-E07-T02",
-          "relation": "blocks"
+          "sourceId": "VS-E07-T03",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E07-T05",
+          "relation": "is-blocked-by"
         }
       ],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for Deliver Admin Web lead and booking-request workspace",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "an authorized employee selects an allowed queue/branch",
+          "when": "the CRM workflow and quote/hold actions succeed",
+          "then": "the UI shows authoritative revisions/history and visibly distinguishes quote-only from inventory hold"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "PII/attribution/financial/action/partition grant is missing",
+          "when": "the workspace renders or submits",
+          "then": "restricted fields/actions are absent or denied without candidate/contact/value leakage"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "validation, stale revision, inventory conflict, replay, empty, or dependency failure",
+          "when": "the response arrives",
+          "then": "a specific recoverable state is shown and no false lifecycle/hold success remains"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
       ],
       "evidence": [
-        "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
       ],
       "externalBlockers": [],
       "labels": [
-        "owner-service-booking",
+        "repo-frontend-admin",
         "roadmap-v1-3",
         "source-vs-e07-t01"
       ],
-      "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "decisionNoteVi": "Leaf VS-E07-T01 chỉ sở hữu artifact của frontend_admin; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
       "workKind": "web",
-      "dispatchable": false,
-      "testCases": [],
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "api-client and BookingCrmWorkspace Vitest report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "npm run typecheck",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "frontend workspace typecheck log"
+        },
+        {
+          "id": "TEST-03",
+          "level": "operational",
+          "command": "npm run build",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Admin Web production build log"
+        }
+      ],
       "decisions": [],
       "implementationBlockers": [],
-      "activationBlockers": []
+      "activationBlockers": [],
+      "primaryRepository": "frontend_admin",
+      "repositorySlices": [
+        {
+          "repository": "frontend_admin",
+          "paths": [
+            "packages/api-client/src/index.ts",
+            "packages/api-client/src/index.test.ts",
+            "apps/web/src/BookingCrmWorkspace.tsx",
+            "apps/web/src/BookingCrmWorkspace.test.tsx",
+            "apps/web/src/App.tsx",
+            "apps/web/src/App.css"
+          ],
+          "artifacts": [
+            "typed Booking CRM client",
+            "Admin Web CRM workspace",
+            "privacy/lifecycle/quote-hold component tests"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E07-T02",
@@ -21739,18 +22512,19 @@
       "summary": "[VS-E07-T02] Deliver Admin Mobile lead and booking-request parity",
       "parentSourceId": "VS-E07",
       "manageDescription": true,
-      "actor": "Sales or booking employee",
-      "outcome": "Deliver Admin Mobile lead and booking-request parity is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This task is part of the ViStay VS-E07 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Admin Mobile provides touch-first lead/request queue, follow-up, assignment, lifecycle, quote preview, and explicit hold/release parity for field staff.",
+      "context": "Reuse the shared CRM client and mobile OIDC shell. Mobile supports operational capture and action; complex attribution review and bulk search remain optimized for Web.",
       "inScope": [
-        "Implement and verify: Deliver Admin Mobile lead and booking-request parity.",
-        "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
-        "Provide repository-specific automated tests and Postman/Newman evidence for callable APIs."
+        "Add CRM navigation, compact assigned queue, lead capture/search hint, inquiry/follow-up, request detail, assignment/status actions, quote preview, and explicit hold/release confirmation.",
+        "Redact PII/attribution/financial fields and actions according to grants.",
+        "Refresh after resume/network recovery and before any assignment/lifecycle/hold mutation; never queue CRM mutations offline.",
+        "Test touch states, validation, forbidden, stale revision, inventory conflict, replay, loading, empty, and dependency failure."
       ],
       "outOfScope": [
-        "Unlisted provider credentials and production policy values.",
-        "Direct cross-service database reads or duplicated ownership.",
-        "Unreviewed workflow transitions, historical rewrites, or destructive migration shortcuts."
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
       ],
       "businessRules": [
         "Lead PII is purpose-limited and duplicate hints never auto-merge people.",
@@ -21758,108 +22532,689 @@
         "Assignment, stage, loss reason, source, campaign, and responsible employee are audited."
       ],
       "repositories": [
-        "service_booking",
-        "service_user",
-        "frontend_admin",
-        "platform_contracts"
+        "frontend_admin"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
       ],
       "dataOwnership": [
-        "Booking owns leads, inquiries, attribution, assignments, and conversion references; User owns employee/customer identity."
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
       ],
       "stateMachine": [
-        "Model legal states and transitions for Deliver Admin Mobile lead and booking-request parity; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
       ],
       "authorization": {
         "actions": [
-          "vs-e07-t02:view",
-          "vs-e07-t02:manage"
+          "crm:lead:create",
+          "crm:inquiry:update",
+          "crm:follow-up:manage",
+          "booking-request:view",
+          "booking-request:assign",
+          "booking-request:advance",
+          "booking-request:quote",
+          "booking-request:hold"
         ],
         "dataPartitions": [
-          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
         ],
         "fieldGroups": [
-          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
       ],
       "dependencies": [
         {
-          "sourceId": "VS-E07-T01",
+          "sourceId": "VS-E07-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E07-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E07-S03-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E07-S04-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E07-T03",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E07-T05",
           "relation": "is-blocked-by"
         }
       ],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for Deliver Admin Mobile lead and booking-request parity",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "an online authorized employee opens an assigned request",
+          "when": "follow-up/lifecycle/quote/explicit-hold action succeeds",
+          "then": "mobile displays the authoritative new revision and clear hold state"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "the app resumes/offlines or a grant/partition/field group is absent",
+          "when": "a mutation is considered",
+          "then": "the app refreshes or disables it and exposes no restricted contact/attribution/financial value"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "validation, stale revision, inventory conflict, or idempotent replay",
+          "when": "the result renders",
+          "then": "pending success is cleared, actionable feedback is shown, and no silent resubmit occurs"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
       ],
       "evidence": [
-        "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
       ],
       "externalBlockers": [],
       "labels": [
-        "owner-service-booking",
+        "repo-frontend-admin",
         "roadmap-v1-3",
         "source-vs-e07-t02"
       ],
-      "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "decisionNoteVi": "Leaf VS-E07-T02 chỉ sở hữu artifact của frontend_admin; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
       "workKind": "mobile",
-      "dispatchable": false,
-      "testCases": [],
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm run test:mobile",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "BookingCrmWorkspace mobile Vitest report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "npm run typecheck",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "mobile/shared-client typecheck log"
+        }
+      ],
       "decisions": [],
       "implementationBlockers": [],
-      "activationBlockers": []
+      "activationBlockers": [],
+      "primaryRepository": "frontend_admin",
+      "repositorySlices": [
+        {
+          "repository": "frontend_admin",
+          "paths": [
+            "packages/api-client/src/index.ts",
+            "packages/api-client/src/index.test.ts",
+            "apps/mobile/src/BookingCrmWorkspace.tsx",
+            "apps/mobile/src/BookingCrmWorkspace.test.tsx",
+            "apps/mobile/App.tsx"
+          ],
+          "artifacts": [
+            "Admin Mobile CRM destination",
+            "touch-first follow-up/request/hold actions",
+            "mobile privacy/conflict/recovery tests"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
+      "sourceId": "VS-E07-T03",
+      "jiraKey": "SCRUM-712",
+      "issueType": "Task",
+      "summary": "[VS-E07-T03] Publish CRM and booking-request contracts",
+      "manageDescription": true,
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Platform Contracts publishes CRM lead/inquiry/request GraphQL operations and redacted lifecycle/attribution events before service and UI consumers implement them.",
+      "context": "No CRM contract exists today. Define identifiers, revisions, privacy field groups, lifecycle enums, quote-versus-hold semantics, stable errors, and compatibility fixtures.",
+      "inScope": [
+        "Add backoffice CRM subgraph types and operations for leads, duplicate hints, inquiries, follow-ups, booking requests, assignments, quote, hold, release, and conversion.",
+        "Add booking.request-changed v1 and booking.follow-up-due v1 event schemas/examples with no raw contact or notes.",
+        "Document PII_CONTACT/CRM_ATTRIBUTION field groups and explicit quote-without-hold rule.",
+        "Extend GraphQL/event validation with negative fixtures for PII leakage, illegal state, and ambiguous hold behavior."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "businessRules": [
+        "Lead PII is purpose-limited and duplicate hints never auto-merge people.",
+        "A request does not consume inventory until an explicit hold succeeds.",
+        "Assignment, stage, loss reason, source, campaign, and responsible employee are audited."
+      ],
+      "repositories": [
+        "platform_contracts"
+      ],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "crm:contract:view",
+          "crm:contract:publish"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "valid CRM GraphQL and event artifacts",
+          "when": "contract validation runs",
+          "then": "composition/schema checks pass with explicit identity, revision, privacy group, lifecycle, and hold semantics"
+        },
+        {
+          "id": "AC02",
+          "given": "raw contact/notes in an event, illegal lifecycle value, or quote operation implying a hold",
+          "when": "negative validation runs",
+          "then": "CI fails with a stable file/path diagnostic"
+        },
+        {
+          "id": "AC03",
+          "given": "an additive optional contract change",
+          "when": "validation repeats",
+          "then": "v1 consumers remain compatible and canonical fixtures are deterministic"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-platform-contracts",
+        "roadmap-v1-3",
+        "source-vs-e07-t03"
+      ],
+      "decisionNoteVi": "Leaf VS-E07-T03 chỉ sở hữu artifact của platform_contracts; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "contract",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "contract",
+          "command": "npm run validate:graphql",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "CRM subgraph composition and operation validation log"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "npm run validate:events",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "CRM event valid/negative fixture validation log"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "parentSourceId": "VS-E07",
+      "primaryRepository": "platform_contracts",
+      "repositorySlices": [
+        {
+          "repository": "platform_contracts",
+          "paths": [
+            "graphql/backoffice/subgraphs/booking-crm.graphql",
+            "graphql/backoffice/operations/booking-crm.graphql",
+            "events/v1/booking.request-changed.event.schema.json",
+            "events/v1/booking.request-changed.payload.schema.json",
+            "events/v1/booking.follow-up-due.event.schema.json",
+            "events/v1/booking.follow-up-due.payload.schema.json",
+            "events/v1/examples/booking.request-changed.event.example.json",
+            "scripts/validate-graphql.mjs",
+            "scripts/validate-schemas.mjs"
+          ],
+          "artifacts": [
+            "CRM GraphQL contract",
+            "booking-request lifecycle event",
+            "follow-up due event",
+            "privacy and quote/hold negative fixtures"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
+      "sourceId": "VS-E07-T04",
+      "jiraKey": "SCRUM-713",
+      "issueType": "Task",
+      "summary": "[VS-E07-T04] Add CRM booking-request Postman evidence",
+      "manageDescription": true,
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "A deterministic Postman flow proves lead-to-inquiry-to-request-to-quote/explicit-hold behavior, privacy denials, lifecycle conflicts, replay, and cleanup.",
+      "context": "Run through the composed backoffice boundary using synthetic contacts only. Fixtures must be rerunnable and must prove quote-only does not change inventory.",
+      "inScope": [
+        "Register the Booking CRM subgraph operations in router artifacts.",
+        "Add collection folders for lead/search hints, inquiry/follow-up, request assignment/lifecycle, quote-only, explicit hold/release, conversion, denials, conflicts, and replay.",
+        "Seed synthetic authorization/customer/property/pricing/inventory fixtures and clean them idempotently.",
+        "Produce Newman-compatible JSON/JUnit evidence including inventory block counts before/after quote-only."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "businessRules": [
+        "Lead PII is purpose-limited and duplicate hints never auto-merge people.",
+        "A request does not consume inventory until an explicit hold succeeds.",
+        "Assignment, stage, loss reason, source, campaign, and responsible employee are audited."
+      ],
+      "repositories": [
+        "platform_infrastructure"
+      ],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "crm:lead:create",
+          "crm:inquiry:create",
+          "booking-request:create",
+          "booking-request:quote",
+          "booking-request:hold"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E07-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E07-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E07-S03-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E07-S04-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E07-T03",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E07-T05",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "clean deterministic synthetic fixtures",
+          "when": "the CRM runner executes",
+          "then": "the full lead/inquiry/request/quote/hold/release flow passes and cleanup succeeds"
+        },
+        {
+          "id": "AC02",
+          "given": "quote-only, missing PII/partition, illegal transition, duplicate mismatch, or stale inventory revision",
+          "when": "negative scenarios run",
+          "then": "stable codes and absence of PII/partial inventory effects are asserted"
+        },
+        {
+          "id": "AC03",
+          "given": "the runner executes twice",
+          "when": "the second cleanup completes",
+          "then": "no duplicate lead/request/hold/business effect remains"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-platform-infrastructure",
+        "roadmap-v1-3",
+        "source-vs-e07-t04"
+      ],
+      "decisionNoteVi": "Leaf VS-E07-T04 chỉ sở hữu artifact của platform_infrastructure; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "infrastructure",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "operational",
+          "command": "docker compose -f compose.yaml config",
+          "verifies": [
+            "AC01"
+          ],
+          "evidence": "compose/router configuration validation output"
+        },
+        {
+          "id": "TEST-02",
+          "level": "e2e",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-PostmanBookingCrm.ps1",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "CRM Newman-compatible JSON/JUnit report and cleanup summary"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "parentSourceId": "VS-E07",
+      "primaryRepository": "platform_infrastructure",
+      "repositorySlices": [
+        {
+          "repository": "platform_infrastructure",
+          "paths": [
+            "router/backoffice/subgraphs/booking.graphql",
+            "router/backoffice/supergraph-config.yaml",
+            "postman/ViStay-Booking-CRM.postman_collection.json",
+            "postman/ViStay-Local.postman_environment.json",
+            "postman/fixtures/booking-crm-e2e.sql",
+            "scripts/Seed-BookingCrmE2E.ps1",
+            "scripts/Test-PostmanBookingCrm.ps1"
+          ],
+          "artifacts": [
+            "Booking CRM Postman collection",
+            "synthetic CRM fixture",
+            "repeatable CRM E2E runner",
+            "quote-without-hold inventory assertion"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
+      "sourceId": "VS-E07-T05",
+      "jiraKey": "SCRUM-714",
+      "issueType": "Task",
+      "summary": "[VS-E07-T05] Add CRM authorization and customer reference lookup",
+      "manageDescription": true,
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "User Service publishes least-privilege CRM permissions and a privacy-safe customer reference lookup so Booking can link an authorized lead without reading User tables.",
+      "context": "User owns customer/admin profiles and the authorization model. Booking sends normalized lookup tokens through the trusted boundary and receives only bounded match references allowed for the caller purpose.",
+      "inScope": [
+        "Add CRM lead/inquiry/request/follow-up/attribution/PII permission catalogue and default role grants with migration contract tests.",
+        "Add internal customer-reference lookup by keyed normalized contact token with purpose, caller identity, partition, deadline, result limit, and non-enumerating response.",
+        "Return stable profile reference and match confidence only; never return credential, session, full document, or unrestricted profile data.",
+        "Emit authorizationVersion changes for grant updates and audit lookup purpose/outcome without raw contact."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "businessRules": [
+        "Lead PII is purpose-limited and duplicate hints never auto-merge people.",
+        "A request does not consume inventory until an explicit hold succeeds.",
+        "Assignment, stage, loss reason, source, campaign, and responsible employee are audited."
+      ],
+      "repositories": [
+        "service_user"
+      ],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "authorization:grant:manage",
+          "customer-reference:lookup"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "a trusted Booking caller with purpose and current authorization",
+          "when": "a bounded normalized lookup token is submitted",
+          "then": "zero or bounded stable customer references and match confidence return with redacted audit evidence"
+        },
+        {
+          "id": "AC02",
+          "given": "untrusted caller, missing purpose/grant, invalid token, or out-of-scope match",
+          "when": "lookup runs",
+          "then": "a non-enumerating forbidden/empty response returns with no profile PII"
+        },
+        {
+          "id": "AC03",
+          "given": "CRM grants change or lookup is replayed/out of order",
+          "when": "events and requests process",
+          "then": "authorizationVersion is monotonic and results/audit are deterministic without duplicate side effects"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-user",
+        "roadmap-v1-3",
+        "source-vs-e07-t05"
+      ],
+      "decisionNoteVi": "Leaf VS-E07-T05 chỉ sở hữu artifact của service_user; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "contract",
+          "command": ".\\gradlew.bat test --tests \"*CrmPermissionMigrationContractTest\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "CRM permission migration contract XML"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*CustomerReferenceLookupIntegrationTest\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "customer reference lookup integration report"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "parentSourceId": "VS-E07",
+      "primaryRepository": "service_user",
+      "repositorySlices": [
+        {
+          "repository": "service_user",
+          "paths": [
+            "src/main/resources/db/migration/V15__crm_permissions.sql",
+            "src/main/resources/graphql/schema.graphqls",
+            "src/main/java/com/vistay/user/application/CustomerReferenceLookupService.java",
+            "src/main/java/com/vistay/user/adapter/in/grpc/UserAuthorizationGrpcService.java",
+            "src/main/java/com/vistay/user/adapter/out/persistence/**",
+            "src/test/java/com/vistay/user/CrmPermissionMigrationContractTest.java",
+            "src/test/java/com/vistay/user/application/CustomerReferenceLookupIntegrationTest.java"
+          ],
+          "artifacts": [
+            "CRM permission migration",
+            "privacy-safe customer reference lookup",
+            "authorization-version publication",
+            "lookup/permission integration tests"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E08",
