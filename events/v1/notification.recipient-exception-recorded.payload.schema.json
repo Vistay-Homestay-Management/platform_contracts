@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/events/v1/notification.recipient-exception-recorded.payload.schema.json",
+  "title": "Notification recipient exception payload v1",
+  "description": "Auditable recipient resolution failure without copying canonical profile data.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "exceptionId",
+    "notificationId",
+    "recipientAccountId",
+    "recipientKind",
+    "exceptionType",
+    "status",
+    "reasonCode",
+    "resolutionAction",
+    "destinationMasked",
+    "contactSnapshotRevision",
+    "resolutionRevision",
+    "occurredAt"
+  ],
+  "properties": {
+    "exceptionId": { "type": "string", "format": "uuid" },
+    "notificationId": { "type": "string", "format": "uuid" },
+    "recipientAccountId": { "type": "string", "format": "uuid" },
+    "recipientKind": {
+      "enum": [
+        "DIRECT_ACCOUNT",
+        "ORGANIZATION_ROLE",
+        "BRANCH_ROLE",
+        "BOOKING_PARTY",
+        "EXPLICIT_SUBSCRIPTION"
+      ]
+    },
+    "exceptionType": {
+      "enum": [
+        "NO_RECIPIENT",
+        "AMBIGUOUS_RECIPIENT",
+        "CROSS_PARTITION",
+        "MISSING_CONTACT",
+        "INVALID_CONTACT",
+        "UNVERIFIED_CONTACT",
+        "OPTIONAL_SUPPRESSED",
+        "DEPENDENCY_UNAVAILABLE"
+      ]
+    },
+    "status": { "enum": ["OPEN", "RESOLVED", "IGNORED", "EXPIRED"] },
+    "reasonCode": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_.-]*$",
+      "maxLength": 100
+    },
+    "resolutionAction": {
+      "anyOf": [
+        { "enum": ["RE_RESOLVE", "SUPPRESS", "ROUTE_ALTERNATE", "CANCEL"] },
+        { "type": "null" }
+      ]
+    },
+    "destinationMasked": {
+      "anyOf": [
+        { "type": "string", "minLength": 1, "maxLength": 254 },
+        { "type": "null" }
+      ]
+    },
+    "contactSnapshotRevision": {
+      "anyOf": [{ "type": "integer", "minimum": 1 }, { "type": "null" }]
+    },
+    "resolutionRevision": { "type": "integer", "minimum": 1 },
+    "occurredAt": { "type": "string", "format": "date-time" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "status": { "const": "OPEN" } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": { "resolutionAction": { "type": "null" } }
+      }
+    },
+    {
+      "if": {
+        "properties": { "status": { "enum": ["RESOLVED", "IGNORED"] } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": { "resolutionAction": { "not": { "type": "null" } } }
+      }
+    }
+  ]
+}

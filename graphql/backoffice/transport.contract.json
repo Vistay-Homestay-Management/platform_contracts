@@ -1,9 +1,22 @@
 {
-  "version": 1,
+  "version": 2,
   "endpoint": "/graphql",
   "authorization": {
     "accessToken": "BACKOFFICE_REALM_JWT",
-    "notificationStreamRequiredScope": "notifications:read"
+    "notificationStreamRequiredScope": "notifications:read",
+    "fieldGroups": {
+      "summary": "notifications:read",
+      "document": "notifications:template:read",
+      "pii": "notifications:recipient-exception:read",
+      "trustDetail": "notifications:operations:read",
+      "internalAudit": "notifications:operations:read"
+    },
+    "mutationScopes": {
+      "preferences": "notifications:preferences:manage",
+      "templatePublish": "notifications:template:publish",
+      "deliveryRetry": "notifications:delivery:retry",
+      "recipientRepair": "notifications:recipient-exception:repair"
+    }
   },
   "queryTransport": {
     "protocol": "GRAPHQL_OVER_HTTP",
@@ -22,7 +35,33 @@
     "cursorEncoding": "NON_NEGATIVE_DECIMAL_STRING",
     "cursorPattern": "^(0|[1-9][0-9]*)$",
     "cursorSemantics": "EXCLUSIVE",
+    "cursorBinding": "RECIPIENT_ACCOUNT",
     "nullCursorBehavior": "FROM_EARLIEST_RETAINED",
-    "deliveryGuarantee": "AT_LEAST_ONCE"
+    "deliveryGuarantee": "AT_LEAST_ONCE",
+    "duplicateFramesAllowed": true,
+    "clientDeduplicationKey": ["notificationId", "notificationRevision"],
+    "retention": {
+      "cursorScope": "RECIPIENT_ACCOUNT",
+      "minimumEntries": 1000,
+      "maximumAgeHours": 168,
+      "expiredCursorState": "RESYNC_REQUIRED",
+      "expiredCursorAction": "LIST_INBOX_FROM_RETAINED_CURSOR"
+    },
+    "connectionLimits": {
+      "maximumDurationSeconds": 3600,
+      "heartbeatSeconds": 20,
+      "maximumBatchSize": 100,
+      "backpressure": "BOUNDED_BUFFER_THEN_RECONNECT"
+    },
+    "security": {
+      "accountBoundCursor": true,
+      "rawDestinationInFrame": false,
+      "rawProviderPayloadInFrame": false
+    }
+  },
+  "compatibility": {
+    "legacyV1Consumers": "PRESERVE",
+    "newFieldsMustBeAdditive": true,
+    "breakingChangeRequires": "NEW_EVENT_OR_GRAPHQL_VERSION"
   }
 }

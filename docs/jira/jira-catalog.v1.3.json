@@ -51599,8 +51599,8 @@
       "summary": "[VS-E14] Channel Manager Integration",
       "manageDescription": true,
       "actor": "Channel integration operator",
-      "outcome": "Channel Manager Integration is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This epic is part of the ViStay VS-E14 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "Channex integration is decomposed into capacity-one SHORT mapping/export, ordered ARI publication, authenticated webhook-triggered Booking Revision Feed, authoritative Booking commands, reconciliation, dead-letter operations, Admin consumers, contracts and deterministic evidence.",
+      "context": "The Epic and Stories coordinate outcomes only. Channex credentials remain secret references; webhook authentication follows the provider-supported custom header contract, and no task may store card data or read another service database.",
       "inScope": [
         "Implement and verify: Channel Manager Integration.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -51708,7 +51708,7 @@
         "source-vs-e14"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "contract",
       "dispatchable": false,
       "testCases": [],
@@ -51724,8 +51724,8 @@
       "parentSourceId": "VS-E14",
       "manageDescription": true,
       "actor": "Channel integration operator",
-      "outcome": "Map property/unit/rate to selected Channel Manager is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E14 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "S01 has separate OTA connection/mapping and Booking export-snapshot leaves with exact unit, room type, rate plan, SHORT and capacity-one invariants.",
+      "context": "Assign only the executable children; mapping activation waits for both local and Channex validation.",
       "inScope": [
         "Implement and verify: Map property/unit/rate to selected Channel Manager.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -51838,13 +51838,375 @@
         "source-vs-e14-s01"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "contract",
       "dispatchable": false,
       "testCases": [],
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E14-S01-ST01",
+      "jiraKey": "SCRUM-783",
+      "issueType": "Subtask",
+      "summary": "[VS-E14-S01-ST01] Implement Channex connection and unit mapping",
+      "parentSourceId": "VS-E14-S01",
+      "manageDescription": true,
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "OTA Service manages one active Channex connection and an auditable mapping from one eligible ViStay exact unit to one Channex property, room type and rate plan for the SHORT-stay pilot.",
+      "context": "service_ota currently contains only ServiceInfoQuery plus V1/V2 baseline tables ota_connections, ota_credential_references and ota_listings. Planned V3 adds lifecycle and validation without storing secret values.",
+      "inScope": [
+        "Add V3 connection/mapping revision, validation result and lifecycle audit tables while reusing the V2 credential-reference and listing identities.",
+        "Create/test/activate/suspend connection operations using Channex staging/production base URL allow-list and x-api-key loaded only through a secret reference.",
+        "Map exactly one active ViStay property/unit to Channex propertyId, roomTypeId and ratePlanId; require SHORT product and inventory capacity exactly one.",
+        "Validate remote identities and local Property/Booking export snapshots before activation; preserve immutable mapping revision/fingerprint and prevent overlapping active mappings."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "businessRules": [
+        "Pilot mapping is one exact ViStay unit to one Channex Property and one Room Type with inventory one; pilot supports SHORT stays only.",
+        "Require current Channex HMAC verification in production; shared-secret fallback is sandbox-only.",
+        "Webhook is a trigger: pull Booking Revision Feed, durably apply in order, then acknowledge.",
+        "Out-of-order revisions, HTTP 429, and ARI warnings are handled; conflicts enter NEEDS_MANUAL_RESOLUTION and are never auto-cancelled or overwritten.",
+        "Do not ingest card or CVV data."
+      ],
+      "repositories": [
+        "service_ota"
+      ],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "OTA owns provider connections, secret references, ViStay-to-provider mappings, external IDs/revisions, sanitized provider snapshots, sync jobs/attempts, webhook receipts, reconciliation decisions and repair audit. Booking owns reservations, exact-unit inventory and immutable price snapshots; Property owns exact-unit identity; secrets remain in the configured secret store."
+      ],
+      "stateMachine": [
+        "Connection is DRAFT -> VALIDATED -> ACTIVE -> SUSPENDED/REVOKED; only VALIDATED may activate.",
+        "Mapping revision is DRAFT -> VALIDATED -> ACTIVE -> SUPERSEDED/DISABLED; only one active revision exists per local unit/provider.",
+        "Credential rotation creates a new reference revision; the secret value is never persisted in OTA tables, events, audit or responses."
+      ],
+      "authorization": {
+        "actions": [
+          "ota:connection:manage",
+          "ota:mapping:view",
+          "ota:mapping:manage",
+          "ota:provider:validate"
+        ],
+        "dataPartitions": [
+          "ADMIN organization plus the exact SITE/BRANCH/property mapping partition; SYSTEM only for authenticated Booking, Property, scheduler, webhook and repair calls."
+        ],
+        "fieldGroups": [
+          "OTA_SUMMARY is baseline; MAPPING, FINANCIAL, PII, PROVIDER_DETAIL, EXTERNAL_PAYLOAD and INTERNAL_AUDIT require explicit grants."
+        ]
+      },
+      "failureSemantics": [
+        "Reject unrecognized provider/property/mapping/revision, forbidden partition/field group, malformed payload and missing dependency before an external or local state change.",
+        "Classify 429 and transport/5xx as bounded transient failures; classify authentication, mapping, schema and per-value ARI warnings as visible non-success requiring correction or reconciliation.",
+        "Never silently cancel, remap or overwrite a ViStay reservation during a conflict; move it to NEEDS_MANUAL_RESOLUTION with redacted evidence."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E14-S01-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E14-T01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E00-S05",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized operator, active exact unit, valid SHORT export snapshot and valid Channex identifiers",
+          "when": "connection and mapping are validated and activated",
+          "then": "one active immutable mapping revision/fingerprint and redacted audit/outbox evidence are created"
+        },
+        {
+          "id": "AC02",
+          "given": "invalid credential, URL, property/room/rate identity, non-SHORT/capacity-not-one unit, duplicate mapping or missing grant",
+          "when": "validation/activation runs",
+          "then": "a stable failure returns and no active mapping or secret value is persisted"
+        },
+        {
+          "id": "AC03",
+          "given": "the same create/activate command replays or concurrent revisions race",
+          "when": "processing completes",
+          "then": "one active mapping remains and identical replay returns the durable original result"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-ota",
+        "roadmap-v1-3",
+        "source-vs-e14-s01-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E14-S01-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*OtaMapping*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *OtaMapping*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*OtaMapping*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *OtaMapping*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "service_ota",
+      "repositorySlices": [
+        {
+          "repository": "service_ota",
+          "paths": [
+            "src/main/resources/db/migration/V3__channex_connection_mapping.sql",
+            "src/main/java/com/vistay/ota/domain/connection/**",
+            "src/main/java/com/vistay/ota/domain/mapping/**",
+            "src/main/java/com/vistay/ota/application/ChannexConnectionService.java",
+            "src/main/java/com/vistay/ota/application/OtaMappingService.java",
+            "src/main/java/com/vistay/ota/adapter/out/channex/**",
+            "src/main/java/com/vistay/ota/adapter/in/graphql/OtaMappingController.java",
+            "src/test/java/com/vistay/ota/application/OtaMappingIntegrationTest.java"
+          ],
+          "artifacts": [
+            "V3 connection/mapping lifecycle schema",
+            "Channex API-key adapter and secret-reference port",
+            "mapping GraphQL operations",
+            "activation/partition/secret-redaction tests"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
+      "sourceId": "VS-E14-S01-ST02",
+      "jiraKey": "SCRUM-784",
+      "issueType": "Subtask",
+      "summary": "[VS-E14-S01-ST02] Expose SHORT inventory and rate export snapshot",
+      "parentSourceId": "VS-E14-S01",
+      "manageDescription": true,
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Booking exposes one authenticated immutable export snapshot proving exact-unit identity, SHORT eligibility, capacity one and the published base/rate-plan values OTA may map.",
+      "context": "Booking already owns pricing and inventory migrations V3-V8; roadmap leaves V28 for the outbound OTA projection after earlier planned migrations V9-V27.",
+      "inScope": [
+        "Add V28 OTA export projection keyed by property/unit, local date, inventory revision and pricing publication fingerprint.",
+        "Expose authenticated gRPC lookup for mapping validation with unit/property/branch/timezone, SHORT product, capacity one, current published rate plan and bounded availability horizon.",
+        "Reject inactive/unbookable property, missing/currently invalid publication, capacity other than one, medium/long product and ambiguous topology.",
+        "Publish projection revision changes for OTA invalidation without including guest, payment, commission, staff wage or unrelated booking data."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "businessRules": [
+        "Pilot mapping is one exact ViStay unit to one Channex Property and one Room Type with inventory one; pilot supports SHORT stays only.",
+        "Require current Channex HMAC verification in production; shared-secret fallback is sandbox-only.",
+        "Webhook is a trigger: pull Booking Revision Feed, durably apply in order, then acknowledge.",
+        "Out-of-order revisions, HTTP 429, and ARI warnings are handled; conflicts enter NEEDS_MANUAL_RESOLUTION and are never auto-cancelled or overwritten.",
+        "Do not ingest card or CVV data."
+      ],
+      "repositories": [
+        "service_booking"
+      ],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "Booking owns reservation lifecycle, exact-unit inventory, SHORT pricing publication/snapshot and the OTA command/projection lineage. OTA owns Channex credentials, mappings, provider revisions, retries and reconciliation; Property owns exact-unit identity."
+      ],
+      "stateMachine": [
+        "Snapshot is immutable for topology/inventory/publication revisions and local-date horizon.",
+        "Eligibility is ELIGIBLE or INELIGIBLE with stable reason; an invalidated revision cannot activate a new mapping.",
+        "Capacity is exactly one for the pilot; no fallback converts a multi-unit property into one unit."
+      ],
+      "authorization": {
+        "actions": [
+          "ota:export-snapshot:view",
+          "inventory:read",
+          "pricing:read"
+        ],
+        "dataPartitions": [
+          "ADMIN organization plus the exact SITE/BRANCH/property mapping partition; SYSTEM only for authenticated Booking, Property, scheduler, webhook and repair calls."
+        ],
+        "fieldGroups": [
+          "OTA_SUMMARY is baseline; MAPPING, FINANCIAL, PII, PROVIDER_DETAIL, EXTERNAL_PAYLOAD and INTERNAL_AUDIT require explicit grants."
+        ]
+      },
+      "failureSemantics": [
+        "Fail closed on missing mapping/topology/pricing publication, stale source revision, overlap, forbidden partition or unavailable required dependency.",
+        "Return stable conflict, invalid-state, duplicate, mapping, dependency and authorization codes without leaking another property or guest.",
+        "A provider cancellation/modification conflict never silently overwrites an active local reservation; return an explicit reconciliation result."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E14-T01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E06-S03",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E05-T01-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authenticated OTA caller and active capacity-one unit with current SHORT publication",
+          "when": "snapshot lookup runs",
+          "then": "one bounded property/unit/timezone/inventory/rate revision and fingerprint are returned"
+        },
+        {
+          "id": "AC02",
+          "given": "inactive/ambiguous unit, non-SHORT product, capacity not one, stale publication, wrong partition or unavailable dependency",
+          "when": "lookup runs",
+          "then": "a stable non-enumerating ineligible/error result returns without guest or protected financial data"
+        },
+        {
+          "id": "AC03",
+          "given": "lookup/events replay or inventory/pricing/topology revisions advance",
+          "when": "processing repeats",
+          "then": "the same fingerprint or one explicit newer authoritative revision is observed"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-booking",
+        "roadmap-v1-3",
+        "source-vs-e14-s01-st02"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E14-S01-ST02 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*OtaExportSnapshot*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *OtaExportSnapshot*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*OtaExportSnapshot*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *OtaExportSnapshot*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "service_booking",
+      "repositorySlices": [
+        {
+          "repository": "service_booking",
+          "paths": [
+            "src/main/resources/db/migration/V28__ota_short_export_projection.sql",
+            "src/main/java/com/vistay/booking/application/OtaExportSnapshotService.java",
+            "src/main/java/com/vistay/booking/adapter/in/grpc/OtaExportSnapshotGrpcService.java",
+            "src/main/java/com/vistay/booking/adapter/in/messaging/OtaExportProjectionListener.java",
+            "src/test/java/com/vistay/booking/application/OtaExportSnapshotIntegrationTest.java"
+          ],
+          "artifacts": [
+            "V28 SHORT export projection",
+            "authenticated OTA export gRPC boundary",
+            "projection invalidation event",
+            "eligibility/revision/redaction tests"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E14-S02",
@@ -51854,8 +52216,8 @@
       "parentSourceId": "VS-E14",
       "manageDescription": true,
       "actor": "Channel integration operator",
-      "outcome": "Publish availability/rate with retry and reconciliation is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E14 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "S02 separates authoritative Booking projection from provider-facing ordered/batched ARI publication, throttling, partial-warning handling and reconciliation.",
+      "context": "Assign only the executable children; an HTTP 200 warning is not success for the affected value.",
       "inScope": [
         "Implement and verify: Publish availability/rate with retry and reconciliation.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -51968,7 +52330,7 @@
         "source-vs-e14-s02"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "contract",
       "dispatchable": false,
       "testCases": [],
@@ -51977,15 +52339,372 @@
       "activationBlockers": []
     },
     {
+      "sourceId": "VS-E14-S02-ST01",
+      "jiraKey": "SCRUM-785",
+      "issueType": "Subtask",
+      "summary": "[VS-E14-S02-ST01] Publish Channex ARI with bounded retry",
+      "parentSourceId": "VS-E14-S02",
+      "manageDescription": true,
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "OTA batches and publishes authoritative availability plus rate/restriction changes to Channex in source-revision order, records per-value acceptance and reconciles every warning, 429 or terminal failure.",
+      "context": "Channex has separate availability and restrictions/rates endpoints, per-property limits of ten calls/minute for each class, supports batching, and may return HTTP 200 with per-value warning messages. Planned V4 makes these semantics durable.",
+      "inScope": [
+        "Add V4 ARI change set, batch, value result, throttle window and retry/terminal reconciliation tables linked to mapping and source fingerprints.",
+        "Consume versioned Booking outbound changes, coalesce by property/date/revision and publish availability separately from rates/restrictions using x-api-key.",
+        "Enforce <=10 availability and <=10 restriction/rate calls per property/minute, request size <10 MiB, exponential backoff for 429/transient failures and bounded attempts.",
+        "Parse HTTP and per-value messages; only accepted values advance provider watermark, while warnings/errors remain visible and repairable."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "businessRules": [
+        "Pilot mapping is one exact ViStay unit to one Channex Property and one Room Type with inventory one; pilot supports SHORT stays only.",
+        "Require current Channex HMAC verification in production; shared-secret fallback is sandbox-only.",
+        "Webhook is a trigger: pull Booking Revision Feed, durably apply in order, then acknowledge.",
+        "Out-of-order revisions, HTTP 429, and ARI warnings are handled; conflicts enter NEEDS_MANUAL_RESOLUTION and are never auto-cancelled or overwritten.",
+        "Do not ingest card or CVV data."
+      ],
+      "repositories": [
+        "service_ota"
+      ],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "OTA owns provider connections, secret references, ViStay-to-provider mappings, external IDs/revisions, sanitized provider snapshots, sync jobs/attempts, webhook receipts, reconciliation decisions and repair audit. Booking owns reservations, exact-unit inventory and immutable price snapshots; Property owns exact-unit identity; secrets remain in the configured secret store."
+      ],
+      "stateMachine": [
+        "Change is RECEIVED -> QUEUED -> BATCHED -> SENT -> ACCEPTED/PARTIALLY_ACCEPTED/RETRY_WAIT/FAILED_TERMINAL.",
+        "Provider watermark advances only through consecutively accepted source revisions for that mapping/value class.",
+        "A newer value may supersede an unsent value, but attempt/audit lineage remains append-only."
+      ],
+      "authorization": {
+        "actions": [
+          "ota:ari:publish",
+          "ota:ari:view",
+          "ota:ari:reconcile"
+        ],
+        "dataPartitions": [
+          "ADMIN organization plus the exact SITE/BRANCH/property mapping partition; SYSTEM only for authenticated Booking, Property, scheduler, webhook and repair calls."
+        ],
+        "fieldGroups": [
+          "OTA_SUMMARY is baseline; MAPPING, FINANCIAL, PII, PROVIDER_DETAIL, EXTERNAL_PAYLOAD and INTERNAL_AUDIT require explicit grants."
+        ]
+      },
+      "failureSemantics": [
+        "Reject unrecognized provider/property/mapping/revision, forbidden partition/field group, malformed payload and missing dependency before an external or local state change.",
+        "Classify 429 and transport/5xx as bounded transient failures; classify authentication, mapping, schema and per-value ARI warnings as visible non-success requiring correction or reconciliation.",
+        "Never silently cancel, remap or overwrite a ViStay reservation during a conflict; move it to NEEDS_MANUAL_RESOLUTION with redacted evidence."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E14-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E14-S02-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E14-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "ordered eligible availability and SHORT rate changes",
+          "when": "publisher flushes a property batch",
+          "then": "separate bounded Channex requests are sent and accepted values advance durable source/provider watermarks"
+        },
+        {
+          "id": "AC02",
+          "given": "429, timeout/5xx, auth/mapping/schema error or HTTP-200 per-value warning",
+          "when": "response is classified",
+          "then": "bounded retry or terminal/manual reconciliation is recorded and no warned value is marked accepted"
+        },
+        {
+          "id": "AC03",
+          "given": "events/jobs replay, overlap or arrive out of order",
+          "when": "coalescing/publishing completes",
+          "then": "each canonical mapping/date/value revision is effective once and stale data cannot overwrite a newer accepted revision"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-ota",
+        "roadmap-v1-3",
+        "source-vs-e14-s02-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E14-S02-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*AriPublication*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *AriPublication*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*AriPublication*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *AriPublication*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "service_ota",
+      "repositorySlices": [
+        {
+          "repository": "service_ota",
+          "paths": [
+            "src/main/resources/db/migration/V4__channex_ari_publication.sql",
+            "src/main/java/com/vistay/ota/domain/ari/**",
+            "src/main/java/com/vistay/ota/application/AriPublicationService.java",
+            "src/main/java/com/vistay/ota/application/AriReconciliationService.java",
+            "src/main/java/com/vistay/ota/adapter/in/messaging/BookingOtaProjectionListener.java",
+            "src/main/java/com/vistay/ota/adapter/out/channex/ChannexAriClient.java",
+            "src/test/java/com/vistay/ota/application/AriPublicationIntegrationTest.java"
+          ],
+          "artifacts": [
+            "V4 ARI batch/attempt/watermark schema",
+            "ordered coalescing publisher",
+            "Channex throttle/backoff adapter",
+            "partial-warning/replay/reconciliation tests"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
+      "sourceId": "VS-E14-S02-ST02",
+      "jiraKey": "SCRUM-786",
+      "issueType": "Subtask",
+      "summary": "[VS-E14-S02-ST02] Produce outbound SHORT availability and rate projection",
+      "parentSourceId": "VS-E14-S02",
+      "manageDescription": true,
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Booking emits a versioned daily SHORT projection whenever exact-unit sellable availability or published rate changes, without exposing mutable calculations to OTA.",
+      "context": "V28 supplies mapping snapshots. Extend that migration/application boundary, rather than adding a second owner, to produce one ordered projection for OTA publication.",
+      "inScope": [
+        "Project local property/unit/date, availability 0|1, currency, published SHORT price and supported restrictions from authoritative inventory and immutable publication/snapshot revisions.",
+        "Emit full changed-date values with source revision/fingerprint after inventory block/reservation/publication changes; never emit unpublished preview or manual staff markup outside authoritative price.",
+        "Use local property timezone and half-open stay dates; supported pilot restrictions are explicit and unsupported fields are omitted, never defaulted.",
+        "Provide authenticated repair query by mapping/date range and deterministic event deduplication."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "businessRules": [
+        "Pilot mapping is one exact ViStay unit to one Channex Property and one Room Type with inventory one; pilot supports SHORT stays only.",
+        "Require current Channex HMAC verification in production; shared-secret fallback is sandbox-only.",
+        "Webhook is a trigger: pull Booking Revision Feed, durably apply in order, then acknowledge.",
+        "Out-of-order revisions, HTTP 429, and ARI warnings are handled; conflicts enter NEEDS_MANUAL_RESOLUTION and are never auto-cancelled or overwritten.",
+        "Do not ingest card or CVV data."
+      ],
+      "repositories": [
+        "service_booking"
+      ],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "Booking owns reservation lifecycle, exact-unit inventory, SHORT pricing publication/snapshot and the OTA command/projection lineage. OTA owns Channex credentials, mappings, provider revisions, retries and reconciliation; Property owns exact-unit identity."
+      ],
+      "stateMachine": [
+        "Projection revision is CURRENT or SUPERSEDED and immutable by fingerprint.",
+        "Availability is 1 only when the exact unit is sellable for that local date; every blocking source produces 0.",
+        "Only a published SHORT price is exportable; absent/invalid publication makes the date ineligible rather than zero-priced."
+      ],
+      "authorization": {
+        "actions": [
+          "ota:projection:publish",
+          "ota:projection:repair",
+          "inventory:read",
+          "pricing:read"
+        ],
+        "dataPartitions": [
+          "ADMIN organization plus the exact SITE/BRANCH/property mapping partition; SYSTEM only for authenticated Booking, Property, scheduler, webhook and repair calls."
+        ],
+        "fieldGroups": [
+          "OTA_SUMMARY is baseline; MAPPING, FINANCIAL, PII, PROVIDER_DETAIL, EXTERNAL_PAYLOAD and INTERNAL_AUDIT require explicit grants."
+        ]
+      },
+      "failureSemantics": [
+        "Fail closed on missing mapping/topology/pricing publication, stale source revision, overlap, forbidden partition or unavailable required dependency.",
+        "Return stable conflict, invalid-state, duplicate, mapping, dependency and authorization codes without leaking another property or guest.",
+        "A provider cancellation/modification conflict never silently overwrites an active local reservation; return an explicit reconciliation result."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E14-S01-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E14-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an eligible mapped unit and inventory or published SHORT price change",
+          "when": "projection commits",
+          "then": "one timezone-correct daily revision/event contains authoritative availability/rate/restriction values and lineage"
+        },
+        {
+          "id": "AC02",
+          "given": "unpublished/invalid rate, unsupported product/restriction, ambiguous date/timezone, forbidden caller or unavailable dependency",
+          "when": "projection/repair runs",
+          "then": "a stable ineligible/error result occurs and no invented/default value is emitted"
+        },
+        {
+          "id": "AC03",
+          "given": "source events replay or arrive out of order and repair overlaps",
+          "when": "processing completes",
+          "then": "one current fingerprint per unit/date remains and emitted revisions are monotonic"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-booking",
+        "roadmap-v1-3",
+        "source-vs-e14-s02-st02"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E14-S02-ST02 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*OtaOutboundProjection*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *OtaOutboundProjection*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*OtaOutboundProjection*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *OtaOutboundProjection*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "service_booking",
+      "repositorySlices": [
+        {
+          "repository": "service_booking",
+          "paths": [
+            "src/main/resources/db/migration/V28__ota_short_export_projection.sql",
+            "src/main/java/com/vistay/booking/application/OtaOutboundProjectionService.java",
+            "src/main/java/com/vistay/booking/adapter/in/messaging/OtaOutboundProjectionListener.java",
+            "src/main/java/com/vistay/booking/adapter/in/grpc/OtaProjectionRepairGrpcService.java",
+            "src/test/java/com/vistay/booking/application/OtaOutboundProjectionIntegrationTest.java"
+          ],
+          "artifacts": [
+            "daily SHORT OTA projection",
+            "versioned projection event",
+            "repair snapshot gRPC query",
+            "timezone/price/inventory/dedup tests"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
       "sourceId": "VS-E14-S03",
       "jiraKey": "SCRUM-409",
       "issueType": "Story",
-      "summary": "[VS-E14-S03] Receive signed booking/cancel webhook idempotently",
+      "summary": "[VS-E14-S03] Receive authenticated booking revision triggers idempotently",
       "parentSourceId": "VS-E14",
       "manageDescription": true,
       "actor": "Channel integration operator",
-      "outcome": "Receive signed booking/cancel webhook idempotently is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E14 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "S03 separates inbound Channex webhook/feed/ack ownership in OTA from authoritative reservation/inventory command handling in Booking.",
+      "context": "The webhook is a protected trigger, not an ordered source. Pull oldest-first and acknowledge only after durable local acceptance; never retain card fields.",
       "inScope": [
         "Implement and verify: Receive signed booking/cancel webhook idempotently.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -52098,13 +52817,374 @@
         "source-vs-e14-s03"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "contract",
       "dispatchable": false,
       "testCases": [],
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E14-S03-ST01",
+      "jiraKey": "SCRUM-787",
+      "issueType": "Subtask",
+      "summary": "[VS-E14-S03-ST01] Receive Channex webhook and process booking revision feed",
+      "parentSourceId": "VS-E14-S03",
+      "manageDescription": true,
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "OTA authenticates a minimal Channex webhook trigger, pulls Booking Revision Feed oldest-first, sanitizes it, durably delegates one revision to Booking and acknowledges Channex only after local acceptance.",
+      "context": "Channex documents custom webhook headers but not HMAC signing; production therefore uses a high-entropy configured Authorization header over TLS. Webhooks may arrive out of order and only trigger an authoritative feed pull. Planned V5 records receipts/feed checkpoints.",
+      "inScope": [
+        "Add V5 webhook receipt, feed cursor/revision, sanitized booking snapshot, delegation result and ack attempt tables linked to V2 webhook/mapping rows.",
+        "Create webhook endpoint requiring exact constant-time secret header from secret reference, size/content-type limits, rate limiting and generic 2xx duplicate response; store only header fingerprint.",
+        "On any valid booking trigger or scheduled recovery, pull unacked revisions oldest-first, validate property/mapping/revision and sanitize before persistence/delegation.",
+        "Drop card number, expiry, CVV and card token fields before logs/tables/events; acknowledge a revision only after Booking returns durable APPLIED, DUPLICATE or explicit MANUAL_CONFLICT acceptance."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "businessRules": [
+        "Pilot mapping is one exact ViStay unit to one Channex Property and one Room Type with inventory one; pilot supports SHORT stays only.",
+        "Require current Channex HMAC verification in production; shared-secret fallback is sandbox-only.",
+        "Webhook is a trigger: pull Booking Revision Feed, durably apply in order, then acknowledge.",
+        "Out-of-order revisions, HTTP 429, and ARI warnings are handled; conflicts enter NEEDS_MANUAL_RESOLUTION and are never auto-cancelled or overwritten.",
+        "Do not ingest card or CVV data."
+      ],
+      "repositories": [
+        "service_ota"
+      ],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "OTA owns provider connections, secret references, ViStay-to-provider mappings, external IDs/revisions, sanitized provider snapshots, sync jobs/attempts, webhook receipts, reconciliation decisions and repair audit. Booking owns reservations, exact-unit inventory and immutable price snapshots; Property owns exact-unit identity; secrets remain in the configured secret store."
+      ],
+      "stateMachine": [
+        "Receipt is RECEIVED -> AUTHENTICATED -> ENQUEUED, or REJECTED/DUPLICATE; it never directly mutates Booking.",
+        "Revision is PULLED -> VALIDATED -> SANITIZED -> DELEGATED -> ACCEPTED -> ACKED, or QUARANTINED/RETRY_WAIT/NEEDS_MANUAL_RESOLUTION.",
+        "Ack is append-only and occurs only after durable local acceptance; a crash before ack safely pulls the same revision again."
+      ],
+      "authorization": {
+        "actions": [
+          "ota:webhook:receive",
+          "ota:booking-feed:consume",
+          "ota:booking-revision:delegate",
+          "ota:booking-revision:ack"
+        ],
+        "dataPartitions": [
+          "ADMIN organization plus the exact SITE/BRANCH/property mapping partition; SYSTEM only for authenticated Booking, Property, scheduler, webhook and repair calls."
+        ],
+        "fieldGroups": [
+          "OTA_SUMMARY is baseline; MAPPING, FINANCIAL, PII, PROVIDER_DETAIL, EXTERNAL_PAYLOAD and INTERNAL_AUDIT require explicit grants."
+        ]
+      },
+      "failureSemantics": [
+        "Reject unrecognized provider/property/mapping/revision, forbidden partition/field group, malformed payload and missing dependency before an external or local state change.",
+        "Classify 429 and transport/5xx as bounded transient failures; classify authentication, mapping, schema and per-value ARI warnings as visible non-success requiring correction or reconciliation.",
+        "Never silently cancel, remap or overwrite a ViStay reservation during a conflict; move it to NEEDS_MANUAL_RESOLUTION with redacted evidence."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E14-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E14-S03-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E14-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "a valid secret-header trigger and mapped unacked new/modified/cancelled revision",
+          "when": "feed processing succeeds",
+          "then": "the oldest revision is sanitized, durably accepted by Booking and then acknowledged with complete lineage"
+        },
+        {
+          "id": "AC02",
+          "given": "missing/wrong secret, oversized/malformed body, unrecognized mapping/revision, card fields, out-of-order trigger or dependency failure",
+          "when": "webhook/feed processing runs",
+          "then": "no unauthorized mutation/card retention occurs and the revision is rejected, retried or reconciliation-visible without premature ack"
+        },
+        {
+          "id": "AC03",
+          "given": "webhooks, feed rows, delegation or ack replay after a crash",
+          "when": "processing resumes",
+          "then": "one sanitized revision/business effect remains and ack eventually converges once"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-ota",
+        "roadmap-v1-3",
+        "source-vs-e14-s03-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E14-S03-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*BookingRevisionFeed*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *BookingRevisionFeed*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*BookingRevisionFeed*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *BookingRevisionFeed*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "service_ota",
+      "repositorySlices": [
+        {
+          "repository": "service_ota",
+          "paths": [
+            "src/main/resources/db/migration/V5__channex_booking_revision_feed.sql",
+            "src/main/java/com/vistay/ota/application/ChannexWebhookService.java",
+            "src/main/java/com/vistay/ota/application/BookingRevisionFeedService.java",
+            "src/main/java/com/vistay/ota/adapter/in/http/ChannexWebhookController.java",
+            "src/main/java/com/vistay/ota/adapter/out/channex/ChannexBookingClient.java",
+            "src/main/java/com/vistay/ota/adapter/out/booking/OtaReservationCommandClient.java",
+            "src/test/java/com/vistay/ota/application/BookingRevisionFeedIntegrationTest.java"
+          ],
+          "artifacts": [
+            "V5 webhook/feed/ack schema",
+            "secret-header webhook boundary",
+            "oldest-first feed worker and sanitizer",
+            "auth/order/card-redaction/ack/replay tests"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
+      "sourceId": "VS-E14-S03-ST02",
+      "jiraKey": "SCRUM-788",
+      "issueType": "Subtask",
+      "summary": "[VS-E14-S03-ST02] Apply inbound OTA reservation commands",
+      "parentSourceId": "VS-E14-S03",
+      "manageDescription": true,
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Booking applies sanitized new, modification and cancellation commands from OTA against exact-unit inventory with immutable external lineage and explicit conflict results.",
+      "context": "Roadmap reserves V29 after the V28 outbound projection. Booking consumes a ViStay contract, not the Channex payload, and remains authoritative for reservation/inventory state.",
+      "inScope": [
+        "Add V29 OTA reservation origin, external revision, command idempotency, sanitized guest/contact snapshot reference and conflict/reconciliation lineage.",
+        "Apply NEW only to an eligible mapped exact unit and atomic date availability; freeze authoritative OTA price/currency/commission metadata without card details.",
+        "Apply MODIFIED/CANCELLED in external revision order with expected local version; preserve local history and recalculate inventory projections transactionally.",
+        "Return APPLIED, DUPLICATE, STALE_EXTERNAL_REVISION, MAPPING_CONFLICT, INVENTORY_CONFLICT, STATE_CONFLICT or NEEDS_MANUAL_RESOLUTION with no silent overwrite."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "businessRules": [
+        "Pilot mapping is one exact ViStay unit to one Channex Property and one Room Type with inventory one; pilot supports SHORT stays only.",
+        "Require current Channex HMAC verification in production; shared-secret fallback is sandbox-only.",
+        "Webhook is a trigger: pull Booking Revision Feed, durably apply in order, then acknowledge.",
+        "Out-of-order revisions, HTTP 429, and ARI warnings are handled; conflicts enter NEEDS_MANUAL_RESOLUTION and are never auto-cancelled or overwritten.",
+        "Do not ingest card or CVV data."
+      ],
+      "repositories": [
+        "service_booking"
+      ],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "Booking owns reservation lifecycle, exact-unit inventory, SHORT pricing publication/snapshot and the OTA command/projection lineage. OTA owns Channex credentials, mappings, provider revisions, retries and reconciliation; Property owns exact-unit identity."
+      ],
+      "stateMachine": [
+        "External command is RECEIVED -> VALIDATED -> APPLIED/DUPLICATE/STALE/NEEDS_MANUAL_RESOLUTION.",
+        "OTA reservation follows the canonical Booking lifecycle; external status is lineage, not a second mutable state machine.",
+        "A conflict preserves current local reservation/inventory and records redacted candidate evidence for reconciliation."
+      ],
+      "authorization": {
+        "actions": [
+          "booking:ota-reservation:apply",
+          "booking:ota-reservation:view",
+          "inventory:reserve"
+        ],
+        "dataPartitions": [
+          "ADMIN organization plus the exact SITE/BRANCH/property mapping partition; SYSTEM only for authenticated Booking, Property, scheduler, webhook and repair calls."
+        ],
+        "fieldGroups": [
+          "OTA_SUMMARY is baseline; MAPPING, FINANCIAL, PII, PROVIDER_DETAIL, EXTERNAL_PAYLOAD and INTERNAL_AUDIT require explicit grants."
+        ]
+      },
+      "failureSemantics": [
+        "Fail closed on missing mapping/topology/pricing publication, stale source revision, overlap, forbidden partition or unavailable required dependency.",
+        "Return stable conflict, invalid-state, duplicate, mapping, dependency and authorization codes without leaking another property or guest.",
+        "A provider cancellation/modification conflict never silently overwrites an active local reservation; return an explicit reconciliation result."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E14-T01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E08-S03-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E06-S03",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authenticated OTA caller, mapped unit, next external revision and available dates",
+          "when": "new/modify/cancel command commits",
+          "then": "one reservation/inventory transition and immutable external revision/audit/outbox lineage are persisted atomically"
+        },
+        {
+          "id": "AC02",
+          "given": "overlap, stale/gapped revision, invalid state/date/currency/mapping, forbidden partition, card data or dependency failure",
+          "when": "command runs",
+          "then": "a stable duplicate/conflict/manual result returns with no partial or silent overwrite"
+        },
+        {
+          "id": "AC03",
+          "given": "the same or concurrent external revision replays",
+          "when": "processing completes",
+          "then": "one durable command result/business effect remains and OTA can safely retry"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-booking",
+        "roadmap-v1-3",
+        "source-vs-e14-s03-st02"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E14-S03-ST02 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*OtaReservationCommand*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *OtaReservationCommand*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*OtaReservationCommand*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *OtaReservationCommand*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "service_booking",
+      "repositorySlices": [
+        {
+          "repository": "service_booking",
+          "paths": [
+            "src/main/resources/db/migration/V29__ota_reservation_lineage.sql",
+            "src/main/java/com/vistay/booking/domain/ota/**",
+            "src/main/java/com/vistay/booking/application/OtaReservationCommandService.java",
+            "src/main/java/com/vistay/booking/adapter/in/grpc/OtaReservationCommandGrpcService.java",
+            "src/test/java/com/vistay/booking/application/OtaReservationCommandIntegrationTest.java"
+          ],
+          "artifacts": [
+            "V29 OTA reservation lineage",
+            "authenticated reservation command gRPC API",
+            "atomic inventory/reservation application",
+            "new/modify/cancel/conflict/replay tests"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E14-S04",
@@ -52114,8 +53194,8 @@
       "parentSourceId": "VS-E14",
       "manageDescription": true,
       "actor": "Channel integration operator",
-      "outcome": "Reconcile external reservation/status/mapping exceptions is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E14 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "S04 has a typed OTA reconciliation engine plus an Admin Web/Mobile consumer; semantic mapping, inventory, reservation-state or monetary conflicts are always manual.",
+      "context": "Assign only executable children; no automatic cancel, remap or overwrite is allowed.",
       "inScope": [
         "Implement and verify: Reconcile external reservation/status/mapping exceptions.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -52228,13 +53308,373 @@
         "source-vs-e14-s04"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "contract",
       "dispatchable": false,
       "testCases": [],
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E14-S04-ST01",
+      "jiraKey": "SCRUM-789",
+      "issueType": "Subtask",
+      "summary": "[VS-E14-S04-ST01] Reconcile OTA reservations mappings and sync conflicts",
+      "parentSourceId": "VS-E14-S04",
+      "manageDescription": true,
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "OTA compares Channex and ViStay mapping, ARI and reservation lineages, classifies drift and drives only explicitly safe replay while routing semantic conflicts to manual resolution.",
+      "context": "V2 already has reconciliation-run and sync-attempt tables. Planned V6 extends them with typed observations, decisions, repair commands and immutable evidence.",
+      "inScope": [
+        "Add V6 reconciliation observation/difference/decision/manual-case/repair-result tables for mapping, ARI watermark and booking revision domains.",
+        "Run scheduled and on-demand scoped comparisons using Channex APIs/feed plus Booking snapshots; never read Booking tables or treat webhook order as source order.",
+        "Auto-replay only missing idempotent publication/delegation/ack after verifying source fingerprints; mapping, inventory, reservation-state and monetary conflicts require authorized manual decision.",
+        "Expose partitioned list/detail/compare/retry/resolve GraphQL operations with redacted external payload and expectedVersion."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "businessRules": [
+        "Pilot mapping is one exact ViStay unit to one Channex Property and one Room Type with inventory one; pilot supports SHORT stays only.",
+        "Require current Channex HMAC verification in production; shared-secret fallback is sandbox-only.",
+        "Webhook is a trigger: pull Booking Revision Feed, durably apply in order, then acknowledge.",
+        "Out-of-order revisions, HTTP 429, and ARI warnings are handled; conflicts enter NEEDS_MANUAL_RESOLUTION and are never auto-cancelled or overwritten.",
+        "Do not ingest card or CVV data."
+      ],
+      "repositories": [
+        "service_ota"
+      ],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "OTA owns provider connections, secret references, ViStay-to-provider mappings, external IDs/revisions, sanitized provider snapshots, sync jobs/attempts, webhook receipts, reconciliation decisions and repair audit. Booking owns reservations, exact-unit inventory and immutable price snapshots; Property owns exact-unit identity; secrets remain in the configured secret store."
+      ],
+      "stateMachine": [
+        "Run is REQUESTED -> RUNNING -> CONSISTENT/DRIFT_FOUND/PARTIAL/FAILED.",
+        "Case is OPEN -> AUTO_REPAIRING/IN_REVIEW -> RESOLVED/WAIVED/FAILED_REPAIR; semantic conflict cannot auto-resolve.",
+        "Repair is PROPOSED -> AUTHORIZED -> EXECUTED -> VERIFIED/FAILED and retains before/after fingerprints."
+      ],
+      "authorization": {
+        "actions": [
+          "ota:reconciliation:view",
+          "ota:reconciliation:run",
+          "ota:reconciliation:retry",
+          "ota:reconciliation:resolve"
+        ],
+        "dataPartitions": [
+          "ADMIN organization plus the exact SITE/BRANCH/property mapping partition; SYSTEM only for authenticated Booking, Property, scheduler, webhook and repair calls."
+        ],
+        "fieldGroups": [
+          "OTA_SUMMARY is baseline; MAPPING, FINANCIAL, PII, PROVIDER_DETAIL, EXTERNAL_PAYLOAD and INTERNAL_AUDIT require explicit grants."
+        ]
+      },
+      "failureSemantics": [
+        "Reject unrecognized provider/property/mapping/revision, forbidden partition/field group, malformed payload and missing dependency before an external or local state change.",
+        "Classify 429 and transport/5xx as bounded transient failures; classify authentication, mapping, schema and per-value ARI warnings as visible non-success requiring correction or reconciliation.",
+        "Never silently cancel, remap or overwrite a ViStay reservation during a conflict; move it to NEEDS_MANUAL_RESOLUTION with redacted evidence."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E14-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E14-S03-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E14-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "authorized scoped observations and a missing idempotent publish/delegate/ack effect",
+          "when": "reconciliation verifies equal source fingerprints",
+          "then": "one safe repair executes and verification closes the case with before/after evidence"
+        },
+        {
+          "id": "AC02",
+          "given": "mapping, inventory, reservation-state, amount/currency, unrecognized revision or cross-partition conflict",
+          "when": "comparison runs",
+          "then": "a redacted manual case opens and no automatic cancel/remap/overwrite occurs"
+        },
+        {
+          "id": "AC03",
+          "given": "runs/repairs replay, race or resume after failure",
+          "when": "processing completes",
+          "then": "one current case/decision per difference fingerprint remains and attempt history is append-only"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-ota",
+        "roadmap-v1-3",
+        "source-vs-e14-s04-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E14-S04-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*OtaReconciliation*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *OtaReconciliation*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*OtaReconciliation*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *OtaReconciliation*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "service_ota",
+      "repositorySlices": [
+        {
+          "repository": "service_ota",
+          "paths": [
+            "src/main/resources/db/migration/V6__ota_reconciliation_conflicts.sql",
+            "src/main/java/com/vistay/ota/domain/reconciliation/**",
+            "src/main/java/com/vistay/ota/application/OtaReconciliationService.java",
+            "src/main/java/com/vistay/ota/application/OtaConflictResolutionService.java",
+            "src/main/java/com/vistay/ota/adapter/in/graphql/OtaReconciliationController.java",
+            "src/test/java/com/vistay/ota/application/OtaReconciliationIntegrationTest.java"
+          ],
+          "artifacts": [
+            "V6 typed reconciliation schema",
+            "scheduled/manual comparison engine",
+            "restricted conflict GraphQL workflow",
+            "safe-replay/manual/no-overwrite tests"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
+      "sourceId": "VS-E14-S04-ST02",
+      "jiraKey": "SCRUM-790",
+      "issueType": "Subtask",
+      "summary": "[VS-E14-S04-ST02] Build Admin OTA reconciliation workspace",
+      "parentSourceId": "VS-E14-S04",
+      "manageDescription": true,
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Admin Web provides a branch-scoped Channex connection/mapping health and reconciliation queue with explicit compare, safe retry and reviewed conflict resolution; Mobile shows bounded critical status.",
+      "context": "frontend_admin has no OTA destination. Use the shared API client and server decisions; the client must not calculate ARI/reservation reconciliation or expose provider secrets.",
+      "inScope": [
+        "Add typed connection/mapping/ARI/feed/reconciliation list/detail/run/retry/resolve operations with stable error mapping.",
+        "Build Web filters by branch/property/domain/state/age/severity, side-by-side redacted fingerprints/revisions and explicit confirmation for manual decisions.",
+        "Build Mobile critical unresolved count, detail/status and safe retry only; mapping edit and semantic resolution remain Web workflows.",
+        "Hide financial, PII, provider detail and external payload fields/actions without exact grants; test stale revision, cross-branch, conflict, replay and dependency failure."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "businessRules": [
+        "Pilot mapping is one exact ViStay unit to one Channex Property and one Room Type with inventory one; pilot supports SHORT stays only.",
+        "Require current Channex HMAC verification in production; shared-secret fallback is sandbox-only.",
+        "Webhook is a trigger: pull Booking Revision Feed, durably apply in order, then acknowledge.",
+        "Out-of-order revisions, HTTP 429, and ARI warnings are handled; conflicts enter NEEDS_MANUAL_RESOLUTION and are never auto-cancelled or overwritten.",
+        "Do not ingest card or CVV data."
+      ],
+      "repositories": [
+        "frontend_admin"
+      ],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "ota:mapping:view",
+          "ota:reconciliation:view",
+          "ota:reconciliation:run",
+          "ota:reconciliation:retry",
+          "ota:reconciliation:resolve"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E14-S04-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E14-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized operator and current scoped mapping/reconciliation case",
+          "when": "view, safe retry or reviewed resolution succeeds",
+          "then": "the authoritative revisions/fingerprints/decision and refreshed state are rendered"
+        },
+        {
+          "id": "AC02",
+          "given": "cross-branch, missing action/field group, secret/card field, semantic auto-repair, stale revision or dependency failure",
+          "when": "the workspace loads or acts",
+          "then": "restricted content/action is absent and no optimistic resolution remains"
+        },
+        {
+          "id": "AC03",
+          "given": "actions replay or Web/Mobile resume",
+          "when": "detail refetches",
+          "then": "one durable current case/decision appears with immutable attempt history"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-frontend-admin",
+        "roadmap-v1-3",
+        "source-vs-e14-s04-st02"
+      ],
+      "decisionNoteVi": "Leaf VS-E14-S04-ST02 chỉ sở hữu artifact của frontend_admin; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "OTA shared-client plus Web/Mobile tests"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "npm run typecheck",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "frontend_admin typecheck report"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "frontend_admin",
+      "repositorySlices": [
+        {
+          "repository": "frontend_admin",
+          "paths": [
+            "packages/api-client/src/index.ts",
+            "packages/api-client/src/index.test.ts",
+            "apps/web/src/OtaReconciliationWorkspace.tsx",
+            "apps/web/src/OtaReconciliationWorkspace.test.tsx",
+            "apps/web/src/App.tsx",
+            "apps/web/src/App.css",
+            "apps/mobile/src/OtaReconciliationStatus.tsx",
+            "apps/mobile/src/OtaReconciliationStatus.test.tsx"
+          ],
+          "artifacts": [
+            "typed OTA operations client",
+            "Admin Web mapping/reconciliation workspace",
+            "Admin Mobile critical status",
+            "partition/redaction/conflict/replay tests"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E14-S05",
@@ -52244,8 +53684,8 @@
       "parentSourceId": "VS-E14",
       "manageDescription": true,
       "actor": "Channel integration operator",
-      "outcome": "Operate sandbox/outage/dead-letter/manual repair runbook is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E14 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "S05 separates service-owned bounded retry/dead-letter repair from infrastructure-owned sandbox, fault injection, monitoring and outage runbook.",
+      "context": "Assign only executable children; production activation requires real secret references and Channex tenant configuration, never repository values.",
       "inScope": [
         "Implement and verify: Operate sandbox/outage/dead-letter/manual repair runbook.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -52358,13 +53798,745 @@
         "source-vs-e14-s05"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "contract",
       "dispatchable": false,
       "testCases": [],
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E14-S05-ST01",
+      "jiraKey": "SCRUM-791",
+      "issueType": "Subtask",
+      "summary": "[VS-E14-S05-ST01] Operate OTA dead-letter and manual repair",
+      "parentSourceId": "VS-E14-S05",
+      "manageDescription": true,
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "OTA bounds retries, dead-letters exhausted provider work and offers an audited repair workflow that resumes from the failed step without duplicating external or local effects.",
+      "context": "V2 has sync jobs/attempts, processed/outbox/audit events. Planned V7 adds dead-letter, operator decision, lease and repair verification rather than inventing a separate retry owner.",
+      "inScope": [
+        "Add V7 dead-letter item, failure classification, retry policy/version, lease, operator decision, repair attempt and verification tables.",
+        "Apply bounded retry with jitter for transient Channex/Booking failures; auth, schema, mapping, card-data and semantic conflicts become terminal/manual immediately.",
+        "Expose list/detail/retry-from-step/cancel/verify operations requiring expectedVersion, reason and exact partition/action; never permit raw payload or arbitrary endpoint replay.",
+        "Add stuck lease recovery, outage pause/resume and backlog age/size alerts plus redacted runbook queries."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "businessRules": [
+        "Pilot mapping is one exact ViStay unit to one Channex Property and one Room Type with inventory one; pilot supports SHORT stays only.",
+        "Require current Channex HMAC verification in production; shared-secret fallback is sandbox-only.",
+        "Webhook is a trigger: pull Booking Revision Feed, durably apply in order, then acknowledge.",
+        "Out-of-order revisions, HTTP 429, and ARI warnings are handled; conflicts enter NEEDS_MANUAL_RESOLUTION and are never auto-cancelled or overwritten.",
+        "Do not ingest card or CVV data."
+      ],
+      "repositories": [
+        "service_ota"
+      ],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "OTA owns provider connections, secret references, ViStay-to-provider mappings, external IDs/revisions, sanitized provider snapshots, sync jobs/attempts, webhook receipts, reconciliation decisions and repair audit. Booking owns reservations, exact-unit inventory and immutable price snapshots; Property owns exact-unit identity; secrets remain in the configured secret store."
+      ],
+      "stateMachine": [
+        "Work is READY -> LEASED -> SUCCEEDED/RETRY_WAIT/DEAD_LETTERED/CANCELLED.",
+        "Repair is REQUESTED -> AUTHORIZED -> EXECUTING -> VERIFIED/FAILED; terminal semantic conflict remains manual.",
+        "Outage mode is NORMAL -> PAUSED -> DRAINING -> NORMAL and does not discard queued work."
+      ],
+      "authorization": {
+        "actions": [
+          "ota:dead-letter:view",
+          "ota:dead-letter:retry",
+          "ota:dead-letter:cancel",
+          "ota:repair:verify"
+        ],
+        "dataPartitions": [
+          "ADMIN organization plus the exact SITE/BRANCH/property mapping partition; SYSTEM only for authenticated Booking, Property, scheduler, webhook and repair calls."
+        ],
+        "fieldGroups": [
+          "OTA_SUMMARY is baseline; MAPPING, FINANCIAL, PII, PROVIDER_DETAIL, EXTERNAL_PAYLOAD and INTERNAL_AUDIT require explicit grants."
+        ]
+      },
+      "failureSemantics": [
+        "Reject unrecognized provider/property/mapping/revision, forbidden partition/field group, malformed payload and missing dependency before an external or local state change.",
+        "Classify 429 and transport/5xx as bounded transient failures; classify authentication, mapping, schema and per-value ARI warnings as visible non-success requiring correction or reconciliation.",
+        "Never silently cancel, remap or overwrite a ViStay reservation during a conflict; move it to NEEDS_MANUAL_RESOLUTION with redacted evidence."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E14-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E14-S03-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E14-S04-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "a classified transient failure within policy",
+          "when": "retry/lease recovery runs",
+          "then": "the failed step resumes with backoff and succeeds or becomes one visible dead-letter item after the bound"
+        },
+        {
+          "id": "AC02",
+          "given": "auth/schema/mapping/card/semantic failure, missing grant, stale revision or arbitrary replay request",
+          "when": "repair is requested",
+          "then": "the unsafe action is denied or held for manual resolution with no duplicate external/local effect"
+        },
+        {
+          "id": "AC03",
+          "given": "workers crash, repairs replay or outage pause/resume repeats",
+          "when": "processing converges",
+          "then": "one terminal result per work fingerprint remains and backlog/attempt/verification evidence is complete"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-ota",
+        "roadmap-v1-3",
+        "source-vs-e14-s05-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E14-S05-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*OtaDeadLetter*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *OtaDeadLetter*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*OtaDeadLetter*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *OtaDeadLetter*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "service_ota",
+      "repositorySlices": [
+        {
+          "repository": "service_ota",
+          "paths": [
+            "src/main/resources/db/migration/V7__ota_dead_letter_repair.sql",
+            "src/main/java/com/vistay/ota/domain/repair/**",
+            "src/main/java/com/vistay/ota/application/OtaRetryPolicy.java",
+            "src/main/java/com/vistay/ota/application/OtaDeadLetterService.java",
+            "src/main/java/com/vistay/ota/adapter/in/graphql/OtaRepairController.java",
+            "src/test/java/com/vistay/ota/application/OtaDeadLetterIntegrationTest.java"
+          ],
+          "artifacts": [
+            "V7 dead-letter/repair schema",
+            "bounded retry and lease recovery",
+            "restricted repair GraphQL API",
+            "outage/exhaustion/replay/verification tests"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
+      "sourceId": "VS-E14-S05-ST02",
+      "jiraKey": "SCRUM-792",
+      "issueType": "Subtask",
+      "summary": "[VS-E14-S05-ST02] Provision Channex sandbox mock and outage runbook",
+      "parentSourceId": "VS-E14-S05",
+      "manageDescription": true,
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Local/CI infrastructure provides deterministic Channex-compatible staging behavior, secret references, webhook routing, fault injection, monitoring and an executable outage/recovery runbook.",
+      "context": "Compose already provisions service_ota, database, Kafka and edge routing but has no Channex adapter environment, provider mock or OTA operational evidence.",
+      "inScope": [
+        "Add non-secret OTA/Channex environment contract and Docker secret/file reference; fail startup when enabled without required values and keep integration disabled by default.",
+        "Add a local mock for property/room/rate validation, separate ARI endpoints, booking revision feed/ack and configurable 200-warning, 401, 429, timeout, 5xx, out-of-order webhook and duplicate revision scenarios.",
+        "Route webhook only through the documented edge endpoint with configured secret header, body/rate limits and redacted access logs.",
+        "Add health/backlog/dead-letter/ack-lag dashboards/alerts plus pause, drain, rotate secret, replay-safe recovery and rollback runbook commands."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "businessRules": [
+        "Pilot mapping is one exact ViStay unit to one Channex Property and one Room Type with inventory one; pilot supports SHORT stays only.",
+        "Require current Channex HMAC verification in production; shared-secret fallback is sandbox-only.",
+        "Webhook is a trigger: pull Booking Revision Feed, durably apply in order, then acknowledge.",
+        "Out-of-order revisions, HTTP 429, and ARI warnings are handled; conflicts enter NEEDS_MANUAL_RESOLUTION and are never auto-cancelled or overwritten.",
+        "Do not ingest card or CVV data."
+      ],
+      "repositories": [
+        "platform_infrastructure"
+      ],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "ota:sandbox:operate",
+          "ota:repair:verify"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E14-S05-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E14-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "clean local compose and non-secret sandbox configuration",
+          "when": "sandbox test runs",
+          "then": "mapping, ARI, webhook/feed/ack and selected provider fault scenarios are reachable with redacted evidence"
+        },
+        {
+          "id": "AC02",
+          "given": "missing secret reference, bad header, oversized/rate-limited webhook, 200 warning, 401/429/timeout/5xx or outage",
+          "when": "validation/monitoring runs",
+          "then": "startup or flow fails safely and the exact alert/runbook path is asserted without secret leakage"
+        },
+        {
+          "id": "AC03",
+          "given": "pause/drain/rotate/recovery executes twice",
+          "when": "the runbook completes",
+          "then": "no queued work/revision is lost or duplicated and health/backlog/ack lag return to expected values"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-platform-infrastructure",
+        "roadmap-v1-3",
+        "source-vs-e14-s05-st02"
+      ],
+      "decisionNoteVi": "Leaf VS-E14-S05-ST02 chỉ sở hữu artifact của platform_infrastructure; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "infrastructure",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "operational",
+          "command": "docker compose -f compose.full.yaml config",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "redacted compose/secret/routing configuration output"
+        },
+        {
+          "id": "TEST-02",
+          "level": "e2e",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-ChannexSandbox.ps1",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "sandbox fault/recovery JSON and runbook report"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "platform_infrastructure",
+      "repositorySlices": [
+        {
+          "repository": "platform_infrastructure",
+          "paths": [
+            "compose.full.yaml",
+            ".env.example",
+            "docker/channex-mock/**",
+            "nginx/conf.d/ota-webhook.conf",
+            "observability/prometheus/alerts/ota.yml",
+            "observability/grafana/dashboards/ota.json",
+            "scripts/Test-ChannexSandbox.ps1",
+            "docs/runbooks/channex-outage.md"
+          ],
+          "artifacts": [
+            "Channex mock and fault controls",
+            "secret-reference/edge configuration",
+            "OTA dashboard/alerts",
+            "executable outage/rotation/recovery runbook"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
+      "sourceId": "VS-E14-T01",
+      "jiraKey": "SCRUM-793",
+      "issueType": "Task",
+      "summary": "[VS-E14-T01] Publish Channex OTA integration contracts",
+      "manageDescription": true,
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Platform Contracts defines owner-safe Channex mapping, ARI, webhook/feed, sanitized reservation command, reconciliation and repair contracts for the capacity-one SHORT pilot.",
+      "context": "No Channex contract exists. Channex API key authenticates outbound API requests; inbound webhook protection is a configured custom Authorization header because current official webhook documentation does not define HMAC signing.",
+      "inScope": [
+        "Document ownership, pilot limits, mapping identity, secret references, provider-supported authentication and the prohibition on card fields/logging.",
+        "Define Booking export/projection and reservation-command protobufs, OTA GraphQL operations and versioned projection/reconciliation events with stable errors/timeouts/compatibility.",
+        "Specify webhook-as-trigger, oldest-first Booking Revision Feed, durable local acceptance before ack, out-of-order/duplicate handling and at-least-once semantics.",
+        "Add valid mapping/ARI/new-modify-cancel/repair fixtures and invalid HMAC assumption, raw secret/card, ack-before-save, 200-warning-as-success, stale overwrite, unbounded retry and cross-partition fixtures."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "businessRules": [
+        "Pilot mapping is one exact ViStay unit to one Channex Property and one Room Type with inventory one; pilot supports SHORT stays only.",
+        "Require current Channex HMAC verification in production; shared-secret fallback is sandbox-only.",
+        "Webhook is a trigger: pull Booking Revision Feed, durably apply in order, then acknowledge.",
+        "Out-of-order revisions, HTTP 429, and ARI warnings are handled; conflicts enter NEEDS_MANUAL_RESOLUTION and are never auto-cancelled or overwritten.",
+        "Do not ingest card or CVV data."
+      ],
+      "repositories": [
+        "platform_contracts"
+      ],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "ota:contract:publish"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "valid capacity-one SHORT mapping, ARI, feed/ack and reservation lifecycle fixtures",
+          "when": "contract validation runs",
+          "then": "ownership, authentication, revision, sanitization, compatibility and stable error invariants pass"
+        },
+        {
+          "id": "AC02",
+          "given": "raw secret/card, undocumented HMAC requirement, ack-before-save, warning-as-success, stale overwrite, unbounded retry or cross-partition fixture",
+          "when": "negative validation runs",
+          "then": "CI fails with a stable path-specific diagnostic"
+        },
+        {
+          "id": "AC03",
+          "given": "identical canonical source/provider inputs",
+          "when": "validation repeats",
+          "then": "mapping, request, revision and conflict fingerprints are byte-for-byte deterministic"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-platform-contracts",
+        "roadmap-v1-3",
+        "source-vs-e14-t01"
+      ],
+      "decisionNoteVi": "Leaf VS-E14-T01 chỉ sở hữu artifact của platform_contracts; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "contract",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "contract",
+          "command": "npm run validate:graphql",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "OTA GraphQL operation/composition report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Channex OTA proto/event/fixture validation report"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "parentSourceId": "VS-E14",
+      "primaryRepository": "platform_contracts",
+      "repositorySlices": [
+        {
+          "repository": "platform_contracts",
+          "paths": [
+            "docs/channex-ota-integration-v1.md",
+            "proto/vistay/booking/v1/ota_export_snapshot.proto",
+            "proto/vistay/booking/v1/ota_reservation_command.proto",
+            "graphql/backoffice/subgraphs/ota.graphql",
+            "graphql/backoffice/operations/ota-management.graphql",
+            "events/v1/booking.ota-projection.event.schema.json",
+            "events/v1/ota.reconciliation.event.schema.json",
+            "fixtures/channex-ota-boundaries.v1.json",
+            "scripts/validate-schemas.mjs",
+            "scripts/validate-graphql.mjs"
+          ],
+          "artifacts": [
+            "Channex ownership/auth/flow contract",
+            "Booking OTA protobufs",
+            "OTA GraphQL and events",
+            "valid/negative mapping/ARI/feed/conflict fixtures"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
+      "sourceId": "VS-E14-T02",
+      "jiraKey": "SCRUM-794",
+      "issueType": "Task",
+      "summary": "[VS-E14-T02] Add Channex OTA lifecycle Postman evidence",
+      "manageDescription": true,
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "A deterministic Postman/Newman flow proves mapping, outbound ARI, inbound new/modify/cancel feed, ack order, reconciliation, dead-letter and repair across OTA and Booking.",
+      "context": "Use the local Channex mock from S05 and existing Keycloak/Postman environment conventions; never require a production Channex key or retain provider/card secrets in reports.",
+      "inScope": [
+        "Add deterministic Property/Booking/OTA fixtures for one capacity-one SHORT unit, one Channex property/room/rate mapping and frozen dates/revisions.",
+        "Exercise connection test/activation, mapping, availability/rate publish, webhook trigger, oldest-first feed, new/modify/cancel apply, ack, reconciliation and authorized repair.",
+        "Assert wrong secret, non-SHORT/capacity-not-one, mapping collision, overlap, out-of-order/duplicate revision, card sanitization, ARI 200 warning, 401/429/timeout/5xx, retry exhaustion and cross-partition denial.",
+        "Provide seed/fault/webhook/run/reconcile/cleanup PowerShell runner producing redacted Newman JSON/JUnit plus database/provider-call evidence and safe repeatability."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "businessRules": [
+        "Pilot mapping is one exact ViStay unit to one Channex Property and one Room Type with inventory one; pilot supports SHORT stays only.",
+        "Require current Channex HMAC verification in production; shared-secret fallback is sandbox-only.",
+        "Webhook is a trigger: pull Booking Revision Feed, durably apply in order, then acknowledge.",
+        "Out-of-order revisions, HTTP 429, and ARI warnings are handled; conflicts enter NEEDS_MANUAL_RESOLUTION and are never auto-cancelled or overwritten.",
+        "Do not ingest card or CVV data."
+      ],
+      "repositories": [
+        "platform_infrastructure"
+      ],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "ota:connection:manage",
+          "ota:mapping:manage",
+          "ota:ari:publish",
+          "ota:reconciliation:run",
+          "ota:dead-letter:retry"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E14-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E14-S01-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E14-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E14-S02-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E14-S03-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E14-S03-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E14-S04-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E14-S05-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E14-S05-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E14-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "clean local services, deterministic fixtures and Channex mock",
+          "when": "runner executes",
+          "then": "mapping through ARI and new/modify/cancel feed/ack/reconciliation/repair paths pass with source/provider revision evidence"
+        },
+        {
+          "id": "AC02",
+          "given": "auth, pilot eligibility, mapping, overlap, order/replay, card, warning, provider failure, retry-limit or partition negative case",
+          "when": "collection runs",
+          "then": "the exact stable error/redaction and absence of duplicate/partial/premature-ack effect are asserted"
+        },
+        {
+          "id": "AC03",
+          "given": "runner executes twice after cleanup/reseed",
+          "when": "replay completes",
+          "then": "no duplicate mapping, ARI effect, reservation, inventory transition, ack, conflict or repair decision remains"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-platform-infrastructure",
+        "roadmap-v1-3",
+        "source-vs-e14-t02"
+      ],
+      "decisionNoteVi": "Leaf VS-E14-T02 chỉ sở hữu artifact của platform_infrastructure; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "infrastructure",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "operational",
+          "command": "docker compose -f compose.full.yaml config",
+          "verifies": [
+            "AC01"
+          ],
+          "evidence": "redacted OTA/Booking/mock configuration output"
+        },
+        {
+          "id": "TEST-02",
+          "level": "e2e",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-PostmanChannexOta.ps1",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Channex OTA Newman JSON/JUnit plus provider/database reconciliation report"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "parentSourceId": "VS-E14",
+      "primaryRepository": "platform_infrastructure",
+      "repositorySlices": [
+        {
+          "repository": "platform_infrastructure",
+          "paths": [
+            "postman/ViStay-Channex-OTA.postman_collection.json",
+            "postman/ViStay-Local.postman_environment.json",
+            "postman/fixtures/ota-booking-e2e.sql",
+            "postman/fixtures/ota-service-e2e.sql",
+            "postman/mock/channex/**",
+            "scripts/Seed-ChannexOtaE2E.ps1",
+            "scripts/Test-PostmanChannexOta.ps1",
+            "postman/README.md"
+          ],
+          "artifacts": [
+            "Channex OTA Postman collection",
+            "deterministic OTA/Booking fixtures",
+            "provider fault/webhook controls",
+            "repeatable Newman/reconciliation runner"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E15",

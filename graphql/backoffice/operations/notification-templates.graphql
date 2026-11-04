@@ -1,0 +1,59 @@
+query NotificationTemplates($input: NotificationTemplateQueryInput) {
+  notificationTemplates(input: $input) {
+    nodes {
+      id
+      templateKey
+      channel
+      locale
+      status
+      revision
+      policyRevision
+      requiredVariables
+      subject
+      body
+      immutable
+      createdAt
+      publishedAt
+      retiredAt
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+      startCursor
+      cursorState
+      retainedFrom
+      reconcileFrom
+    }
+  }
+}
+
+mutation PublishNotificationTemplate(
+  $input: PublishNotificationTemplateInput!
+) {
+  publishNotificationTemplate(input: $input) {
+    id
+    templateKey
+    channel
+    locale
+    status
+    revision
+    policyRevision
+    requiredVariables
+    subject
+    body
+    immutable
+    createdAt
+    publishedAt
+    retiredAt
+  }
+}
+
+mutation RetireNotificationTemplate($input: RetireNotificationTemplateInput!) {
+  retireNotificationTemplate(input: $input) {
+    id
+    templateKey
+    status
+    revision
+    retiredAt
+  }
+}

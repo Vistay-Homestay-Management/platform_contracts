@@ -1,0 +1,16 @@
+{
+  "fixtureVersion": 1,
+  "kind": "notification-inbox-list",
+  "valid": true,
+  "request": {
+    "afterCursor": "41",
+    "limit": 25,
+    "unreadOnly": true
+  },
+  "expected": {
+    "cursorState": "ACTIVE",
+    "endCursor": "42",
+    "hasNextPage": false,
+    "deduplicationKey": ["notificationId", "notificationRevision"]
+  }
+}

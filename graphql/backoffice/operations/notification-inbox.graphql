@@ -1,0 +1,59 @@
+query NotificationInbox($input: NotificationInboxInput) {
+  notificationInbox(input: $input) {
+    nodes {
+      id
+      category
+      title
+      body
+      channels
+      requiredChannels
+      optionalChannels
+      notificationType
+      priority
+      templateKey
+      templateRevision
+      policyRevision
+      inboxRevision
+      createdAt
+      readAt
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+      startCursor
+      cursorState
+      retainedFrom
+      reconcileFrom
+    }
+    unread {
+      count
+      asOfCursor
+      inboxRevision
+    }
+  }
+}
+
+query UnreadNotificationCount {
+  unreadNotificationCount {
+    count
+    asOfCursor
+    inboxRevision
+  }
+}
+
+mutation MarkNotificationRead($input: MarkNotificationReadInput!) {
+  markNotificationRead(input: $input) {
+    id
+    readAt
+    inboxRevision
+    version
+  }
+}
+
+mutation MarkAllNotificationsRead($input: MarkAllNotificationsReadInput!) {
+  markAllNotificationsRead(input: $input) {
+    markedCount
+    throughCursor
+    inboxRevision
+  }
+}

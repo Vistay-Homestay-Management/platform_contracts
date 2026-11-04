@@ -1,0 +1,13 @@
+{
+  "fixtureVersion": 1,
+  "kind": "incompatible-event-change",
+  "valid": false,
+  "violation": "BREAKING_V1_CHANGE",
+  "request": {
+    "eventType": "vistay.notification.notification-created",
+    "version": 1,
+    "renamedField": "notificationId -> recipientId",
+    "removedField": "templateKey"
+  },
+  "expectedError": "NEW_EVENT_VERSION_REQUIRED"
+}

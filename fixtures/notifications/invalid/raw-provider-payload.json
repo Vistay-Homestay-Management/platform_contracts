@@ -1,0 +1,14 @@
+{
+  "fixtureVersion": 1,
+  "kind": "raw-provider-payload",
+  "valid": false,
+  "violation": "RAW_PROVIDER_DATA",
+  "request": {
+    "rawDestination": "recipient@example.test",
+    "providerResponse": {
+      "accessToken": "fixture-token-not-real",
+      "providerPayload": "opaque provider response"
+    }
+  },
+  "expectedError": "PROVIDER_PAYLOAD_NOT_ALLOWED"
+}

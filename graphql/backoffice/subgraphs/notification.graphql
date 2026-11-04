@@ -13,11 +13,118 @@ scalar Cursor
 """An RFC 3339 timestamp with an offset."""
 scalar DateTime
 
+"""
+The field group is an authorization and response-shaping boundary. A service
+must not return fields from a stronger group merely because a caller can read
+the parent object.
+"""
+directive @fieldGroup(name: NotificationFieldGroup!) on
+  FIELD_DEFINITION | OBJECT | INPUT_FIELD_DEFINITION
+
+enum NotificationFieldGroup {
+  SUMMARY
+  DOCUMENT
+  PII
+  TRUST_DETAIL
+  INTERNAL_AUDIT
+}
+
+type Query {
+  """List this viewer's durable inbox using an exclusive cursor."""
+  notificationInbox(input: NotificationInboxInput): NotificationConnection!
+    @authenticated
+    @requiresScopes(scopes: [["notifications:read"]])
+
+  """Return the unread count at a durable inbox revision."""
+  unreadNotificationCount: UnreadNotificationCount!
+    @authenticated
+    @requiresScopes(scopes: [["notifications:read"]])
+
+  """Read notification preferences for the authenticated recipient."""
+  notificationPreferences: NotificationPreferenceConnection!
+    @authenticated
+    @requiresScopes(scopes: [["notifications:read"]])
+
+  """List template revisions visible to notification operators."""
+  notificationTemplates(
+    input: NotificationTemplateQueryInput
+  ): NotificationTemplateConnection!
+    @authenticated
+    @requiresScopes(scopes: [["notifications:template:read"]])
+
+  """Inspect one delivery without exposing raw destination or provider payload."""
+  notificationDelivery(id: ID!): NotificationDelivery!
+    @authenticated
+    @requiresScopes(scopes: [["notifications:operations:read"]])
+
+  """Inspect bounded provider health and circuit state."""
+  notificationProviderHealth: [NotificationProviderHealth!]!
+    @authenticated
+    @requiresScopes(scopes: [["notifications:operations:read"]])
+
+  """List recipient exceptions for authorized support operations."""
+  notificationRecipientExceptions(
+    input: RecipientExceptionQueryInput
+  ): RecipientExceptionConnection!
+    @authenticated
+    @requiresScopes(scopes: [["notifications:recipient-exception:read"]])
+}
+
+type Mutation {
+  """Mark one recipient-owned notification read with optimistic concurrency."""
+  markNotificationRead(input: MarkNotificationReadInput!): Notification!
+    @authenticated
+    @requiresScopes(scopes: [["notifications:read"]])
+
+  """Mark all recipient-owned notifications through a durable cursor read."""
+  markAllNotificationsRead(
+    input: MarkAllNotificationsReadInput!
+  ): MarkAllNotificationsReadPayload!
+    @authenticated
+    @requiresScopes(scopes: [["notifications:read"]])
+
+  """Update only the authenticated recipient's preferences."""
+  updateNotificationPreferences(
+    input: UpdateNotificationPreferencesInput!
+  ): NotificationPreferenceConnection!
+    @authenticated
+    @requiresScopes(scopes: [["notifications:preferences:manage"]])
+
+  """Publish an immutable template revision after validation."""
+  publishNotificationTemplate(
+    input: PublishNotificationTemplateInput!
+  ): NotificationTemplate!
+    @authenticated
+    @requiresScopes(scopes: [["notifications:template:publish"]])
+
+  """Retire a template without deleting its historical revisions."""
+  retireNotificationTemplate(
+    input: RetireNotificationTemplateInput!
+  ): NotificationTemplate!
+    @authenticated
+    @requiresScopes(scopes: [["notifications:template:publish"]])
+
+  """Request one bounded delivery retry or repair action."""
+  retryNotificationDelivery(
+    input: RetryNotificationDeliveryInput!
+  ): NotificationDelivery!
+    @authenticated
+    @requiresScopes(scopes: [["notifications:delivery:retry"]])
+
+  """Resolve a recipient exception through an auditable repair action."""
+  resolveNotificationRecipientException(
+    input: ResolveRecipientExceptionInput!
+  ): NotificationRecipientException!
+    @authenticated
+    @requiresScopes(scopes: [["notifications:recipient-exception:repair"]])
+}
+
 type Subscription {
   """
   Streams this viewer's durable inbox strictly after `afterCursor`. A null
   cursor starts at the earliest retained entry. Delivery is at least once, so
-  clients deduplicate by `notification.id` and persist each received cursor.
+  clients deduplicate by `notification.id` plus `notification.inboxRevision`
+  and persist each received cursor.
   """
   notificationStream(afterCursor: Cursor): NotificationStreamEvent!
     @authenticated
@@ -27,6 +134,28 @@ type Subscription {
 type NotificationStreamEvent {
   cursor: Cursor!
   notification: Notification!
+  """The event schema version used to render this frame, when available."""
+  eventVersion: Int
+  """The durable notification revision used for client deduplication."""
+  notificationRevision: Int
+  """Always AT_LEAST_ONCE; exactly-once display is not promised."""
+  deliveryGuarantee: NotificationDeliveryGuarantee
+}
+
+type NotificationConnection {
+  nodes: [Notification!]!
+  pageInfo: NotificationPageInfo!
+  unread: UnreadNotificationCount!
+}
+
+type NotificationPageInfo {
+  hasNextPage: Boolean!
+  endCursor: Cursor
+  startCursor: Cursor
+  cursorState: NotificationCursorState!
+  retainedFrom: Cursor
+  """Set when the supplied cursor is expired and list reconciliation is needed."""
+  reconcileFrom: Cursor
 }
 
 type Notification {
@@ -37,15 +166,324 @@ type Notification {
   channels: [NotificationChannel!]!
   createdAt: DateTime!
   readAt: DateTime
+
+  """Additive V2 metadata; nullable for legacy V1 notifications."""
+  notificationType: String @fieldGroup(name: SUMMARY)
+  priority: NotificationPriority @fieldGroup(name: SUMMARY)
+  reference: NotificationReference @fieldGroup(name: SUMMARY)
+  templateKey: String @fieldGroup(name: SUMMARY)
+  templateRevision: Int @fieldGroup(name: SUMMARY)
+  policyRevision: Int @fieldGroup(name: SUMMARY)
+  inboxRevision: Int @fieldGroup(name: SUMMARY)
+  requiredChannels: [NotificationChannel!]! @fieldGroup(name: SUMMARY)
+  optionalChannels: [NotificationChannel!]! @fieldGroup(name: SUMMARY)
+  version: Int @fieldGroup(name: SUMMARY)
+}
+
+type NotificationReference {
+  type: String!
+  id: ID!
+  actionUrl: String
+}
+
+type UnreadNotificationCount {
+  count: Int!
+  asOfCursor: Cursor!
+  inboxRevision: Int!
+}
+
+type NotificationPreferenceConnection {
+  nodes: [NotificationPreference!]!
+  revision: Int!
+}
+
+type NotificationPreference {
+  id: ID!
+  notificationType: String!
+  channel: NotificationChannel!
+  enabled: Boolean!
+  """True for IN_APP and policy-required EMAIL delivery."""
+  required: Boolean!
+  quietHours: QuietHours
+  timeZoneId: String!
+  revision: Int!
+  updatedAt: DateTime!
+}
+
+type QuietHours {
+  start: String!
+  end: String!
+}
+
+type NotificationTemplateConnection {
+  nodes: [NotificationTemplate!]!
+  pageInfo: NotificationPageInfo!
+}
+
+type NotificationTemplate {
+  id: ID!
+  templateKey: String!
+  channel: NotificationChannel!
+  locale: String!
+  status: NotificationTemplateStatus!
+  revision: Int!
+  policyRevision: Int!
+  requiredVariables: [String!]!
+  subject: String
+  """Document field; never include credentials or provider payloads."""
+  body: String @fieldGroup(name: DOCUMENT)
+  immutable: Boolean!
+  createdAt: DateTime!
+  publishedAt: DateTime
+  retiredAt: DateTime
+}
+
+type NotificationDelivery {
+  id: ID!
+  notificationId: ID!
+  channel: NotificationChannel!
+  status: NotificationDeliveryStatus!
+  provider: String
+  templateRevision: Int
+  policyRevision: Int
+  destinationMasked: String
+  contactSnapshotRevision: Int
+  attemptCount: Int!
+  maximumAttempts: Int!
+  nextAttemptAt: DateTime
+  lastErrorCode: String
+  lastErrorClass: NotificationErrorClass
+  providerMessageId: String
+  revision: Int!
+  updatedAt: DateTime!
+}
+
+type NotificationProviderHealth {
+  provider: String!
+  status: NotificationProviderStatus!
+  circuitState: NotificationCircuitState!
+  failureRate: Float!
+  latencyMilliseconds: Int!
+  retryAfterSeconds: Int
+  checkedAt: DateTime!
+}
+
+type NotificationRecipientException {
+  id: ID!
+  notificationId: ID!
+  recipientAccountId: ID! @fieldGroup(name: PII)
+  recipientKind: NotificationRecipientKind!
+  exceptionType: NotificationExceptionType!
+  status: NotificationExceptionStatus!
+  reasonCode: String!
+  resolutionAction: NotificationResolutionAction
+  destinationMasked: String
+  contactSnapshotRevision: Int
+  revision: Int!
+  createdAt: DateTime!
+  resolvedAt: DateTime
+}
+
+type RecipientExceptionConnection {
+  nodes: [NotificationRecipientException!]!
+  pageInfo: NotificationPageInfo!
+}
+
+type MarkAllNotificationsReadPayload {
+  markedCount: Int!
+  throughCursor: Cursor!
+  inboxRevision: Int!
+}
+
+input NotificationInboxInput {
+  afterCursor: Cursor
+  limit: Int = 25
+  unreadOnly: Boolean = false
+  category: NotificationCategory
+}
+
+input MarkNotificationReadInput {
+  notificationId: ID!
+  expectedVersion: Int!
+  idempotencyKey: String!
+}
+
+input MarkAllNotificationsReadInput {
+  throughCursor: Cursor!
+  idempotencyKey: String!
+}
+
+input QuietHoursInput {
+  start: String!
+  end: String!
+}
+
+input NotificationPreferenceUpdateInput {
+  notificationType: String!
+  channel: NotificationChannel!
+  enabled: Boolean!
+  quietHours: QuietHoursInput
+  timeZoneId: String!
+  expectedVersion: Int!
+}
+
+input UpdateNotificationPreferencesInput {
+  updates: [NotificationPreferenceUpdateInput!]!
+  idempotencyKey: String!
+}
+
+input NotificationTemplateQueryInput {
+  templateKey: String
+  channel: NotificationChannel
+  status: NotificationTemplateStatus
+  afterCursor: Cursor
+  limit: Int = 25
+}
+
+input PublishNotificationTemplateInput {
+  templateKey: String!
+  channel: NotificationChannel!
+  locale: String!
+  subject: String
+  body: String!
+  requiredVariables: [String!]!
+  policyRevision: Int!
+  expectedVersion: Int
+  idempotencyKey: String!
+}
+
+input RetireNotificationTemplateInput {
+  templateId: ID!
+  expectedVersion: Int!
+  reason: String!
+  idempotencyKey: String!
+}
+
+input RetryNotificationDeliveryInput {
+  deliveryId: ID!
+  expectedVersion: Int!
+  reason: String!
+  idempotencyKey: String!
+}
+
+input RecipientExceptionQueryInput {
+  status: NotificationExceptionStatus
+  exceptionType: NotificationExceptionType
+  afterCursor: Cursor
+  limit: Int = 25
+}
+
+input ResolveRecipientExceptionInput {
+  exceptionId: ID!
+  action: NotificationResolutionAction!
+  expectedVersion: Int!
+  reason: String!
+  idempotencyKey: String!
 }
 
 enum NotificationCategory {
   WELCOME
   SECURITY
+  BOOKING
+  OPERATIONS
+  FINANCE
+  SYSTEM
 }
 
 enum NotificationChannel {
   IN_APP
   EMAIL
   PUSH
+}
+
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum NotificationCursorState {
+  ACTIVE
+  EXPIRED
+  INVALID
+  RESYNC_REQUIRED
+}
+
+enum NotificationDeliveryGuarantee {
+  AT_LEAST_ONCE
+}
+
+enum NotificationTemplateStatus {
+  DRAFT
+  PUBLISHED
+  RETIRED
+}
+
+enum NotificationDeliveryStatus {
+  QUEUED
+  PROCESSING
+  ACCEPTED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+  BOUNCED
+  DEAD_LETTERED
+  CANCELLED
+}
+
+enum NotificationErrorClass {
+  TRANSIENT
+  PERMANENT
+  RATE_LIMITED
+  PROVIDER_OUTAGE
+  INVALID_CONTACT
+  BOUNCED
+  UNKNOWN
+}
+
+enum NotificationProviderStatus {
+  HEALTHY
+  DEGRADED
+  UNAVAILABLE
+}
+
+enum NotificationCircuitState {
+  CLOSED
+  OPEN
+  HALF_OPEN
+}
+
+enum NotificationRecipientKind {
+  DIRECT_ACCOUNT
+  ORGANIZATION_ROLE
+  BRANCH_ROLE
+  BOOKING_PARTY
+  EXPLICIT_SUBSCRIPTION
+}
+
+enum NotificationExceptionType {
+  NO_RECIPIENT
+  AMBIGUOUS_RECIPIENT
+  CROSS_PARTITION
+  MISSING_CONTACT
+  INVALID_CONTACT
+  UNVERIFIED_CONTACT
+  OPTIONAL_SUPPRESSED
+  DEPENDENCY_UNAVAILABLE
+}
+
+enum NotificationExceptionStatus {
+  OPEN
+  RESOLVED
+  IGNORED
+  EXPIRED
+}
+
+enum NotificationResolutionAction {
+  RE_RESOLVE
+  SUPPRESS
+  ROUTE_ALTERNATE
+  CANCEL
 }

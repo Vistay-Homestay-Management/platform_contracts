@@ -1,0 +1,33 @@
+{
+  "eventId": "55555555-5555-4555-8555-555555555552",
+  "type": "vistay.notification.notification-created",
+  "version": 2,
+  "aggregateId": "66666666-6666-4666-8666-666666666662",
+  "aggregateVersion": 1,
+  "correlationId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2",
+  "causationId": "33333333-3333-4333-8333-333333333332",
+  "occurredAt": "2026-11-04T03:00:02Z",
+  "data": {
+    "notificationId": "66666666-6666-4666-8666-666666666662",
+    "recipientAccountId": "22222222-2222-4222-8222-222222222222",
+    "recipientAccountType": "ADMIN",
+    "sourceEventId": "33333333-3333-4333-8333-333333333332",
+    "sourceEventType": "vistay.booking.reservation-created",
+    "sourceAggregateId": "77777777-7777-4777-8777-777777777772",
+    "sourceAggregateVersion": 3,
+    "routeKey": "booking.reservation-created",
+    "routeVersion": 1,
+    "category": "BOOKING",
+    "notificationType": "booking.reservation-created",
+    "priority": "NORMAL",
+    "templateKey": "backoffice.reservation.created",
+    "templateRevision": 4,
+    "policyRevision": 2,
+    "channels": ["IN_APP", "EMAIL"],
+    "requiredChannels": ["IN_APP", "EMAIL"],
+    "optionalChannels": [],
+    "inboxRevision": 42,
+    "cursor": "42",
+    "createdAt": "2026-11-04T03:00:02Z"
+  }
+}

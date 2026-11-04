@@ -1,0 +1,41 @@
+query NotificationPreferences {
+  notificationPreferences {
+    revision
+    nodes {
+      id
+      notificationType
+      channel
+      enabled
+      required
+      quietHours {
+        start
+        end
+      }
+      timeZoneId
+      revision
+      updatedAt
+    }
+  }
+}
+
+mutation UpdateNotificationPreferences(
+  $input: UpdateNotificationPreferencesInput!
+) {
+  updateNotificationPreferences(input: $input) {
+    revision
+    nodes {
+      id
+      notificationType
+      channel
+      enabled
+      required
+      quietHours {
+        start
+        end
+      }
+      timeZoneId
+      revision
+      updatedAt
+    }
+  }
+}
