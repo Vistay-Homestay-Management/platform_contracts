@@ -1,0 +1,1919 @@
+{
+  "refinements": [
+    {
+      "sourceId": "VS-E20",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "Warehouse roadmap separates historical ingestion S01, T01 replay/lineage remediation, conformed Booking/Finance/Operations facts, versioned metrics, reconciled data quality and scoped dashboard/export.",
+      "context": "service_data_warehouse exists with V2 facts/dimensions and a basic Booking event consumer; reporting GraphQL is serviceInfo-only. S01 is historical and immutable; active E20 issues must use the actual service_data_warehouse repo, never the old data_warehouse alias.",
+      "repositories": [
+        "service_data_warehouse",
+        "platform_contracts",
+        "platform_infrastructure",
+        "frontend_admin"
+      ],
+      "primaryRepository": "service_data_warehouse"
+    },
+    {
+      "sourceId": "VS-E20-S02",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "S02 splits point-in-time Booking/Property dimensions from Finance/Operations fact projections, both owned by service_data_warehouse.",
+      "context": "V2 tables are mostly schema-only. Booking value, recognized revenue, collected cash and owner settlement remain distinct source-owned grains.",
+      "repositories": [
+        "service_data_warehouse",
+        "platform_contracts"
+      ],
+      "primaryRepository": "service_data_warehouse"
+    },
+    {
+      "sourceId": "VS-E20-S03",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "S03 computes versioned, currency-safe occupancy and separated money metrics with source watermark and explicit unavailable states.",
+      "context": "Finance owns recognition/settlement; pending source contracts must not be represented as already-live revenue numbers.",
+      "repositories": [
+        "service_data_warehouse",
+        "platform_contracts"
+      ],
+      "primaryRepository": "service_data_warehouse"
+    },
+    {
+      "sourceId": "VS-E20-S04",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "S04 compares Warehouse run/checkpoint facts to authenticated source manifests and creates durable quality/replay evidence.",
+      "context": "Missing events and source outages cannot be treated as successful ingestion; thresholds and repair authorization are configurable.",
+      "repositories": [
+        "service_data_warehouse",
+        "platform_contracts"
+      ],
+      "primaryRepository": "service_data_warehouse"
+    },
+    {
+      "sourceId": "VS-E20-S05",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "S05 splits secured Warehouse reporting/export from the Admin Web dashboard consuming those projections.",
+      "context": "Admin SITE/BRANCH/field grants apply before aggregation and export; E10 operational settlement remains authoritative.",
+      "repositories": [
+        "service_data_warehouse",
+        "frontend_admin",
+        "platform_contracts"
+      ],
+      "primaryRepository": "service_data_warehouse"
+    },
+    {
+      "sourceId": "VS-E20-T01",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "T01 remediates immutable historical S01 with three existing repository-specific subtasks: Warehouse inbox/replay, versioned source contract and infrastructure stream isolation.",
+      "context": "Current consumer skips bad input and substitutes zero for missing money. Do not change historical S01 Jira description; T01 links remediation to it.",
+      "repositories": [
+        "service_data_warehouse",
+        "platform_contracts",
+        "platform_infrastructure"
+      ],
+      "primaryRepository": "service_data_warehouse"
+    },
+    {
+      "sourceId": "VS-E20-T01-ST01",
+      "jiraKey": "SCRUM-609",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E20-T01",
+      "summary": "[VS-E20-T01-ST01] Reconcile versioned source events and replay lineage",
+      "actor": "Authenticated internal source consumer for ingestion; authorized reporting viewer/operator for analytical reads and repair.",
+      "outcome": "Warehouse replaces permissive Booking ingestion with durable version-gated inbox, quarantine, monotonic source revision and inspectable replay/backfill without double counting.",
+      "context": "Current BookingEventIngestionService parses a bare booking.updated string; malformed/invalid records are logged and skipped, missing money becomes zero, HOURLY is accepted, and only processed_events tracks the consumed ID. V2 already has ingested_events, checkpoints, etl_runs and quality issues but they are not wired.",
+      "inScope": [
+        "Accept only registered schema/version and owner event stream for Booking, Finance, Property and Operations; verify source/aggregate ID, event ID, occurredAt, revision, payload hash and partition provenance.",
+        "Persist inbox/event lineage before projection; quarantine malformed, unsupported version, missing required monetary components or prohibited hourly stay with redacted reason; do not advance checkpoint or commit Kafka offset before durable outcome.",
+        "Use source revision precedence for out-of-order/corrected events, SCD2 dimension history, finite backfill windows and bounded replay lease; identical replay is no-op and conflicting same ID/hash stays quarantined.",
+        "Expose internal run/replay diagnostics and source reconciliation counts with protected audit; never invent a booking producer or read another service database."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "repositories": [
+        "service_data_warehouse"
+      ],
+      "primaryRepository": "service_data_warehouse",
+      "repositorySlices": [
+        {
+          "repository": "service_data_warehouse",
+          "paths": [
+            "src/main/java/com/vistay/warehouse/application/service/BookingEventIngestionService.java",
+            "src/main/java/com/vistay/warehouse/adapter/in/kafka/KafkaConsumerConfig.java",
+            "src/main/java/com/vistay/warehouse/application/service/WarehouseReplayService.java",
+            "src/main/resources/db/migration/V3__warehouse_ingestion_lineage.sql",
+            "src/test/java/com/vistay/warehouse/application/service/BookingEventIngestionServiceTest.java",
+            "src/test/java/com/vistay/warehouse/application/service/WarehouseReplayIntegrationTest.java"
+          ],
+          "artifacts": [
+            "versioned validated inbox",
+            "checkpoint/ETL/replay runner",
+            "quarantine and provenance",
+            "out-of-order/duplicate/invalid amount Kafka/PostgreSQL tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Consume only allow-listed versioned owner events or authenticated source snapshots; never read another service database.",
+        "Expose named admin-safe reporting operations with explicit asOf, source watermark, metric version, currency and stable unavailable/stale codes.",
+        "Persist lineage and durable audit for projections and export jobs, but read-only dashboard queries never create a domain mutation."
+      ],
+      "dataOwnership": [
+        "Booking owns reservation and booking-value snapshots; Property owns eligibility and supply; Finance owns revenue recognition, receivables, settlements, expenses and payout movements; Operations owns incidents and work orders.",
+        "service_data_warehouse owns append-only ingestion/lineage, conformed analytical dimensions/facts, governed aggregate queries and export jobs; it is never an authority for operational writes."
+      ],
+      "stateMachine": [
+        "Event RECEIVED -> VALIDATED -> PROJECTED or QUARANTINED/FAILED; replay retains old status and appends new run evidence.",
+        "Checkpoint advances only after the projection and inbox state commit, never on a logged skip."
+      ],
+      "authorization": {
+        "actions": [
+          "warehouse:ingest",
+          "warehouse:replay"
+        ],
+        "dataPartitions": [
+          "ADMIN organization plus explicit SITE/BRANCH analytical partition; HOST_SELF only via a separately approved host-safe contract, not an admin report token; SYSTEM only for authenticated ingestion/repair."
+        ],
+        "fieldGroups": [
+          "INGESTION_AUDIT and SOURCE_LINEAGE SYSTEM-only; raw payload restricted and never dashboard-visible"
+        ]
+      },
+      "failureSemantics": [
+        "Quarantine malformed or unsupported source revisions with exact redacted reason; never silently skip, invent zero amounts or rewrite source truth.",
+        "Fail closed on missing source/grant/partition/field group, incompatible metric version, stale watermark or source dependency outage.",
+        "Bound backfill/export work and surface a stable repair state with no raw customer PII or provider credentials in audit."
+      ],
+      "idempotencyConcurrency": [
+        "Deduplicate by source event ID plus stream/revision; identical replay is no-op, conflicting payload hash is quarantined.",
+        "Use monotonic per-source watermark and bounded backfill lease so concurrent runners cannot double-apply a source revision.",
+        "A published metric version is immutable; corrections create a new calculation run/version with reproducible source inputs."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E20-T01-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E20-T01-ST03",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E08-S03-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "valid versioned owner event and an empty inbox",
+          "when": "ingestion completes and repeats",
+          "then": "one projected source revision, durable event hash, source run and checkpoint exist without duplicated facts"
+        },
+        {
+          "id": "AC02",
+          "given": "malformed booking, absent amount, HOURLY stay or conflicting event ID",
+          "when": "event is consumed",
+          "then": "a redacted quarantine record is visible, no invented zero/revenue or successful checkpoint occurs"
+        },
+        {
+          "id": "AC03",
+          "given": "out-of-order correction or bounded replay after restart",
+          "when": "worker resumes",
+          "then": "latest valid revision wins, historical SCD lineage remains and no double-counted booking/Finance amount appears"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*WarehouseReplay*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *WarehouseReplay*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*WarehouseReplay*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *WarehouseReplay*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "observability": [
+        "Report source lag, rejected/quarantined counts, reconciliation drift and export age without raw customer identifiers as metric labels.",
+        "Retain run ID, source event ID/hash, source revision, metric version and correlation ID in protected audit with redaction."
+      ],
+      "definitionOfDone": [
+        "Only the named owner repo paths and additive compatible migrations are changed; source service databases remain untouched.",
+        "Focused JUnit with PostgreSQL/Kafka fixtures and repository CI cover allow/deny, replay, source-lag and metric version.",
+        "Jira contains PR/CI, lineage, reconciliation and rollback/repair evidence."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "labels": [
+        "repo-service-data-warehouse",
+        "roadmap-v1-3",
+        "source-vs-e20-t01-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E20-T01-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "sourceId": "VS-E20-T01-ST02",
+      "jiraKey": "SCRUM-610",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E20-T01",
+      "summary": "[VS-E20-T01-ST02] Specify source-to-warehouse lineage and replay contract",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Contracts defines an allow-listed Booking/Finance/Property/Operations source-event envelope, version/revision and replay semantics without declaring missing producers as already implemented.",
+      "context": "Existing events/v1 includes a few Booking and Payment events but no complete booking.updated schema matching the current warehouse bare DTO. Historical E20-S01 stays immutable; this child remediates that gap.",
+      "inScope": [
+        "Define owner stream, event ID/type/version, aggregate ID/revision, business service date, occurredAt, causation, hash and redacted safe payload per source; publisher availability is an explicit prerequisite.",
+        "Publish positive/negative fixtures for duplicate ID conflicting hash, reversed revisions, invalid dates/amount, legacy HOURLY, missing Finance confirmation and replay watermark.",
+        "Define SCD2 corrections, consumer commit/quarantine/DLQ semantics, provenance of each metric and append-only compatibility policy; prevent raw PII and credentials from reaching warehouse events."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "platform_contracts"
+      ],
+      "primaryRepository": "platform_contracts",
+      "repositorySlices": [
+        {
+          "repository": "platform_contracts",
+          "paths": [
+            "docs/warehouse-ingestion-v1.md",
+            "events/v1/warehouse/**",
+            "fixtures/warehouse-ingestion/**",
+            "scripts/validate-schemas.mjs"
+          ],
+          "artifacts": [
+            "source-owner/field and lineage matrix",
+            "warehouse ingestion envelope and fixtures",
+            "replay and compatibility rules"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "warehouse-contract:publish"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "declared publisher events and Warehouse ingestion boundaries",
+          "when": "schema validation runs",
+          "then": "all field owners, event revisions, source provenance and safe payload versions are deterministic"
+        },
+        {
+          "id": "AC02",
+          "given": "missing publisher contract, duplicate/conflicting hash, raw PII or legacy HOURLY",
+          "when": "negative fixtures run",
+          "then": "validation fails or quarantines with exact stable diagnostic"
+        },
+        {
+          "id": "AC03",
+          "given": "same canonical fixture set",
+          "when": "validation repeats",
+          "then": "published fingerprint is unchanged and no historical event contract is silently rewritten"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "contract",
+          "command": "npm run validate:schemas",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "warehouse event/schema and invalid fixture report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "unit",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "full platform_contracts contract validation and fingerprint report"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-platform-contracts",
+        "roadmap-v1-3",
+        "source-vs-e20-t01-st02"
+      ],
+      "decisionNoteVi": "Leaf VS-E20-T01-ST02 chỉ sở hữu artifact của platform_contracts; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "contract",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "sourceId": "VS-E20-T01-ST03",
+      "jiraKey": "SCRUM-611",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E20-T01",
+      "summary": "[VS-E20-T01-ST03] Provision warehouse stream isolation and replay operations",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Infrastructure provisions least-privilege warehouse consumers, retention/DLQ and safe local replay/lag observation without direct service database access.",
+      "context": "Warehouse application.yml configures Kafka SSL and manual commit, but only the Booking consumer exists and malformed messages are currently skipped. No warehouse-specific Postman fixtures exist.",
+      "inScope": [
+        "Declare warehouse-only Kafka topic/consumer ACLs, bounded DLQ retention, retry budgets and isolated replay identity; use environment secret references, no checked-in credentials.",
+        "Provision local compose warehouse DB volume and ingress restricted to authenticated internal/reporting edge; deny direct public warehouse DB/GraphQL exposure.",
+        "Provide a dry-run source-lag/checkpoint/poison-message smoke, targeted backfill approval and rollback preserving run/audit evidence."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "platform_infrastructure"
+      ],
+      "primaryRepository": "platform_infrastructure",
+      "repositorySlices": [
+        {
+          "repository": "platform_infrastructure",
+          "paths": [
+            "compose.full.yaml",
+            "kafka/**",
+            "router/**",
+            "scripts/Test-WarehouseIngestion.ps1",
+            "docs/warehouse-replay-runbook.md"
+          ],
+          "artifacts": [
+            "Kafka ACL/DLQ and replay topology",
+            "local checkpoint/lag smoke",
+            "approval and rollback runbook"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "warehouse:ingest:configure",
+          "warehouse:replay:operate"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E20-T01-ST02",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "valid source topic and warehouse service account",
+          "when": "local ingestion smoke runs",
+          "then": "only permitted streams are consumed and lag/checkpoint metrics are visible without source database credentials"
+        },
+        {
+          "id": "AC02",
+          "given": "poison event or wrong Kafka principal",
+          "when": "consumer/replay starts",
+          "then": "event is quarantined or access denied and no checkpoint is lost"
+        },
+        {
+          "id": "AC03",
+          "given": "replay rollout fails",
+          "when": "rollback runs",
+          "then": "last validated topology and immutable run evidence are restored without dropping warehouse data"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "contract",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-WarehouseIngestion.ps1 -StaticOnly",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "warehouse Kafka/DB boundary static checks"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-WarehouseIngestion.ps1",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "redacted DLQ/replay/rollback compose report"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-platform-infrastructure",
+        "roadmap-v1-3",
+        "source-vs-e20-t01-st03"
+      ],
+      "decisionNoteVi": "Leaf VS-E20-T01-ST03 chỉ sở hữu artifact của platform_infrastructure; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "infrastructure",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    }
+  ],
+  "additions": [
+    {
+      "templateSourceId": "VS-E20-S02",
+      "sourceId": "VS-E20-S02-ST01",
+      "jiraKey": "SCRUM-849",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E20-S02",
+      "summary": "[VS-E20-S02-ST01] Conform Booking and Property warehouse dimensions",
+      "actor": "Authenticated internal source consumer for ingestion; authorized reporting viewer/operator for analytical reads and repair.",
+      "outcome": "Warehouse derives versioned Booking, Property, masked Customer, channel and eligible property-night analytical rows from validated owner events without overwriting historical corrections.",
+      "context": "V2 already declares fact_bookings, fact_property_nights and SCD2 dim_property; current consumer fills booking facts but does not populate property-night denominators and can substitute zero/unspecified status/HOURLY legacy defaults.",
+      "inScope": [
+        "Map canonical E08 booking statuses and E04 eligibility revisions to dim_property as-of keys and fact_bookings; require explicit stay type and complete authoritative amount snapshot.",
+        "Materialize one property_id/service_date eligible/occupied row from owner availability/booking facts with property-local date boundaries and explicit off-market reason; do not infer denominator only from booked nights.",
+        "Retain source event/revision, point-in-time customer masking, channel and staff attribution references; no email, phone, token, raw guest name or current-row-only join to rewrite historical property data.",
+        "Quarantine missing property eligibility, overlapping occupancy, invalid date/amount or legacy HOURLY instead of fabricating saleable nights."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "repositories": [
+        "service_data_warehouse"
+      ],
+      "primaryRepository": "service_data_warehouse",
+      "repositorySlices": [
+        {
+          "repository": "service_data_warehouse",
+          "paths": [
+            "src/main/resources/db/migration/V4__booking_property_conformed.sql",
+            "src/main/java/com/vistay/warehouse/application/service/BookingPropertyProjectionService.java",
+            "src/main/java/com/vistay/warehouse/domain/repository/FactPropertyNightRepository.java",
+            "src/test/java/com/vistay/warehouse/application/service/BookingPropertyProjectionIntegrationTest.java"
+          ],
+          "artifacts": [
+            "as-of property/booking/guest dimensions",
+            "complete property-night numerator and denominator",
+            "historical/correction/overlap tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Consume only allow-listed versioned owner events or authenticated source snapshots; never read another service database.",
+        "Expose named admin-safe reporting operations with explicit asOf, source watermark, metric version, currency and stable unavailable/stale codes.",
+        "Persist lineage and durable audit for projections and export jobs, but read-only dashboard queries never create a domain mutation."
+      ],
+      "dataOwnership": [
+        "Booking owns reservation and booking-value snapshots; Property owns eligibility and supply; Finance owns revenue recognition, receivables, settlements, expenses and payout movements; Operations owns incidents and work orders.",
+        "service_data_warehouse owns append-only ingestion/lineage, conformed analytical dimensions/facts, governed aggregate queries and export jobs; it is never an authority for operational writes."
+      ],
+      "stateMachine": [
+        "Source revision ACCEPTED -> PROJECTED; late older revision remains lineage-only and cannot replace latest valid fact.",
+        "Property SCD2 row validity and property-night eligibility are resolved for the applicable source service date."
+      ],
+      "authorization": {
+        "actions": [
+          "warehouse:booking:project"
+        ],
+        "dataPartitions": [
+          "ADMIN organization plus explicit SITE/BRANCH analytical partition; HOST_SELF only via a separately approved host-safe contract, not an admin report token; SYSTEM only for authenticated ingestion/repair."
+        ],
+        "fieldGroups": [
+          "AGGREGATED_BOOKING only; masked customer key restricted from public export"
+        ]
+      },
+      "failureSemantics": [
+        "Quarantine malformed or unsupported source revisions with exact redacted reason; never silently skip, invent zero amounts or rewrite source truth.",
+        "Fail closed on missing source/grant/partition/field group, incompatible metric version, stale watermark or source dependency outage.",
+        "Bound backfill/export work and surface a stable repair state with no raw customer PII or provider credentials in audit."
+      ],
+      "idempotencyConcurrency": [
+        "Deduplicate by source event ID plus stream/revision; identical replay is no-op, conflicting payload hash is quarantined.",
+        "Use monotonic per-source watermark and bounded backfill lease so concurrent runners cannot double-apply a source revision.",
+        "A published metric version is immutable; corrections create a new calculation run/version with reproducible source inputs."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E20-T01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E20-T02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E04-T01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E08-S03-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "one eligible and one off-market unit with confirmed and cancelled Booking revisions",
+          "when": "projector runs",
+          "then": "correct as-of dimension keys, saleable-day denominators and immutable booking value snapshot are available without guest PII"
+        },
+        {
+          "id": "AC02",
+          "given": "missing eligibility, overlapping occupancy or legacy HOURLY input",
+          "when": "projection runs",
+          "then": "source is quarantined and occupancy/revenue are not inflated with guessed fields"
+        },
+        {
+          "id": "AC03",
+          "given": "source replay or late Property correction",
+          "when": "backfill resumes",
+          "then": "SCD2 timeline and one property-night grain reconcile deterministically without double booking value"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*BookingPropertyProjection*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *BookingPropertyProjection*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*BookingPropertyProjection*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *BookingPropertyProjection*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "observability": [
+        "Report source lag, rejected/quarantined counts, reconciliation drift and export age without raw customer identifiers as metric labels.",
+        "Retain run ID, source event ID/hash, source revision, metric version and correlation ID in protected audit with redaction."
+      ],
+      "definitionOfDone": [
+        "Only the named owner repo paths and additive compatible migrations are changed; source service databases remain untouched.",
+        "Focused JUnit with PostgreSQL/Kafka fixtures and repository CI cover allow/deny, replay, source-lag and metric version.",
+        "Jira contains PR/CI, lineage, reconciliation and rollback/repair evidence."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "labels": [
+        "repo-service-data-warehouse",
+        "roadmap-v1-3",
+        "source-vs-e20-s02-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E20-S02-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E20-S02",
+      "sourceId": "VS-E20-S02-ST02",
+      "jiraKey": "SCRUM-850",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E20-S02",
+      "summary": "[VS-E20-S02-ST02] Conform Finance and Operations warehouse facts",
+      "actor": "Authenticated internal source consumer for ingestion; authorized reporting viewer/operator for analytical reads and repair.",
+      "outcome": "Warehouse projects Finance transactions, receivable/payable snapshots, recognized revenue, settlement references and Operations incident/work-order facts from their authoritative versioned source events.",
+      "context": "V2 declares fact_financial_transactions, fact_revenue_recognition, receivable/payable snapshots, fact_expenses, fact_incidents and fact_work_orders but has no Finance/Operations consumers yet.",
+      "inScope": [
+        "Project only verified E09 Finance allocations/refunds and E10 approved settlement/payout versions; keep booking value, recognized revenue, cash collection, receivables, deposits and host payouts distinct grains.",
+        "Load E12 work orders/incidents and approved costs with as-of Property/staff dimension keys; no employee salary or raw guest incident narrative in warehouse facts.",
+        "Carry source service, event ID/version, monetary currency and effective business date; corrections/reversals append superseding lineage rather than editing original financial movement.",
+        "Reject unsupported event version, unverified Payment callback, cross-currency aggregation, missing Finance source or duplicate source revision without inventing successful money movement."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "repositories": [
+        "service_data_warehouse"
+      ],
+      "primaryRepository": "service_data_warehouse",
+      "repositorySlices": [
+        {
+          "repository": "service_data_warehouse",
+          "paths": [
+            "src/main/resources/db/migration/V5__finance_operations_conformed.sql",
+            "src/main/java/com/vistay/warehouse/application/service/FinanceOperationsProjectionService.java",
+            "src/main/java/com/vistay/warehouse/domain/repository/FactFinancialTransactionRepository.java",
+            "src/test/java/com/vistay/warehouse/application/service/FinanceOperationsProjectionIntegrationTest.java"
+          ],
+          "artifacts": [
+            "versioned Finance and Operations facts",
+            "distinct cash/revenue/settlement grains",
+            "reversal/late-event/foreign source tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Consume only allow-listed versioned owner events or authenticated source snapshots; never read another service database.",
+        "Expose named admin-safe reporting operations with explicit asOf, source watermark, metric version, currency and stable unavailable/stale codes.",
+        "Persist lineage and durable audit for projections and export jobs, but read-only dashboard queries never create a domain mutation."
+      ],
+      "dataOwnership": [
+        "Booking owns reservation and booking-value snapshots; Property owns eligibility and supply; Finance owns revenue recognition, receivables, settlements, expenses and payout movements; Operations owns incidents and work orders.",
+        "service_data_warehouse owns append-only ingestion/lineage, conformed analytical dimensions/facts, governed aggregate queries and export jobs; it is never an authority for operational writes."
+      ],
+      "stateMachine": [
+        "Only owner-confirmed financial revisions enter reportable facts; provisional/provider-pending records remain pending lineage.",
+        "Correction/reversal creates a new analytical revision tied to original movement, never deletion of source audit."
+      ],
+      "authorization": {
+        "actions": [
+          "warehouse:finance:project",
+          "warehouse:operations:project"
+        ],
+        "dataPartitions": [
+          "ADMIN organization plus explicit SITE/BRANCH analytical partition; HOST_SELF only via a separately approved host-safe contract, not an admin report token; SYSTEM only for authenticated ingestion/repair."
+        ],
+        "fieldGroups": [
+          "FINANCIAL_AGGREGATE only with grant; incident/staff detail restricted"
+        ]
+      },
+      "failureSemantics": [
+        "Quarantine malformed or unsupported source revisions with exact redacted reason; never silently skip, invent zero amounts or rewrite source truth.",
+        "Fail closed on missing source/grant/partition/field group, incompatible metric version, stale watermark or source dependency outage.",
+        "Bound backfill/export work and surface a stable repair state with no raw customer PII or provider credentials in audit."
+      ],
+      "idempotencyConcurrency": [
+        "Deduplicate by source event ID plus stream/revision; identical replay is no-op, conflicting payload hash is quarantined.",
+        "Use monotonic per-source watermark and bounded backfill lease so concurrent runners cannot double-apply a source revision.",
+        "A published metric version is immutable; corrections create a new calculation run/version with reproducible source inputs."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E20-T01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E20-T02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E09-S07-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E10-S04-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E12-S04-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "confirmed Finance allocation, approved E10 settlement and completed E12 work order",
+          "when": "owner events project",
+          "then": "separate dated currency-safe facts and source revisions exist with no double counted booking value"
+        },
+        {
+          "id": "AC02",
+          "given": "unverified callback, cross-currency amount or missing expense owner",
+          "when": "ingestion runs",
+          "then": "reportable revenue/settlement remains unchanged and quality issue identifies the protected source"
+        },
+        {
+          "id": "AC03",
+          "given": "refund or late settlement correction",
+          "when": "replay runs",
+          "then": "original movement remains inspectable and the newest approved aggregate reconciles once"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*FinanceOperationsProjection*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *FinanceOperationsProjection*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*FinanceOperationsProjection*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *FinanceOperationsProjection*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "observability": [
+        "Report source lag, rejected/quarantined counts, reconciliation drift and export age without raw customer identifiers as metric labels.",
+        "Retain run ID, source event ID/hash, source revision, metric version and correlation ID in protected audit with redaction."
+      ],
+      "definitionOfDone": [
+        "Only the named owner repo paths and additive compatible migrations are changed; source service databases remain untouched.",
+        "Focused JUnit with PostgreSQL/Kafka fixtures and repository CI cover allow/deny, replay, source-lag and metric version.",
+        "Jira contains PR/CI, lineage, reconciliation and rollback/repair evidence."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "labels": [
+        "repo-service-data-warehouse",
+        "roadmap-v1-3",
+        "source-vs-e20-s02-st02"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E20-S02-ST02 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E20-S03",
+      "sourceId": "VS-E20-S03-ST01",
+      "jiraKey": "SCRUM-851",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E20-S03",
+      "summary": "[VS-E20-S03-ST01] Materialize versioned occupancy and finance metrics",
+      "actor": "Authenticated internal source consumer for ingestion; authorized reporting viewer/operator for analytical reads and repair.",
+      "outcome": "Warehouse publishes metric-versioned saleable occupancy, booking value, recognized revenue, cash collected and approved settlement summaries with distinct grains, source watermark and currency.",
+      "context": "V2 has fact_property_nights, fact_bookings, fact_revenue_recognition and financial transactions; no metric API/calculator exists. Finance owns revenue recognition and E10 settlement truth.",
+      "inScope": [
+        "Compute saleable occupancy as count occupied AND eligible property-nights divided by count eligible property-nights; if denominator zero return unavailable with reason, not zero-percent.",
+        "Keep booking value as contract snapshot, recognized revenue only from Finance policy-versioned recognition facts, cash only verified net PAYMENT/REFUND movement and settlement only latest approved E10 version; never sum these together.",
+        "Carry metric definition version, date grain in property-local zone, time interval, source asOf/lag, currency and site/branch partition; group by currency without implicit FX conversion.",
+        "Until Finance publishes approved revenue and settlement contracts, show those metrics as unavailable or named blocked, not simulated numbers; no tax calculation or hourly bookings."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "repositories": [
+        "service_data_warehouse"
+      ],
+      "primaryRepository": "service_data_warehouse",
+      "repositorySlices": [
+        {
+          "repository": "service_data_warehouse",
+          "paths": [
+            "src/main/resources/db/migration/V6__warehouse_metric_versions.sql",
+            "src/main/java/com/vistay/warehouse/application/service/WarehouseMetricService.java",
+            "src/main/java/com/vistay/warehouse/adapter/in/graphql/WarehouseMetricQuery.java",
+            "src/test/java/com/vistay/warehouse/application/service/WarehouseMetricIntegrationTest.java"
+          ],
+          "artifacts": [
+            "immutable metric definition/version",
+            "saleable occupancy and separated money summaries",
+            "zero-denominator/reversal/multi-currency tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Consume only allow-listed versioned owner events or authenticated source snapshots; never read another service database.",
+        "Expose named admin-safe reporting operations with explicit asOf, source watermark, metric version, currency and stable unavailable/stale codes.",
+        "Persist lineage and durable audit for projections and export jobs, but read-only dashboard queries never create a domain mutation."
+      ],
+      "dataOwnership": [
+        "Booking owns reservation and booking-value snapshots; Property owns eligibility and supply; Finance owns revenue recognition, receivables, settlements, expenses and payout movements; Operations owns incidents and work orders.",
+        "service_data_warehouse owns append-only ingestion/lineage, conformed analytical dimensions/facts, governed aggregate queries and export jobs; it is never an authority for operational writes."
+      ],
+      "stateMachine": [
+        "Metric version DRAFT -> VALIDATED -> PUBLISHED; published definition and canonical inputs are immutable.",
+        "Metric result CURRENT/STALE/UNAVAILABLE carries source watermark and quality reason."
+      ],
+      "authorization": {
+        "actions": [
+          "report:read"
+        ],
+        "dataPartitions": [
+          "ADMIN organization plus explicit SITE/BRANCH analytical partition; HOST_SELF only via a separately approved host-safe contract, not an admin report token; SYSTEM only for authenticated ingestion/repair."
+        ],
+        "fieldGroups": [
+          "OCCUPANCY_SUMMARY baseline; FINANCIAL_AGGREGATE and SETTLEMENT_SUMMARY require distinct grants"
+        ]
+      },
+      "failureSemantics": [
+        "Quarantine malformed or unsupported source revisions with exact redacted reason; never silently skip, invent zero amounts or rewrite source truth.",
+        "Fail closed on missing source/grant/partition/field group, incompatible metric version, stale watermark or source dependency outage.",
+        "Bound backfill/export work and surface a stable repair state with no raw customer PII or provider credentials in audit."
+      ],
+      "idempotencyConcurrency": [
+        "Deduplicate by source event ID plus stream/revision; identical replay is no-op, conflicting payload hash is quarantined.",
+        "Use monotonic per-source watermark and bounded backfill lease so concurrent runners cannot double-apply a source revision.",
+        "A published metric version is immutable; corrections create a new calculation run/version with reproducible source inputs."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E20-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E20-S02-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E20-T02",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "two eligible property nights, one occupied night and a current metric version",
+          "when": "report computes occupancy",
+          "then": "saleable occupancy is 1/2 with exact denominator, date range, asOf and definition version"
+        },
+        {
+          "id": "AC02",
+          "given": "booking amount, Finance recognized amount, verified cash and settlement payable in distinct fixtures",
+          "when": "money metrics run",
+          "then": "four separate currency-safe values appear and no booking or cash amount is mislabeled revenue"
+        },
+        {
+          "id": "AC03",
+          "given": "zero eligible nights, reversed transaction, mixed currencies or missing Finance approval",
+          "when": "metric runs or replays",
+          "then": "zero denominator/unavailable is explicit, reversals reconcile and no invented FX or unapproved revenue appears"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*WarehouseMetric*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *WarehouseMetric*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*WarehouseMetric*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *WarehouseMetric*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "observability": [
+        "Report source lag, rejected/quarantined counts, reconciliation drift and export age without raw customer identifiers as metric labels.",
+        "Retain run ID, source event ID/hash, source revision, metric version and correlation ID in protected audit with redaction."
+      ],
+      "definitionOfDone": [
+        "Only the named owner repo paths and additive compatible migrations are changed; source service databases remain untouched.",
+        "Focused JUnit with PostgreSQL/Kafka fixtures and repository CI cover allow/deny, replay, source-lag and metric version.",
+        "Jira contains PR/CI, lineage, reconciliation and rollback/repair evidence."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "labels": [
+        "repo-service-data-warehouse",
+        "roadmap-v1-3",
+        "source-vs-e20-s03-st01",
+        "policy-configurable"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E20-S03-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [
+        "Revenue and settlement monetary metrics require approved Finance source contract and policy version; before that these metric IDs remain unavailable."
+      ],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E20-S04",
+      "sourceId": "VS-E20-S04-ST01",
+      "jiraKey": "SCRUM-852",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E20-S04",
+      "summary": "[VS-E20-S04-ST01] Detect and reconcile warehouse source drift",
+      "actor": "Authenticated internal source consumer for ingestion; authorized reporting viewer/operator for analytical reads and repair.",
+      "outcome": "Warehouse compares bounded source-version/count/amount checkpoints with authorised Booking, Finance, Property and Operations source manifests, recording durable quality cases and safe repair.",
+      "context": "V2 data_quality_issues and etl_runs/checkpoints exist but the current Booking consumer silently skips bad messages and there is no authoritative reconciliation runner.",
+      "inScope": [
+        "Run configured bounded service-date windows against authenticated owner snapshot/manifest contracts; compare event IDs/revisions, source counts, currency-separated totals and freshness, not raw cross-service DB queries.",
+        "Persist quality issue code, severity, window, source watermark and evidence digest; distinguish late-but-expected lag from verified drift and keep root-cause links without raw PII.",
+        "Require approved scope/reason and dry-run count before replay or backfill; reopening corrected issue is a new audit event, not deleting its earlier discrepancy.",
+        "Gate metric/export readiness on configured severity/freshness thresholds; threshold versions are approved config, no arbitrary silent default."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "repositories": [
+        "service_data_warehouse"
+      ],
+      "primaryRepository": "service_data_warehouse",
+      "repositorySlices": [
+        {
+          "repository": "service_data_warehouse",
+          "paths": [
+            "src/main/resources/db/migration/V7__warehouse_reconciliation_runs.sql",
+            "src/main/java/com/vistay/warehouse/application/service/WarehouseReconciliationService.java",
+            "src/main/java/com/vistay/warehouse/adapter/out/source/SourceManifestClient.java",
+            "src/test/java/com/vistay/warehouse/application/service/WarehouseReconciliationIntegrationTest.java"
+          ],
+          "artifacts": [
+            "source watermark/amount reconciliation",
+            "quality case and repair ledger",
+            "source-outage/lag/threshold tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Consume only allow-listed versioned owner events or authenticated source snapshots; never read another service database.",
+        "Expose named admin-safe reporting operations with explicit asOf, source watermark, metric version, currency and stable unavailable/stale codes.",
+        "Persist lineage and durable audit for projections and export jobs, but read-only dashboard queries never create a domain mutation."
+      ],
+      "dataOwnership": [
+        "Booking owns reservation and booking-value snapshots; Property owns eligibility and supply; Finance owns revenue recognition, receivables, settlements, expenses and payout movements; Operations owns incidents and work orders.",
+        "service_data_warehouse owns append-only ingestion/lineage, conformed analytical dimensions/facts, governed aggregate queries and export jobs; it is never an authority for operational writes."
+      ],
+      "stateMachine": [
+        "Issue OPEN -> ACKNOWLEDGED -> RESOLVED or TIME_BOUND_IGNORED with reason; replay does not erase original issue.",
+        "Source outage yields UNVERIFIED rather than passing reconciliation."
+      ],
+      "authorization": {
+        "actions": [
+          "warehouse:quality:view",
+          "warehouse:reconcile",
+          "warehouse:replay"
+        ],
+        "dataPartitions": [
+          "ADMIN organization plus explicit SITE/BRANCH analytical partition; HOST_SELF only via a separately approved host-safe contract, not an admin report token; SYSTEM only for authenticated ingestion/repair."
+        ],
+        "fieldGroups": [
+          "QUALITY_SUMMARY report-safe; SOURCE_EVIDENCE and repair audit SYSTEM or explicitly granted operator"
+        ]
+      },
+      "failureSemantics": [
+        "Quarantine malformed or unsupported source revisions with exact redacted reason; never silently skip, invent zero amounts or rewrite source truth.",
+        "Fail closed on missing source/grant/partition/field group, incompatible metric version, stale watermark or source dependency outage.",
+        "Bound backfill/export work and surface a stable repair state with no raw customer PII or provider credentials in audit."
+      ],
+      "idempotencyConcurrency": [
+        "Deduplicate by source event ID plus stream/revision; identical replay is no-op, conflicting payload hash is quarantined.",
+        "Use monotonic per-source watermark and bounded backfill lease so concurrent runners cannot double-apply a source revision.",
+        "A published metric version is immutable; corrections create a new calculation run/version with reproducible source inputs."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E20-T01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E20-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E20-S02-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E20-T02",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "bounded owner manifest and matching warehouse window",
+          "when": "reconciliation runs",
+          "then": "counts, revisions, currency totals and freshness align with a stored source watermark and run ID"
+        },
+        {
+          "id": "AC02",
+          "given": "missing event, divergent amount or unsupported source version",
+          "when": "same window reconciles",
+          "then": "durable quality case and alert are created and report readiness is visibly degraded"
+        },
+        {
+          "id": "AC03",
+          "given": "manifest dependency unavailable or approved backfill repeated",
+          "when": "reconciliation/replay runs",
+          "then": "no false pass, duplicate money or erased incident evidence occurs"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*WarehouseReconciliation*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *WarehouseReconciliation*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*WarehouseReconciliation*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *WarehouseReconciliation*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "observability": [
+        "Report source lag, rejected/quarantined counts, reconciliation drift and export age without raw customer identifiers as metric labels.",
+        "Retain run ID, source event ID/hash, source revision, metric version and correlation ID in protected audit with redaction."
+      ],
+      "definitionOfDone": [
+        "Only the named owner repo paths and additive compatible migrations are changed; source service databases remain untouched.",
+        "Focused JUnit with PostgreSQL/Kafka fixtures and repository CI cover allow/deny, replay, source-lag and metric version.",
+        "Jira contains PR/CI, lineage, reconciliation and rollback/repair evidence."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "labels": [
+        "repo-service-data-warehouse",
+        "roadmap-v1-3",
+        "source-vs-e20-s04-st01",
+        "policy-configurable"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E20-S04-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E20-S05",
+      "sourceId": "VS-E20-S05-ST01",
+      "jiraKey": "SCRUM-853",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E20-S05",
+      "summary": "[VS-E20-S05-ST01] Expose secured analytics queries and export jobs",
+      "actor": "Authenticated internal source consumer for ingestion; authorized reporting viewer/operator for analytical reads and repair.",
+      "outcome": "Warehouse serves bounded Admin reports and audited asynchronous exports with action, SITE/BRANCH partition and sensitive field-group enforcement inside the query plan.",
+      "context": "Warehouse GraphQL exposes only warehouseServiceInfo; User authorization already has report:read/report:export, but existing warehouse fact tables include staff and masked-customer keys.",
+      "inScope": [
+        "Expose occupancy, booking value, Finance-recognized revenue, verified cash, owner settlement and Operations quality slices with filter-bound cursor, asOf/metric version and per-currency totals.",
+        "Validate User authorization action and field-group before SQL; apply organization/SITE/BRANCH predicates before grouping, paging or export; HOST_SELF needs a separate approved contract and cannot use Admin viewer.",
+        "Create idempotent export jobs with authorized scope snapshot, approved configured small-cell suppression, private short-lived artifact access, expiry and read/download audit; never export raw customer ID, payroll, bank info, case notes or provider callback payload.",
+        "Return explicit STALE/QUALITY_BLOCKED/UNAVAILABLE for lag or unresolved critical reconciliation; do not turn stale numbers into an authoritative live Finance settlement view."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "repositories": [
+        "service_data_warehouse"
+      ],
+      "primaryRepository": "service_data_warehouse",
+      "repositorySlices": [
+        {
+          "repository": "service_data_warehouse",
+          "paths": [
+            "src/main/resources/db/migration/V8__warehouse_export_jobs.sql",
+            "src/main/resources/graphql/schema.graphqls",
+            "src/main/java/com/vistay/warehouse/application/service/WarehouseReportService.java",
+            "src/main/java/com/vistay/warehouse/application/service/WarehouseExportService.java",
+            "src/main/java/com/vistay/warehouse/adapter/in/graphql/WarehouseReportQuery.java",
+            "src/test/java/com/vistay/warehouse/application/service/WarehouseReportSecurityIntegrationTest.java"
+          ],
+          "artifacts": [
+            "partitioned analytics GraphQL queries",
+            "private audited export jobs",
+            "aggregation/privacy/stale-status tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Consume only allow-listed versioned owner events or authenticated source snapshots; never read another service database.",
+        "Expose named admin-safe reporting operations with explicit asOf, source watermark, metric version, currency and stable unavailable/stale codes.",
+        "Persist lineage and durable audit for projections and export jobs, but read-only dashboard queries never create a domain mutation."
+      ],
+      "dataOwnership": [
+        "Booking owns reservation and booking-value snapshots; Property owns eligibility and supply; Finance owns revenue recognition, receivables, settlements, expenses and payout movements; Operations owns incidents and work orders.",
+        "service_data_warehouse owns append-only ingestion/lineage, conformed analytical dimensions/facts, governed aggregate queries and export jobs; it is never an authority for operational writes."
+      ],
+      "stateMachine": [
+        "Report CURRENT/STALE/QUALITY_BLOCKED/UNAVAILABLE is derived from lineage and approved freshness threshold.",
+        "Export REQUESTED -> RUNNING -> READY -> EXPIRED or FAILED; denied exports never become READY."
+      ],
+      "authorization": {
+        "actions": [
+          "report:read",
+          "report:export"
+        ],
+        "dataPartitions": [
+          "ADMIN organization plus explicit SITE/BRANCH analytical partition; HOST_SELF only via a separately approved host-safe contract, not an admin report token; SYSTEM only for authenticated ingestion/repair."
+        ],
+        "fieldGroups": [
+          "OCCUPANCY_SUMMARY baseline; FINANCIAL_AGGREGATE, SETTLEMENT_SUMMARY, STAFF_AGGREGATE and EXPORT require independent grants; raw PII never exposed"
+        ]
+      },
+      "failureSemantics": [
+        "Quarantine malformed or unsupported source revisions with exact redacted reason; never silently skip, invent zero amounts or rewrite source truth.",
+        "Fail closed on missing source/grant/partition/field group, incompatible metric version, stale watermark or source dependency outage.",
+        "Bound backfill/export work and surface a stable repair state with no raw customer PII or provider credentials in audit."
+      ],
+      "idempotencyConcurrency": [
+        "Deduplicate by source event ID plus stream/revision; identical replay is no-op, conflicting payload hash is quarantined.",
+        "Use monotonic per-source watermark and bounded backfill lease so concurrent runners cannot double-apply a source revision.",
+        "A published metric version is immutable; corrections create a new calculation run/version with reproducible source inputs."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E20-S03-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E20-S04-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E20-T02",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "authorized analyst with SITE A report:read and permitted aggregate groups",
+          "when": "dashboard and export run",
+          "then": "only SITE A current quality-checked metrics are returned with version, watermark, currency and private expiring export"
+        },
+        {
+          "id": "AC02",
+          "given": "SITE B ID, missing export or FINANCIAL grant, or suppressed small cell",
+          "when": "query/export is attempted",
+          "then": "no aggregate, cursor, row count or downloadable private data can enumerate the forbidden partition"
+        },
+        {
+          "id": "AC03",
+          "given": "source lag, quality failure or replayed export request",
+          "when": "report runs",
+          "then": "stale/blocked state is explicit and one durable export job is created without falsely fresh figures"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*WarehouseReportSecurity*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *WarehouseReportSecurity*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*WarehouseReportSecurity*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *WarehouseReportSecurity*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "observability": [
+        "Report source lag, rejected/quarantined counts, reconciliation drift and export age without raw customer identifiers as metric labels.",
+        "Retain run ID, source event ID/hash, source revision, metric version and correlation ID in protected audit with redaction."
+      ],
+      "definitionOfDone": [
+        "Only the named owner repo paths and additive compatible migrations are changed; source service databases remain untouched.",
+        "Focused JUnit with PostgreSQL/Kafka fixtures and repository CI cover allow/deny, replay, source-lag and metric version.",
+        "Jira contains PR/CI, lineage, reconciliation and rollback/repair evidence."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "labels": [
+        "repo-service-data-warehouse",
+        "roadmap-v1-3",
+        "source-vs-e20-s05-st01",
+        "policy-configurable"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E20-S05-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [
+        "Production exports require approved small-cell threshold, retention/expiry, private artifact storage and privacy/partition policy."
+      ],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E20-S05",
+      "sourceId": "VS-E20-S05-ST02",
+      "jiraKey": "SCRUM-854",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E20-S05",
+      "summary": "[VS-E20-S05-ST02] Build Admin analytics dashboard and export workspace",
+      "actor": "Authorized Admin analyst with explicit organization and SITE/BRANCH report scope.",
+      "outcome": "Admin Web displays authorized date/property/channel occupancy and finance aggregates with watermark, metric version, freshness warnings and secure export job status.",
+      "context": "Admin Web has inventory and notification workspaces but no analytics dashboard; the E10 Finance dashboard is the operational settlement source, while this page consumes lagged warehouse reports.",
+      "inScope": [
+        "Build responsive Admin analytics filters/tiles/tables with source asOf, metric version, currency and visible incomplete/stale/quality-blocked states; no client-side financial recomputation.",
+        "Only request fields granted by current action/partition/field group; hide Finance/settlement and export controls without grants, including when switching branch.",
+        "Show separate booking value, recognized revenue, cash, settlement and occupancy definitions and denominator; link E10 for authoritative settlement detail instead of duplicating payout actions.",
+        "Provide private export request/progress/download with safe expiry and cleanup of browser caches on logout or scope change."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "frontend_admin"
+      ],
+      "primaryRepository": "frontend_admin",
+      "repositorySlices": [
+        {
+          "repository": "frontend_admin",
+          "paths": [
+            "apps/web/src/AnalyticsDashboard.tsx",
+            "apps/web/src/AnalyticsExportWorkspace.tsx",
+            "apps/web/src/App.tsx",
+            "apps/web/src/AnalyticsDashboard.test.tsx"
+          ],
+          "artifacts": [
+            "Admin analytics dashboard",
+            "export job/status UI",
+            "branch/field-denial/stale-snapshot tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Consume only versioned E20 reporting/export APIs; client-side charts cannot recompute money or broaden data partitions.",
+        "Preserve server metric version, asOf, source watermark, currency and data-quality state across filters and exported results."
+      ],
+      "dataOwnership": [
+        "Frontend owns only presentation/filter state; warehouse owns analytics, Finance owns operational money/settlements, and User owns action/partition/field authorization."
+      ],
+      "stateMachine": [
+        "Dashboard is LOADING -> CURRENT/STALE/QUALITY_BLOCKED/ERROR; export is REQUESTED -> READY/FAILED/EXPIRED.",
+        "An unavailable warehouse never displays cached figures as current; logout clears cached restricted data."
+      ],
+      "authorization": {
+        "actions": [
+          "report:read",
+          "report:export"
+        ],
+        "dataPartitions": [
+          "ADMIN organization plus explicit SITE/BRANCH analytical partition; HOST_SELF only via a separately approved host-safe contract, not an admin report token; SYSTEM only for authenticated ingestion/repair."
+        ],
+        "fieldGroups": [
+          "OCCUPANCY_SUMMARY baseline; FINANCIAL_AGGREGATE, SETTLEMENT_SUMMARY and EXPORT independently granted"
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E20-S05-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E20-T02",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "scoped Admin analyst and current metrics",
+          "when": "dashboard loads",
+          "then": "only allowed currency-safe metrics and accurate denominator, source watermark and metric version render on desktop/mobile"
+        },
+        {
+          "id": "AC02",
+          "given": "missing financial/branch/export grant",
+          "when": "user changes filters or requests export",
+          "then": "restricted control and cached data remain hidden with no unauthorized API request or detail"
+        },
+        {
+          "id": "AC03",
+          "given": "source quality blocked or export expired",
+          "when": "page refreshes",
+          "then": "visible stale/blocked state and safe retry occur without presenting incorrect money as current or leaking private URLs"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm run lint && npm run typecheck && npm run build",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "Admin Web lint/typecheck/build report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "e2e",
+          "command": "npm run test:e2e -- --project=chromium",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Admin analytics permission/lag/export E2E report; add test:e2e runner in frontend_admin"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-frontend-admin",
+        "roadmap-v1-3",
+        "source-vs-e20-s05-st02"
+      ],
+      "decisionNoteVi": "Leaf VS-E20-S05-ST02 chỉ sở hữu artifact của frontend_admin; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E20",
+      "sourceId": "VS-E20-T02",
+      "jiraKey": "SCRUM-855",
+      "issueType": "Task",
+      "parentSourceId": "VS-E20",
+      "summary": "[VS-E20-T02] Publish warehouse metric and reporting contracts",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Contracts pins Warehouse grains, as-of dimensions, source-version/freshness and metric formulas, with financial owner boundaries, field-level authorization and negative fixtures.",
+      "context": "V2 warehouse SQL declares the required facts but no metric definition or reporting GraphQL exists. Historical E20-S01 cannot be rewritten; T01-ST02 separately owns ingestion envelope contract.",
+      "inScope": [
+        "Define saleable occupancy occupied eligible nights / eligible nights; zero denominator unavailable; specify property-local service date and property SCD2 as-of join.",
+        "Version Booking value, Finance-recognized revenue, verified cash net refunds and E10 latest approved settlement as separate metric IDs with source/grain, currency and published policy version; no tax or inferred hourly stays.",
+        "Define Admin report:read/report:export action, organization/SITE/BRANCH partition and field matrix with small-cell suppression config approval and restricted export artifacts.",
+        "Publish positive/negative fixtures for off-market denominator, cancelled/late booking, Finance reversal, payout double-count, mixed currency, wrong branch, stale source and approval-dependent metric."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "platform_contracts"
+      ],
+      "primaryRepository": "platform_contracts",
+      "repositorySlices": [
+        {
+          "repository": "platform_contracts",
+          "paths": [
+            "docs/warehouse-metrics-v1.md",
+            "graphql/backoffice/subgraphs/warehouse.graphql",
+            "graphql/backoffice/operations/warehouse-report.graphql",
+            "schemas/warehouse-metrics/**",
+            "fixtures/warehouse-metrics/**",
+            "scripts/validate-graphql.mjs"
+          ],
+          "artifacts": [
+            "grain/source/metric version registry",
+            "Admin reporting and export contract",
+            "as-of and security-negative fixtures"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "warehouse-metric-contract:publish"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E20-T01-ST02",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "E04/E08/E09/E10/E12 source owners and existing warehouse grain",
+          "when": "contract validation runs",
+          "then": "each metric has exact numerator/denominator, owner, asOf, currency, policy version and permitted fields"
+        },
+        {
+          "id": "AC02",
+          "given": "mixed cash/revenue, zero eligible days, old settlement revision or cross-site aggregate",
+          "when": "negative fixtures run",
+          "then": "contract validation rejects mislabeling or disclosure with exact diagnostic"
+        },
+        {
+          "id": "AC03",
+          "given": "same canonical fixture set",
+          "when": "revalidation runs",
+          "then": "the fingerprint remains stable and previously published definitions are not rewritten"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "contract",
+          "command": "npm run validate:graphql && npm run validate:schemas",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "warehouse report composition and formula fixture report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "unit",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "full platform_contracts CI and metric fingerprint report"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-platform-contracts",
+        "roadmap-v1-3",
+        "source-vs-e20-t02",
+        "policy-configurable"
+      ],
+      "decisionNoteVi": "Leaf VS-E20-T02 chỉ sở hữu artifact của platform_contracts; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "contract",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E20",
+      "sourceId": "VS-E20-T03",
+      "jiraKey": "SCRUM-856",
+      "issueType": "Task",
+      "parentSourceId": "VS-E20",
+      "summary": "[VS-E20-T03] Add warehouse analytics Postman and reconciliation evidence",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "A guarded Warehouse Postman/Newman suite proves source lineage, reconciliation, scoped report/export and negative access without loading production data.",
+      "context": "Existing Postman folders focus on backoffice domain APIs, not warehouse ingestion/reporting. Warehouse is currently serviceInfo-only and must not expose reporting as public.",
+      "inScope": [
+        "Add static collection/environment and optional local disposable Booking/Finance/Operations fixtures with source event IDs and rerunnable replay cleanup; default safe mode read-only.",
+        "Assert approved occupancy denominator, distinct booking/revenue/cash/settlement outputs, quality issue, stale watermark, authorized Admin branch report and private export status.",
+        "Deny cross-branch report/export, wrong audience, missing FINANCIAL/EXPORT field group and sensitive small-cell enumeration; redact private URLs and source PII from machine report.",
+        "Provide static validator and optional Newman against local compose; Kafka source producer missing must be an explicit skipped prerequisite, not a fabricated pass."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "platform_infrastructure"
+      ],
+      "primaryRepository": "platform_infrastructure",
+      "repositorySlices": [
+        {
+          "repository": "platform_infrastructure",
+          "paths": [
+            "postman/ViStay-Warehouse-v1.postman_collection.json",
+            "postman/ViStay-Warehouse-local.postman_environment.example.json",
+            "postman/fixtures/warehouse/**",
+            "scripts/Test-PostmanWarehouse.ps1",
+            "postman/README.md"
+          ],
+          "artifacts": [
+            "Warehouse report/reconciliation collection",
+            "safe disposable fixture and run switches",
+            "redacted Newman JSON/JUnit and cleanup"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "warehouse:report:test"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E20-T01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E20-S04-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E20-S05-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E20-T02",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "two sites, current owner manifests and disposable metric fixtures",
+          "when": "optional Newman suite runs",
+          "then": "lineage, occupancy/finance metric, quality and scoped report/export assertions pass with redacted evidence"
+        },
+        {
+          "id": "AC02",
+          "given": "foreign branch, unapproved export, stale source or conflicting replay",
+          "when": "negative cases run",
+          "then": "no restricted totals, private artifact or false reconciled status leaks"
+        },
+        {
+          "id": "AC03",
+          "given": "fixture suite repeated or missing source producer",
+          "when": "cleanup and prerequisite check run",
+          "then": "one deterministic effect per event ID and explicit skip reason is recorded instead of a fake pass"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "contract",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-PostmanWarehouse.ps1 -StaticOnly",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "warehouse collection static validation and secret scan"
+        },
+        {
+          "id": "TEST-02",
+          "level": "e2e",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-PostmanWarehouse.ps1",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "redacted Newman JSON/JUnit and fixture cleanup report"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-platform-infrastructure",
+        "roadmap-v1-3",
+        "source-vs-e20-t03"
+      ],
+      "decisionNoteVi": "Leaf VS-E20-T03 chỉ sở hữu artifact của platform_infrastructure; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "integration",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    }
+  ]
+}
