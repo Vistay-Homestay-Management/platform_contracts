@@ -1,0 +1,2097 @@
+{
+  "refinements": [
+    {
+      "sourceId": "VS-E13",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "Notification delivery is decomposed into durable multi-domain intake/inbox, immutable templates/preferences, bounded email/push delivery, retry/dead-letter repair, resumable recipient-self SSE/read state, recipient-resolution audit, Admin consumers, contracts and deterministic evidence.",
+      "context": "The Epic and Stories coordinate outcomes only; executable leaves identify exact repository paths and distinguish existing welcome/SSE behavior from planned hardening."
+    },
+    {
+      "sourceId": "VS-E13-S01",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "S01 has explicit executable Notification, frontend, contract or infrastructure children with recipient/channel/cursor ownership rules.",
+      "context": "Assign only executable children; the Story remains a non-dispatchable business outcome boundary."
+    },
+    {
+      "sourceId": "VS-E13-S02",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "S02 has explicit executable Notification, frontend, contract or infrastructure children with recipient/channel/cursor ownership rules.",
+      "context": "Assign only executable children; the Story remains a non-dispatchable business outcome boundary."
+    },
+    {
+      "sourceId": "VS-E13-S03",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "S03 has explicit executable Notification, frontend, contract or infrastructure children with recipient/channel/cursor ownership rules.",
+      "context": "Assign only executable children; the Story remains a non-dispatchable business outcome boundary."
+    },
+    {
+      "sourceId": "VS-E13-S04",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "S04 has explicit executable Notification, frontend, contract or infrastructure children with recipient/channel/cursor ownership rules.",
+      "context": "Assign only executable children; the Story remains a non-dispatchable business outcome boundary."
+    },
+    {
+      "sourceId": "VS-E13-S05",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "S05 has explicit executable Notification, frontend, contract or infrastructure children with recipient/channel/cursor ownership rules.",
+      "context": "Assign only executable children; the Story remains a non-dispatchable business outcome boundary."
+    }
+  ],
+  "additions": [
+    {
+      "templateSourceId": "VS-E13-S01",
+      "sourceId": "VS-E13-S01-ST01",
+      "jiraKey": "SCRUM-771",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E13-S01",
+      "summary": "[VS-E13-S01-ST01] Build durable multi-domain notification inbox",
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Notification converts allow-listed versioned domain events into one durable recipient-scoped inbox notification and required channel intents with deterministic deduplication and source lineage.",
+      "context": "Current code consumes only user.profile-provisioned v1 and creates an Admin welcome IN_APP row. V2 already has notifications, deliveries, processed_events and outbox; planned V3 generalizes this path additively.",
+      "inScope": [
+        "Add V3 event-route/version, recipient-resolution snapshot, render-input fingerprint, inbox revision and intake failure/quarantine tables while retaining the working welcome flow.",
+        "Implement a registry for explicitly supported auth, booking, operations, finance and system events; validate envelope/version/schema and derive notification type/reference/priority without copying unrestricted source payload.",
+        "Resolve recipient references through authenticated User/authorization boundaries, freeze source event/aggregate revision and create notification plus IN_APP/EMAIL intents atomically.",
+        "Deduplicate by consumer event ID and business route/recipient key; a conflicting replay is quarantined, an identical replay returns the durable result."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "repositories": [
+        "service_notification"
+      ],
+      "primaryRepository": "service_notification",
+      "repositorySlices": [
+        {
+          "repository": "service_notification",
+          "paths": [
+            "src/main/resources/db/migration/V3__durable_domain_event_inbox.sql",
+            "src/main/java/com/vistay/notification/domain/inbox/**",
+            "src/main/java/com/vistay/notification/application/DomainEventNotificationService.java",
+            "src/main/java/com/vistay/notification/adapter/in/messaging/DomainEventNotificationListener.java",
+            "src/main/java/com/vistay/notification/adapter/out/user/RecipientResolutionClient.java",
+            "src/test/java/com/vistay/notification/application/DomainEventNotificationIntegrationTest.java"
+          ],
+          "artifacts": [
+            "event-route/recipient lineage schema",
+            "allow-listed multi-domain listener",
+            "atomic inbox/channel intent creation",
+            "schema/dedup/quarantine tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "Notification owns durable inbox rows, template revisions, channel delivery snapshots, attempts, provider state, dead-letter/repair and notification audit; User owns canonical contact and identity; source services own domain facts; clients own only bounded display cursor state."
+      ],
+      "stateMachine": [
+        "Intake is RECEIVED -> VALIDATED -> RESOLVED -> CREATED, or IGNORED/QUARANTINED/FAILED_REPAIRABLE.",
+        "Inbox notification is PENDING -> SENT/PARTIALLY_SENT/FAILED/CANCELLED; IN_APP creation is durable before streaming.",
+        "Source correction creates a new linked notification revision or cancellation; it never rewrites a delivered message silently."
+      ],
+      "authorization": {
+        "actions": [
+          "notification:event:consume",
+          "notification:inbox:view",
+          "notification:recipient:resolve"
+        ],
+        "dataPartitions": [
+          "RECIPIENT_SELF for inbox/read/preference operations; ADMIN organization plus explicit notification-operations scope for templates, delivery repair and recipient exceptions; SYSTEM only for authenticated domain-event, contact-resolution and provider callbacks."
+        ],
+        "fieldGroups": [
+          "NOTIFICATION_SUMMARY is baseline; DESTINATION, TEMPLATE_CONTENT, PROVIDER_DETAIL, PII, EXTERNAL_PAYLOAD and INTERNAL_AUDIT require explicit grants."
+        ]
+      },
+      "failureSemantics": [
+        "Reject malformed/unversioned events, unresolved recipient, forbidden field/partition, invalid template variables, stale revision or unavailable required dependency before creating a delivery.",
+        "Use stable event, recipient, template, preference, provider, retry, cursor and authorization error codes without revealing destination, provider payload or another recipient notification.",
+        "Persist terminal failure/dead-letter and repair evidence; never silently drop a required notification or retry forever."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E13-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "a supported valid event and resolvable authorized recipients",
+          "when": "intake commits",
+          "then": "one recipient-scoped inbox row, required channel intents, source lineage, audit and outbox event are created atomically"
+        },
+        {
+          "id": "AC02",
+          "given": "unsupported version/type, malformed payload, unresolved/cross-partition recipient, conflicting replay or dependency failure",
+          "when": "intake runs",
+          "then": "the event is ignored/quarantined/repair-visible with a stable code and no partial notification"
+        },
+        {
+          "id": "AC03",
+          "given": "an identical event or consumer delivery replays/races",
+          "when": "processing completes",
+          "then": "one durable notification/channel set remains and the original result is reused"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*DomainEventNotification*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *DomainEventNotification*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*DomainEventNotification*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *DomainEventNotification*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "labels": [
+        "repo-service-notification",
+        "roadmap-v1-3",
+        "source-vs-e13-s01-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E13-S01-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E13-S01",
+      "sourceId": "VS-E13-S01-ST02",
+      "jiraKey": "SCRUM-772",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E13-S01",
+      "summary": "[VS-E13-S01-ST02] Build Admin notification inbox experience",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Admin Web and Mobile provide a paginated, filterable, accessible personal inbox that merges durable list bootstrap with realtime arrivals and source-safe navigation.",
+      "context": "Web currently renders only notifications received during the SSE session; Mobile has a stream hook but no complete inbox destination. Extend existing shared-client/UI rather than replacing it.",
+      "inScope": [
+        "Add typed paginated personal inbox query, unread count, notification detail and safe reference navigation.",
+        "Build Web/Mobile list/detail with unread filter, category/priority/date filters, loading/empty/offline/reconnect and accessible urgency presentation.",
+        "Merge list plus stream by notification ID/revision, preserve server order/cursor and limit local cache; never infer recipient or render raw action URL outside an allow-listed route mapper.",
+        "Test initial history, concurrent stream arrival, pagination, redaction, expired/cancelled message, session/account switch and duplicate frames."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "frontend_admin"
+      ],
+      "primaryRepository": "frontend_admin",
+      "repositorySlices": [
+        {
+          "repository": "frontend_admin",
+          "paths": [
+            "packages/api-client/src/index.ts",
+            "packages/api-client/src/index.test.ts",
+            "apps/web/src/NotificationInbox.tsx",
+            "apps/web/src/NotificationInbox.test.tsx",
+            "apps/web/src/lib/useBackofficeData.ts",
+            "apps/mobile/src/NotificationInbox.tsx",
+            "apps/mobile/src/NotificationInbox.test.tsx",
+            "apps/mobile/src/useBackofficeData.ts"
+          ],
+          "artifacts": [
+            "typed inbox/list/detail client",
+            "Admin Web personal inbox",
+            "Admin Mobile personal inbox",
+            "list-stream merge/navigation/redaction tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "notification:inbox:view"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E13-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E13-S04-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E13-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authenticated Admin with historical and new notifications",
+          "when": "inbox loads and stream delivers",
+          "then": "one ordered deduplicated recipient-self list/unread count is rendered with safe source navigation"
+        },
+        {
+          "id": "AC02",
+          "given": "another account notification, restricted field, invalid action route, expired cursor, offline or dependency failure",
+          "when": "load/render/reconnect occurs",
+          "then": "no protected content/unsafe navigation appears and recoverable feedback retains bounded state"
+        },
+        {
+          "id": "AC03",
+          "given": "list pages and duplicate/out-of-order frames overlap or account changes",
+          "when": "merge runs",
+          "then": "each ID/revision appears once for the current account and prior-account cache/cursor is cleared"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E13-S01-ST02 shared-client plus Admin Web/Mobile tests"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "npm run typecheck",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "frontend_admin typecheck report"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-frontend-admin",
+        "roadmap-v1-3",
+        "source-vs-e13-s01-st02"
+      ],
+      "decisionNoteVi": "Leaf VS-E13-S01-ST02 chỉ sở hữu artifact của frontend_admin; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E13-S02",
+      "sourceId": "VS-E13-S02-ST01",
+      "jiraKey": "SCRUM-773",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E13-S02",
+      "summary": "[VS-E13-S02-ST01] Implement versioned templates preferences and channel delivery",
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Notification publishes immutable template revisions, evaluates policy and recipient preferences, and delivers required in-app/email plus feature-flagged push through bounded provider adapters.",
+      "context": "V2 has template/revision/preference/delivery tables but no management API or email/push worker. Planned V4 adds publication, policy and device/provider state while preserving existing rows.",
+      "inScope": [
+        "Add V4 template draft/publication state, required variables/schema, notification policy version, recipient preference revision, device-token reference and feature-flag snapshot.",
+        "Implement draft/preview/publish/retire template and get/update recipient-self preference operations; published revision is immutable and exact revision is frozen per delivery.",
+        "Evaluate mandatory/security versus configurable channels and quiet hours in recipient timezone: required IN_APP/EMAIL cannot be disabled by optional preference; push is created only when globally enabled, type-allowed and a valid device reference exists.",
+        "Implement email and push provider ports/workers with encrypted destination snapshot, masked display, timeout/idempotency key and no credentials/provider payload in logs/events."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "repositories": [
+        "service_notification"
+      ],
+      "primaryRepository": "service_notification",
+      "repositorySlices": [
+        {
+          "repository": "service_notification",
+          "paths": [
+            "src/main/resources/db/migration/V4__template_preference_channel_delivery.sql",
+            "src/main/java/com/vistay/notification/domain/template/**",
+            "src/main/java/com/vistay/notification/application/TemplateService.java",
+            "src/main/java/com/vistay/notification/application/PreferenceService.java",
+            "src/main/java/com/vistay/notification/application/ChannelDeliveryService.java",
+            "src/main/java/com/vistay/notification/adapter/out/provider/**",
+            "src/test/java/com/vistay/notification/application/ChannelDeliveryIntegrationTest.java"
+          ],
+          "artifacts": [
+            "template/policy/preference publication schema",
+            "template/preference GraphQL API",
+            "email/push delivery workers",
+            "variable/quiet-hour/feature-flag/provider tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "Notification owns durable inbox rows, template revisions, channel delivery snapshots, attempts, provider state, dead-letter/repair and notification audit; User owns canonical contact and identity; source services own domain facts; clients own only bounded display cursor state."
+      ],
+      "stateMachine": [
+        "Template revision is DRAFT -> PUBLISHED -> RETIRED; published content/schema is immutable.",
+        "Delivery is PENDING -> SENDING -> ACCEPTED/SENT/DELIVERED/READ, or FAILED/BOUNCED/CANCELLED.",
+        "Push activation is DISABLED/ENABLED by versioned feature policy; disabling stops new push intents but preserves history."
+      ],
+      "authorization": {
+        "actions": [
+          "notification:template:view",
+          "notification:template:manage",
+          "notification:template:publish",
+          "notification:preference:view",
+          "notification:preference:manage",
+          "notification:delivery:send"
+        ],
+        "dataPartitions": [
+          "RECIPIENT_SELF for inbox/read/preference operations; ADMIN organization plus explicit notification-operations scope for templates, delivery repair and recipient exceptions; SYSTEM only for authenticated domain-event, contact-resolution and provider callbacks."
+        ],
+        "fieldGroups": [
+          "NOTIFICATION_SUMMARY is baseline; DESTINATION, TEMPLATE_CONTENT, PROVIDER_DETAIL, PII, EXTERNAL_PAYLOAD and INTERNAL_AUDIT require explicit grants."
+        ]
+      },
+      "failureSemantics": [
+        "Reject malformed/unversioned events, unresolved recipient, forbidden field/partition, invalid template variables, stale revision or unavailable required dependency before creating a delivery.",
+        "Use stable event, recipient, template, preference, provider, retry, cursor and authorization error codes without revealing destination, provider payload or another recipient notification.",
+        "Persist terminal failure/dead-letter and repair evidence; never silently drop a required notification or retry forever."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E13-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E13-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "a published compatible template, valid variables/contact and effective channel policy",
+          "when": "delivery evaluates",
+          "then": "exact template/policy/preference revisions are frozen and required channel intents are sent once"
+        },
+        {
+          "id": "AC02",
+          "given": "missing variable/template/contact, disabled push, quiet-hour deferral, forbidden preference, stale revision or provider dependency failure",
+          "when": "publish/evaluate/send runs",
+          "then": "a stable failure/defer result occurs without leaking destination or dropping required in-app/email intent"
+        },
+        {
+          "id": "AC03",
+          "given": "publication/delivery/provider callback replays or workers race",
+          "when": "processing completes",
+          "then": "one published version and one channel delivery/provider idempotency effect remain"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*ChannelDelivery*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *ChannelDelivery*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*ChannelDelivery*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *ChannelDelivery*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "labels": [
+        "repo-service-notification",
+        "roadmap-v1-3",
+        "source-vs-e13-s02-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E13-S02-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E13-S02",
+      "sourceId": "VS-E13-S02-ST02",
+      "jiraKey": "SCRUM-774",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E13-S02",
+      "summary": "[VS-E13-S02-ST02] Build Admin notification template and preference workspace",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Admin Web manages template revisions/policy previews while Web/Mobile let each Admin manage eligible personal channel preferences without weakening mandatory notifications.",
+      "context": "No template/preference UI exists. Implement new frontend_admin destinations against Notification authoritative revisions.",
+      "inScope": [
+        "Add typed template list/detail/draft/preview/publish/retire and recipient-self preference operations.",
+        "Build Web template version diff, variable schema preview with synthetic data, publication confirmation and channel policy view; never preview production recipient data.",
+        "Build Web/Mobile personal preference and quiet-hour controls showing mandatory locked channels and push feature availability.",
+        "Test invalid variables, stale draft, retired revision, mandatory toggle denial, timezone/quiet-hour edge, missing device, permission/redaction and dependency failure."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "frontend_admin"
+      ],
+      "primaryRepository": "frontend_admin",
+      "repositorySlices": [
+        {
+          "repository": "frontend_admin",
+          "paths": [
+            "packages/api-client/src/index.ts",
+            "packages/api-client/src/index.test.ts",
+            "apps/web/src/NotificationTemplateWorkspace.tsx",
+            "apps/web/src/NotificationTemplateWorkspace.test.tsx",
+            "apps/web/src/NotificationPreferences.tsx",
+            "apps/mobile/src/NotificationPreferences.tsx",
+            "apps/mobile/src/NotificationPreferences.test.tsx"
+          ],
+          "artifacts": [
+            "typed template/preference client",
+            "Admin Web template publication workspace",
+            "Web/Mobile personal preferences",
+            "variable/mandatory/push/timezone tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "notification:template:view",
+          "notification:template:manage",
+          "notification:template:publish",
+          "notification:preference:view",
+          "notification:preference:manage"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E13-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E13-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized template operator or recipient-self user",
+          "when": "preview/publish/preference succeeds",
+          "then": "the exact returned revision/policy is rendered and mandatory channel locks remain enforced"
+        },
+        {
+          "id": "AC02",
+          "given": "production recipient preview, missing variable/action, mandatory disable, stale draft, invalid timezone or dependency failure",
+          "when": "view/submit occurs",
+          "then": "restricted action/data is absent and no optimistic publication/preference remains"
+        },
+        {
+          "id": "AC03",
+          "given": "submit repeats or app resumes",
+          "when": "current template/preference refetches",
+          "then": "one server revision is shown without duplicate publication/change"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E13-S02-ST02 shared-client plus Admin Web/Mobile tests"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "npm run typecheck",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "frontend_admin typecheck report"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-frontend-admin",
+        "roadmap-v1-3",
+        "source-vs-e13-s02-st02"
+      ],
+      "decisionNoteVi": "Leaf VS-E13-S02-ST02 chỉ sở hữu artifact của frontend_admin; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E13-S03",
+      "sourceId": "VS-E13-S03-ST01",
+      "jiraKey": "SCRUM-775",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E13-S03",
+      "summary": "[VS-E13-S03-ST01] Implement bounded retry dead-letter and delivery repair",
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Notification classifies provider failures, retries transient deliveries under versioned policy, terminates poison/permanent failures in an operable dead-letter state, and supports audited repair.",
+      "context": "V2 stores attempt count, next_attempt_at and attempts but lacks durable scheduler, dead-letter aggregate, provider health/circuit policy and repair API. Planned V5 adds them.",
+      "inScope": [
+        "Add V5 retry-policy snapshot, lease/heartbeat, dead-letter record, provider health/circuit state and repair decision/history; retain existing attempts.",
+        "Implement SKIP LOCKED claim/lease worker with exponential backoff+jitter, Retry-After support, maximum attempts/age and stable transient/permanent/rate-limit/bounce classification.",
+        "Open provider circuit on configured error/latency threshold, defer without burning attempts, probe recovery and expose backlog/age/health metrics.",
+        "Implement retry-now, reroute supported provider, cancel, resolve-invalid-contact and replay-source repair with action/field grants, reason, expectedVersion and idempotency."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "repositories": [
+        "service_notification"
+      ],
+      "primaryRepository": "service_notification",
+      "repositorySlices": [
+        {
+          "repository": "service_notification",
+          "paths": [
+            "src/main/resources/db/migration/V5__delivery_retry_dead_letter.sql",
+            "src/main/java/com/vistay/notification/domain/delivery/**",
+            "src/main/java/com/vistay/notification/application/DeliveryWorker.java",
+            "src/main/java/com/vistay/notification/application/DeliveryRepairService.java",
+            "src/main/java/com/vistay/notification/adapter/in/graphql/DeliveryOperationsController.java",
+            "src/test/java/com/vistay/notification/application/DeliveryRetryIntegrationTest.java"
+          ],
+          "artifacts": [
+            "retry/dead-letter/provider-health schema",
+            "leased delivery worker",
+            "repair API and provider circuit",
+            "classification/backoff/lease/replay tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "Notification owns durable inbox rows, template revisions, channel delivery snapshots, attempts, provider state, dead-letter/repair and notification audit; User owns canonical contact and identity; source services own domain facts; clients own only bounded display cursor state."
+      ],
+      "stateMachine": [
+        "Delivery failure is RETRY_SCHEDULED -> CLAIMED/SENDING -> SENT/DELIVERED, or DEAD_LETTER/CANCELLED/BOUNCED.",
+        "Dead letter is OPEN -> IN_REVIEW -> RETRY_SCHEDULED/RESOLVED/CANCELLED; repair decisions are immutable.",
+        "Provider circuit is CLOSED -> OPEN -> HALF_OPEN -> CLOSED; circuit state never marks a delivery successful."
+      ],
+      "authorization": {
+        "actions": [
+          "notification:delivery:view",
+          "notification:delivery:retry",
+          "notification:delivery:reroute",
+          "notification:delivery:cancel",
+          "notification:provider-health:view"
+        ],
+        "dataPartitions": [
+          "RECIPIENT_SELF for inbox/read/preference operations; ADMIN organization plus explicit notification-operations scope for templates, delivery repair and recipient exceptions; SYSTEM only for authenticated domain-event, contact-resolution and provider callbacks."
+        ],
+        "fieldGroups": [
+          "NOTIFICATION_SUMMARY is baseline; DESTINATION, TEMPLATE_CONTENT, PROVIDER_DETAIL, PII, EXTERNAL_PAYLOAD and INTERNAL_AUDIT require explicit grants."
+        ]
+      },
+      "failureSemantics": [
+        "Reject malformed/unversioned events, unresolved recipient, forbidden field/partition, invalid template variables, stale revision or unavailable required dependency before creating a delivery.",
+        "Use stable event, recipient, template, preference, provider, retry, cursor and authorization error codes without revealing destination, provider payload or another recipient notification.",
+        "Persist terminal failure/dead-letter and repair evidence; never silently drop a required notification or retry forever."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E13-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E13-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "a transient provider failure under retry limits",
+          "when": "workers run",
+          "then": "bounded policy-derived attempts with immutable evidence eventually send or reach dead letter exactly once"
+        },
+        {
+          "id": "AC02",
+          "given": "permanent/bounce/poison failure, exhausted age/attempts, unavailable provider, stale lease/revision or unauthorized repair",
+          "when": "processing/repair runs",
+          "then": "delivery terminates/defer safely with stable visible reason and no endless retry or secret leakage"
+        },
+        {
+          "id": "AC03",
+          "given": "workers/repair commands/provider callbacks replay or race",
+          "when": "processing completes",
+          "then": "one lease/current delivery/dead-letter state and one provider idempotency effect remain"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*DeliveryRetry*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *DeliveryRetry*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*DeliveryRetry*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *DeliveryRetry*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "labels": [
+        "repo-service-notification",
+        "roadmap-v1-3",
+        "source-vs-e13-s03-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E13-S03-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E13-S03",
+      "sourceId": "VS-E13-S03-ST02",
+      "jiraKey": "SCRUM-776",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E13-S03",
+      "summary": "[VS-E13-S03-ST02] Build Admin notification delivery operations workspace",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Admin Web provides provider health, backlog and dead-letter repair with redacted delivery evidence; Mobile provides bounded status/alert visibility.",
+      "context": "No delivery-operations UI exists. This is separate from the recipient personal inbox.",
+      "inScope": [
+        "Add typed provider health/backlog/dead-letter list/detail/timeline and allowed repair operations.",
+        "Build Web filters by provider/channel/type/state/error/age, attempt timeline, circuit health and guarded retry/reroute/cancel/resolve actions; Mobile shows critical health/dead-letter summary.",
+        "Mask destinations and omit ciphertext, provider payload, credentials and unrelated recipient PII; require purpose/reason for protected detail/repair.",
+        "Test field/action grants, cross-partition detail, circuit open, stale lease/revision, replay, rate limit, dependency failure and expiring audit session."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "frontend_admin"
+      ],
+      "primaryRepository": "frontend_admin",
+      "repositorySlices": [
+        {
+          "repository": "frontend_admin",
+          "paths": [
+            "packages/api-client/src/index.ts",
+            "packages/api-client/src/index.test.ts",
+            "apps/web/src/NotificationDeliveryWorkspace.tsx",
+            "apps/web/src/NotificationDeliveryWorkspace.test.tsx",
+            "apps/mobile/src/NotificationDeliveryStatus.tsx",
+            "apps/mobile/src/NotificationDeliveryStatus.test.tsx"
+          ],
+          "artifacts": [
+            "typed delivery-operations client",
+            "Admin Web provider/dead-letter workspace",
+            "Admin Mobile health/status view",
+            "redaction/repair/circuit/replay tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "notification:delivery:view",
+          "notification:delivery:retry",
+          "notification:delivery:reroute",
+          "notification:delivery:cancel",
+          "notification:provider-health:view"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E13-S03-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E13-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized operations user and current dead letter/provider state",
+          "when": "view/repair succeeds",
+          "then": "redacted timeline/health and exact returned repair revision are rendered"
+        },
+        {
+          "id": "AC02",
+          "given": "missing action/field/purpose, protected destination/payload, stale lease/revision, open circuit or dependency failure",
+          "when": "view/repair runs",
+          "then": "restricted content/action is absent and no optimistic repair appears"
+        },
+        {
+          "id": "AC03",
+          "given": "repair repeats or status updates while app resumes",
+          "when": "detail refetches",
+          "then": "one durable current state/decision appears"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E13-S03-ST02 shared-client plus Admin Web/Mobile tests"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "npm run typecheck",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "frontend_admin typecheck report"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-frontend-admin",
+        "roadmap-v1-3",
+        "source-vs-e13-s03-st02"
+      ],
+      "decisionNoteVi": "Leaf VS-E13-S03-ST02 chỉ sở hữu artifact của frontend_admin; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E13-S04",
+      "sourceId": "VS-E13-S04-ST01",
+      "jiraKey": "SCRUM-777",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E13-S04",
+      "summary": "[VS-E13-S04-ST01] Harden inbox read state and resumable SSE cursor",
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Notification serves paginated recipient-self inbox/read mutations and a bounded resumable SSE stream whose cursor provides at-least-once delivery without loss across reconnect.",
+      "context": "Current controller polls notifications every two seconds by global event_sequence and streams only; there is no list/mark-read API, cursor retention contract or stream resource bound. Planned V6 hardens this implementation.",
+      "inScope": [
+        "Add V6 inbox read-receipt/revision, stream cursor retention/watermark and connection audit/limit metadata without changing existing event_sequence identities.",
+        "Implement cursor inbox query, unread count, mark-one/read-all with expectedVersion/idempotency and recipient-self authorization.",
+        "Harden SSE with bounded connection duration, heartbeat, batch/backpressure, account-bound cursor validation and cursor-expired response requiring list reconciliation.",
+        "Document at-least-once frames: reconnect after last durably processed cursor; duplicate frames are valid and clients deduplicate by notification ID/revision."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "repositories": [
+        "service_notification"
+      ],
+      "primaryRepository": "service_notification",
+      "repositorySlices": [
+        {
+          "repository": "service_notification",
+          "paths": [
+            "src/main/resources/db/migration/V6__inbox_read_sse_resume.sql",
+            "src/main/java/com/vistay/notification/application/InboxService.java",
+            "src/main/java/com/vistay/notification/application/NotificationStreamService.java",
+            "src/main/java/com/vistay/notification/adapter/in/graphql/NotificationGraphQlController.java",
+            "src/test/java/com/vistay/notification/application/InboxStreamIntegrationTest.java"
+          ],
+          "artifacts": [
+            "read/cursor retention schema",
+            "inbox/read GraphQL API",
+            "bounded resumable SSE service",
+            "authorization/gap/duplicate/backpressure tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "Notification owns durable inbox rows, template revisions, channel delivery snapshots, attempts, provider state, dead-letter/repair and notification audit; User owns canonical contact and identity; source services own domain facts; clients own only bounded display cursor state."
+      ],
+      "stateMachine": [
+        "Notification read state is UNREAD -> READ; repeated mark-read returns the original receipt and never moves backward.",
+        "Stream connection is CONNECTING -> ACTIVE -> CLOSED/EXPIRED; cursor is VALID or EXPIRED/INVALID for that recipient.",
+        "SSE delivery is at-least-once; notification persistence is the recovery source of truth."
+      ],
+      "authorization": {
+        "actions": [
+          "notification:inbox:view",
+          "notification:inbox:mark-read"
+        ],
+        "dataPartitions": [
+          "RECIPIENT_SELF for inbox/read/preference operations; ADMIN organization plus explicit notification-operations scope for templates, delivery repair and recipient exceptions; SYSTEM only for authenticated domain-event, contact-resolution and provider callbacks."
+        ],
+        "fieldGroups": [
+          "NOTIFICATION_SUMMARY is baseline; DESTINATION, TEMPLATE_CONTENT, PROVIDER_DETAIL, PII, EXTERNAL_PAYLOAD and INTERNAL_AUDIT require explicit grants."
+        ]
+      },
+      "failureSemantics": [
+        "Reject malformed/unversioned events, unresolved recipient, forbidden field/partition, invalid template variables, stale revision or unavailable required dependency before creating a delivery.",
+        "Use stable event, recipient, template, preference, provider, retry, cursor and authorization error codes without revealing destination, provider payload or another recipient notification.",
+        "Persist terminal failure/dead-letter and repair evidence; never silently drop a required notification or retry forever."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E13-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E13-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authenticated recipient with list history and valid cursor",
+          "when": "query/stream/read operations run across reconnect",
+          "then": "all notifications after the cursor are recoverable in order, duplicates are identifiable and durable read revision/count update once"
+        },
+        {
+          "id": "AC02",
+          "given": "another recipient, malformed/ahead/expired cursor, connection/rate limit, stale revision or missing action",
+          "when": "query/stream/read runs",
+          "then": "a stable non-enumerating error/reconciliation instruction returns without data leakage"
+        },
+        {
+          "id": "AC03",
+          "given": "mark-read/reconnect frames replay or list and stream overlap",
+          "when": "processing completes",
+          "then": "one read receipt/current unread count remains and no persisted notification is lost"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*InboxStream*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *InboxStream*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*InboxStream*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *InboxStream*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "labels": [
+        "repo-service-notification",
+        "roadmap-v1-3",
+        "source-vs-e13-s04-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E13-S04-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E13-S04",
+      "sourceId": "VS-E13-S04-ST02",
+      "jiraKey": "SCRUM-778",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E13-S04",
+      "summary": "[VS-E13-S04-ST02] Harden Admin realtime notification center",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Admin Web/Mobile durably process SSE cursor, reconcile history after gaps, deduplicate frames and synchronize read state/unread count across devices.",
+      "context": "Existing Web/Mobile hooks store an account-keyed cursor and deduplicate current-memory IDs. Harden them with server list/read recovery and bounded account-safe persistence.",
+      "inScope": [
+        "Persist cursor only after event is accepted into local state, store bounded ID/revision cache per account, clear it on logout/account change and never store body/token.",
+        "Bootstrap/reconcile via inbox list, merge stream/list by ID/revision, handle heartbeat, exponential reconnect, foreground/background and CURSOR_EXPIRED recovery.",
+        "Add mark-one/read-all optimistic UI with rollback on error and server unread-count reconciliation across Web/Mobile.",
+        "Test crash between frame/cursor, duplicate/out-of-order frame, missed interval, expired cursor, account switch, token refresh, offline resume and simultaneous devices."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "frontend_admin"
+      ],
+      "primaryRepository": "frontend_admin",
+      "repositorySlices": [
+        {
+          "repository": "frontend_admin",
+          "paths": [
+            "packages/api-client/src/index.ts",
+            "packages/api-client/src/index.test.ts",
+            "apps/web/src/lib/useBackofficeData.ts",
+            "apps/web/src/NotificationInbox.tsx",
+            "apps/web/src/NotificationInbox.test.tsx",
+            "apps/mobile/src/useBackofficeData.ts",
+            "apps/mobile/src/NotificationInbox.tsx",
+            "apps/mobile/src/NotificationInbox.test.tsx"
+          ],
+          "artifacts": [
+            "durable cursor/list reconciliation client",
+            "Web/Mobile read-state synchronization",
+            "bounded account-safe cache",
+            "gap/crash/duplicate/account-switch tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "notification:inbox:view",
+          "notification:inbox:mark-read"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E13-S04-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E13-S01-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E13-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "history, realtime frames and multiple reconnect/device sequences",
+          "when": "the notification center processes and marks read",
+          "then": "all server notifications are eventually shown once per current revision and unread count converges"
+        },
+        {
+          "id": "AC02",
+          "given": "crash before cursor commit, duplicate/out-of-order frame, expired cursor, account switch, offline or token refresh",
+          "when": "resume occurs",
+          "then": "list reconciliation prevents loss/cross-account cache and bounded duplicate display recovers"
+        },
+        {
+          "id": "AC03",
+          "given": "mark-read is repeated/races on devices",
+          "when": "server state refetches",
+          "then": "one durable read receipt/count is rendered and failed optimism rolls back"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E13-S04-ST02 shared-client plus Admin Web/Mobile tests"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "npm run typecheck",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "frontend_admin typecheck report"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-frontend-admin",
+        "roadmap-v1-3",
+        "source-vs-e13-s04-st02"
+      ],
+      "decisionNoteVi": "Leaf VS-E13-S04-ST02 chỉ sở hữu artifact của frontend_admin; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E13-S05",
+      "sourceId": "VS-E13-S05-ST01",
+      "jiraKey": "SCRUM-779",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E13-S05",
+      "summary": "[VS-E13-S05-ST01] Audit recipient resolution and invalid contacts",
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Notification resolves event recipients through versioned authorization/contact snapshots, records explainable allow/deny decisions and routes invalid/missing contact to an operable exception without changing User data.",
+      "context": "Current welcome listener directly uses accountId and has no contact resolution/audit exception model. Planned V7 adds recipient policy/evidence after generalized intake.",
+      "inScope": [
+        "Add V7 recipient rule/version, candidate/decision, contact snapshot reference, invalid-contact exception and resolution history with purpose/field-group evidence.",
+        "Resolve direct account, organization/branch role, booking party and explicit subscription recipients through User authorization/contact APIs; apply active account, partition, preference and mandatory policy.",
+        "Store only account/type, contact snapshot revision, masked destination plus encrypted delivery snapshot; never copy canonical profile or query another service database.",
+        "Classify no recipient, ambiguous/cross-partition recipient, missing/invalid/unverified contact, suppressed optional contact and dependency failure; allow audited re-resolve after User correction."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "repositories": [
+        "service_notification"
+      ],
+      "primaryRepository": "service_notification",
+      "repositorySlices": [
+        {
+          "repository": "service_notification",
+          "paths": [
+            "src/main/resources/db/migration/V7__recipient_resolution_exceptions.sql",
+            "src/main/java/com/vistay/notification/domain/recipient/**",
+            "src/main/java/com/vistay/notification/application/RecipientResolutionService.java",
+            "src/main/java/com/vistay/notification/application/RecipientExceptionService.java",
+            "src/main/java/com/vistay/notification/adapter/in/graphql/RecipientExceptionController.java",
+            "src/test/java/com/vistay/notification/application/RecipientResolutionIntegrationTest.java"
+          ],
+          "artifacts": [
+            "recipient rule/decision/exception schema",
+            "User authorization/contact resolver",
+            "exception/re-resolve API",
+            "partition/contact/redaction/replay tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "Notification owns durable inbox rows, template revisions, channel delivery snapshots, attempts, provider state, dead-letter/repair and notification audit; User owns canonical contact and identity; source services own domain facts; clients own only bounded display cursor state."
+      ],
+      "stateMachine": [
+        "Resolution is PENDING -> RESOLVED/PARTIALLY_RESOLVED/NO_RECIPIENT/INVALID_CONTACT/FAILED_DEPENDENCY.",
+        "Exception is OPEN -> IN_REVIEW -> RE_RESOLVED/WAIVED/CANCELLED; mandatory notification cannot be waived without explicit policy.",
+        "Contact snapshot is immutable for a delivery; User correction creates a new resolution/delivery attempt revision."
+      ],
+      "authorization": {
+        "actions": [
+          "notification:recipient:resolve",
+          "notification:recipient-exception:view",
+          "notification:recipient-exception:repair"
+        ],
+        "dataPartitions": [
+          "RECIPIENT_SELF for inbox/read/preference operations; ADMIN organization plus explicit notification-operations scope for templates, delivery repair and recipient exceptions; SYSTEM only for authenticated domain-event, contact-resolution and provider callbacks."
+        ],
+        "fieldGroups": [
+          "NOTIFICATION_SUMMARY is baseline; DESTINATION, TEMPLATE_CONTENT, PROVIDER_DETAIL, PII, EXTERNAL_PAYLOAD and INTERNAL_AUDIT require explicit grants."
+        ]
+      },
+      "failureSemantics": [
+        "Reject malformed/unversioned events, unresolved recipient, forbidden field/partition, invalid template variables, stale revision or unavailable required dependency before creating a delivery.",
+        "Use stable event, recipient, template, preference, provider, retry, cursor and authorization error codes without revealing destination, provider payload or another recipient notification.",
+        "Persist terminal failure/dead-letter and repair evidence; never silently drop a required notification or retry forever."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E13-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E13-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E13-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "a supported event and authorized active recipients with valid contact snapshots",
+          "when": "resolution runs",
+          "then": "explainable recipient decisions and masked/encrypted delivery snapshots are created for eligible channels"
+        },
+        {
+          "id": "AC02",
+          "given": "ambiguous/cross-partition recipient, missing/invalid contact, suppressed optional channel, dependency failure or missing grant",
+          "when": "resolution/repair runs",
+          "then": "a classified visible exception results without canonical contact mutation or protected-data leakage"
+        },
+        {
+          "id": "AC03",
+          "given": "resolution/event/repair replays or contact revision changes",
+          "when": "processing completes",
+          "then": "one decision per rule/recipient/revision remains and any re-resolution is linked rather than overwritten"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*RecipientResolution*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *RecipientResolution*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*RecipientResolution*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *RecipientResolution*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "labels": [
+        "repo-service-notification",
+        "roadmap-v1-3",
+        "source-vs-e13-s05-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E13-S05-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E13-S05",
+      "sourceId": "VS-E13-S05-ST02",
+      "jiraKey": "SCRUM-780",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E13-S05",
+      "summary": "[VS-E13-S05-ST02] Build Admin recipient exception queue",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Admin Web provides a restricted recipient-resolution and invalid-contact exception queue with redacted evidence and safe re-resolution; Mobile shows bounded alert/status.",
+      "context": "No recipient exception UI exists. It must not become an editor for canonical User contacts.",
+      "inScope": [
+        "Add typed exception list/detail/timeline/re-resolve/waive/cancel operations and stable reason mapping.",
+        "Build Web filters by rule/type/channel/reason/age/partition and decision/contact-revision timeline; Mobile shows critical unresolved count/status.",
+        "Link authorized operator to User account/contact management rather than editing contact locally; show masked destination only with DESTINATION grant.",
+        "Test cross-partition, missing field/action, invalid contact repaired in User, mandatory waiver denial, stale revision, replay and dependency failure."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "frontend_admin"
+      ],
+      "primaryRepository": "frontend_admin",
+      "repositorySlices": [
+        {
+          "repository": "frontend_admin",
+          "paths": [
+            "packages/api-client/src/index.ts",
+            "packages/api-client/src/index.test.ts",
+            "apps/web/src/RecipientExceptionWorkspace.tsx",
+            "apps/web/src/RecipientExceptionWorkspace.test.tsx",
+            "apps/mobile/src/RecipientExceptionStatus.tsx",
+            "apps/mobile/src/RecipientExceptionStatus.test.tsx"
+          ],
+          "artifacts": [
+            "typed recipient-exception client",
+            "Admin Web exception/re-resolution queue",
+            "Admin Mobile alert/status view",
+            "redaction/mandatory/repair/replay tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "notification:recipient-exception:view",
+          "notification:recipient-exception:repair"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E13-S05-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E13-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized notification operator and current exception",
+          "when": "detail/re-resolve succeeds after source correction",
+          "then": "redacted decision lineage and exact returned resolution revision/state are shown"
+        },
+        {
+          "id": "AC02",
+          "given": "cross-partition, missing field/action, local contact edit, mandatory waiver, stale revision or dependency failure",
+          "when": "view/action runs",
+          "then": "restricted action/data is absent and no optimistic resolution remains"
+        },
+        {
+          "id": "AC03",
+          "given": "re-resolve repeats or source contact changes while app resumes",
+          "when": "detail refetches",
+          "then": "one linked current resolution appears and prior evidence remains"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E13-S05-ST02 shared-client plus Admin Web/Mobile tests"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "npm run typecheck",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "frontend_admin typecheck report"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-frontend-admin",
+        "roadmap-v1-3",
+        "source-vs-e13-s05-st02"
+      ],
+      "decisionNoteVi": "Leaf VS-E13-S05-ST02 chỉ sở hữu artifact của frontend_admin; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E13",
+      "sourceId": "VS-E13-T01",
+      "jiraKey": "SCRUM-781",
+      "issueType": "Task",
+      "parentSourceId": "VS-E13",
+      "summary": "[VS-E13-T01] Extend notification contracts and provider boundaries",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Platform Contracts extends the existing Notification GraphQL/event surface with inbox/read/preference/operations contracts, domain route metadata and bounded email/push provider semantics.",
+      "context": "Notification SSE GraphQL, notification-created v1 event and transport contract already exist. Extend them compatibly rather than claiming a new baseline.",
+      "inScope": [
+        "Extend Notification subgraph/operations with paginated inbox, unread/read, preferences, template publication, delivery/dead-letter/provider health and recipient exception fields under explicit scopes/field groups.",
+        "Document supported domain route/recipient resolver ownership, required versus optional channels, template/policy revision, encrypted contact snapshot and provider idempotency/error classification.",
+        "Version notification-created/delivery-state/recipient-exception events and SSE cursor/retention/at-least-once rules; additive changes preserve current stream consumers.",
+        "Add valid list-stream/read/retry/contact/push-flag fixtures and invalid cross-recipient, mandatory-disable, raw destination/provider payload, unbounded retry, exactly-once claim and incompatible-change fixtures."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "platform_contracts"
+      ],
+      "primaryRepository": "platform_contracts",
+      "repositorySlices": [
+        {
+          "repository": "platform_contracts",
+          "paths": [
+            "graphql/backoffice/subgraphs/notification.graphql",
+            "graphql/backoffice/operations/notification-stream.graphql",
+            "graphql/backoffice/operations/notification-management.graphql",
+            "graphql/backoffice/transport.contract.json",
+            "events/v1/notification.notification-created.payload.schema.json",
+            "events/v1/notification.delivery-state.event.schema.json",
+            "events/v1/notification.recipient-exception.event.schema.json",
+            "docs/notification-delivery-v1.md",
+            "fixtures/notification-boundaries.v1.json",
+            "scripts/validate-graphql.mjs",
+            "scripts/validate-schemas.mjs"
+          ],
+          "artifacts": [
+            "compatible Notification GraphQL extension",
+            "delivery/recipient event schemas",
+            "cursor/provider/ownership contract",
+            "valid/negative lifecycle fixtures"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "notification:contract:publish"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "valid inbox/read/channel/retry/recipient fixtures and existing stream consumers",
+          "when": "contract validation runs",
+          "then": "composition, compatibility, ownership, authorization, cursor and delivery invariants pass"
+        },
+        {
+          "id": "AC02",
+          "given": "cross-recipient access, mandatory disable, raw destination/payload, endless retry, exactly-once display claim or incompatible v1 change",
+          "when": "negative fixtures run",
+          "then": "CI fails with stable path-specific diagnostics"
+        },
+        {
+          "id": "AC03",
+          "given": "identical canonical event/recipient/template inputs",
+          "when": "validation repeats",
+          "then": "the same route/fingerprint/operation/event identities result"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "contract",
+          "command": "npm run validate:graphql",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "Notification subgraph/operation/transport compatibility report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "event/provider/cursor boundary fixture validation report"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-platform-contracts",
+        "roadmap-v1-3",
+        "source-vs-e13-t01"
+      ],
+      "decisionNoteVi": "Leaf VS-E13-T01 chỉ sở hữu artifact của platform_contracts; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "contract",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E13",
+      "sourceId": "VS-E13-T02",
+      "jiraKey": "SCRUM-782",
+      "issueType": "Task",
+      "parentSourceId": "VS-E13",
+      "summary": "[VS-E13-T02] Add notification lifecycle Postman evidence",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "A deterministic Postman/Newman flow proves domain-event intake, inbox/SSE/read, email/push policy, retry/dead-letter, recipient exception and repair behavior.",
+      "context": "Existing platform smoke covers basic services but no complete Notification lifecycle/provider fault flow.",
+      "inScope": [
+        "Add User/Notification fixtures, fake email/push provider and supported domain event producer with deterministic contact/template/policy identities.",
+        "Exercise intake/dedup, list plus SSE reconnect, mark read, preferences, required email, feature-flagged push, transient recovery, permanent dead letter and invalid-contact re-resolution.",
+        "Assert cross-recipient access, malformed/version conflict, missing variable/contact, mandatory disable, expired cursor recovery, duplicate frame/event/callback, bad provider response, retry exhaustion and secret/redaction rules.",
+        "Provide seed/fault/sign/run/reconcile/cleanup PowerShell runner producing redacted Newman JSON/JUnit and provider-call evidence."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "platform_infrastructure"
+      ],
+      "primaryRepository": "platform_infrastructure",
+      "repositorySlices": [
+        {
+          "repository": "platform_infrastructure",
+          "paths": [
+            "postman/ViStay-Notification-Lifecycle.postman_collection.json",
+            "postman/ViStay-Local.postman_environment.json",
+            "postman/fixtures/notification-user.sql",
+            "postman/fixtures/notification-service.sql",
+            "postman/mock/notification-provider/**",
+            "scripts/Seed-NotificationE2E.ps1",
+            "scripts/Test-PostmanNotificationLifecycle.ps1",
+            "postman/README.md"
+          ],
+          "artifacts": [
+            "Notification lifecycle Postman collection",
+            "deterministic User/Notification fixtures",
+            "fake provider/fault injection",
+            "repeatable Newman/reconciliation runner"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "notification:inbox:view",
+          "notification:inbox:mark-read",
+          "notification:preference:manage",
+          "notification:delivery:retry",
+          "notification:recipient-exception:repair"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E13-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E13-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E13-S03-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E13-S04-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E13-S05-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E13-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "clean local services, fixtures and fake providers",
+          "when": "runner executes",
+          "then": "event through inbox/SSE/read/email/push/retry/dead-letter/contact-repair paths pass with revision/provider-call evidence"
+        },
+        {
+          "id": "AC02",
+          "given": "authorization, schema, template, contact, cursor, provider, replay or retry-limit negative case",
+          "when": "collection runs",
+          "then": "the exact stable error/redaction and absence of duplicate/partial effect are asserted"
+        },
+        {
+          "id": "AC03",
+          "given": "runner executes twice",
+          "when": "cleanup/reseed/replay complete",
+          "then": "no duplicate notification, delivery, attempt, read receipt or repair decision remains"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "operational",
+          "command": "docker compose -f compose.full.yaml config",
+          "verifies": [
+            "AC01"
+          ],
+          "evidence": "redacted compose/routing/provider-mock configuration output"
+        },
+        {
+          "id": "TEST-02",
+          "level": "e2e",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-PostmanNotificationLifecycle.ps1",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Notification lifecycle Newman JSON/JUnit plus provider/reconciliation report"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-platform-infrastructure",
+        "roadmap-v1-3",
+        "source-vs-e13-t02"
+      ],
+      "decisionNoteVi": "Leaf VS-E13-T02 chỉ sở hữu artifact của platform_infrastructure; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "infrastructure",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    }
+  ]
+}
