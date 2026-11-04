@@ -1,0 +1,1831 @@
+{
+  "refinements": [
+    {
+      "sourceId": "VS-E15",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "Pilot readiness is decomposed into all-database recovery, owner-safe minimum-data migration/reconciliation, guarded rehearsal/rollback/sign-off, pilot-wide observability/incident drills and externally gated VietQR callback activation.",
+      "context": "Technical tooling is dispatchable; real dataset execution and named approvals remain activation-gated by VS-E00-S07. Full history, cross-service database access and production HA are outside this epic."
+    },
+    {
+      "sourceId": "VS-E15-S01",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "S01 has separate Infrastructure recovery implementation and Platform Contract evidence leaves covering every configured database and RPO <=5 minutes/RTO <=4 hours.",
+      "context": "Assign only executable children; the existing one-database restore smoke is insufficient for pilot readiness."
+    },
+    {
+      "sourceId": "VS-E15-S02",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "S02 separates canonical owner-safe bundle, API-driven import and domain reconciliation. Approved categories exclude full history; exact record identities require VS-E00-S07.",
+      "context": "Assign only executable children; execute mode remains activation-gated until the dataset manifest fingerprint is approved."
+    },
+    {
+      "sourceId": "VS-E15-S03",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "S03 separates guarded rehearsal/rollback automation from RACI/go-no-go evidence contract.",
+      "context": "Assign only executable children; real cutover waits for named role bindings in VS-E00-S07."
+    },
+    {
+      "sourceId": "VS-E15-S04",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "S04 separates full-pilot telemetry/SLO alerting from support/security incident drills and evidence.",
+      "context": "Assign only executable children; production HA/automatic failover belongs to E22."
+    },
+    {
+      "sourceId": "VS-E15-S05",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "S05 has public HTTPS activation-gate and guarded external-UAT evidence leaves; Payment callback business logic remains owned by E09.",
+      "context": "Static/local implementation is dispatchable. Real CALLBACK_ENABLED activation remains externally blocked on trusted HTTPS, VietQR merchant UAT/allow-list and production secrets.",
+      "activationBlockers": [
+        "Trusted public HTTPS endpoint, VietQR merchant UAT/allow-list acceptance and production secret references are required for live activation."
+      ]
+    }
+  ],
+  "additions": [
+    {
+      "templateSourceId": "VS-E15-S01",
+      "sourceId": "VS-E15-S01-ST01",
+      "jiraKey": "SCRUM-795",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E15-S01",
+      "summary": "[VS-E15-S01-ST01] Inventory and restore every pilot database",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Infrastructure produces an encrypted, integrity-checked, off-host-copy-ready snapshot for every configured pilot database and restores each archive into an isolated target with schema and row-manifest verification.",
+      "context": "Backup-RemoteDatabases.ps1 already AES/HMAC encrypts all configured dumps but restore-smokes only Authentication and protects the data key with local-user DPAPI. Extend it without weakening the current TLS, path and plaintext-cleanup controls.",
+      "inScope": [
+        "Inventory all 11 service databases, PostgreSQL/Flyway versions, source host, snapshot boundary and required roles without printing credentials.",
+        "Replace the single-database smoke with isolated restore of every encrypted archive; verify archive hash, successful Flyway history, app schema/table counts and manifest fingerprints.",
+        "Separate data encryption key from snapshot through a configurable external/off-host key wrap reference; retain DPAPI only as an explicit local-development adapter.",
+        "Measure backup age, recovery point, restore duration and cleanup; fail the pilot gate unless RPO <=5 minutes and measured RTO projection/drill <=4 hours."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "platform_infrastructure"
+      ],
+      "primaryRepository": "platform_infrastructure",
+      "repositorySlices": [
+        {
+          "repository": "platform_infrastructure",
+          "paths": [
+            "scripts/Backup-RemoteDatabases.ps1",
+            "scripts/Restore-PilotSnapshot.ps1",
+            "scripts/Inventory-PilotDatabases.ps1",
+            "scripts/Test-PilotBackupRestore.ps1",
+            "docs/runbooks/pilot-backup-restore.md"
+          ],
+          "artifacts": [
+            "all-database inventory manifest",
+            "versioned encrypted snapshot format",
+            "isolated all-database restore runner",
+            "RPO/RTO and plaintext-cleanup evidence"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "cutover:backup:create",
+          "cutover:restore:execute",
+          "cutover:recovery-evidence:view"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E15-S01-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E01-T09",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "all configured pilot databases and valid secret/key references",
+          "when": "backup and isolated restore drill runs",
+          "then": "every database has an encrypted hash-verified archive, successful restore/schema/row evidence and measured RPO/RTO"
+        },
+        {
+          "id": "AC02",
+          "given": "missing database, bad hash/key, plaintext residue, stale snapshot, failed restore, schema mismatch or RPO/RTO breach",
+          "when": "the gate evaluates",
+          "then": "cutover is blocked with a redacted stable diagnostic and no target/source mutation"
+        },
+        {
+          "id": "AC03",
+          "given": "the inventory/restore runner repeats after failure",
+          "when": "cleanup and rerun complete",
+          "then": "isolated targets are safely recreated, source databases remain read-only and evidence identities are deterministic"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "operational",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-PilotBackupRestore.ps1",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E15-S01-ST01 machine-readable rehearsal report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "docker compose -f compose.yaml -f compose.full.yaml config",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "redacted immutable compose/configuration evidence"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-platform-infrastructure",
+        "roadmap-v1-3",
+        "source-vs-e15-s01-st01"
+      ],
+      "decisionNoteVi": "Leaf VS-E15-S01-ST01 chỉ sở hữu artifact của platform_infrastructure; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "infrastructure",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E15-S01",
+      "sourceId": "VS-E15-S01-ST02",
+      "jiraKey": "SCRUM-796",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E15-S01",
+      "summary": "[VS-E15-S01-ST02] Publish backup restore and recovery evidence contract",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Platform Contracts defines a secret-free recovery manifest and release-gate evidence format for complete encrypted backup, isolated restore, RPO and RTO proof.",
+      "context": "The current backup manifest is implementation-local and records only one restore smoke. A versioned contract is required before Infrastructure changes its snapshot/evidence format.",
+      "inScope": [
+        "Define snapshot/database entries, source boundary, archive hash/bytes, encryption/key-wrap reference, PostgreSQL/Flyway version and retention/off-host-copy evidence.",
+        "Define per-database restore target, start/end/duration, schema/table/row fingerprints, cleanup result and aggregate RPO/RTO gate.",
+        "Prohibit passwords, data keys, connection strings, customer rows and unrestricted dump paths from artifacts/logs.",
+        "Add valid all-database/local-DPAPI fixtures and invalid missing database, stale RPO, RTO breach, hash/schema mismatch, plaintext/key and partial-restore fixtures."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "platform_contracts"
+      ],
+      "primaryRepository": "platform_contracts",
+      "repositorySlices": [
+        {
+          "repository": "platform_contracts",
+          "paths": [
+            "docs/pilot-recovery-evidence-v1.md",
+            "schemas/pilot-recovery-manifest.v1.schema.json",
+            "fixtures/pilot-recovery-evidence.v1.json",
+            "scripts/validate-schemas.mjs"
+          ],
+          "artifacts": [
+            "recovery manifest schema",
+            "RPO/RTO gate contract",
+            "valid/negative restore fixtures",
+            "secret/redaction invariants"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "cutover:recovery-contract:publish"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "a complete all-database backup/restore fixture",
+          "when": "contract validation runs",
+          "then": "database coverage, hashes, versions, restore fingerprints, cleanup and RPO/RTO gates validate"
+        },
+        {
+          "id": "AC02",
+          "given": "missing/partial database, stale snapshot, duration breach, hash/schema mismatch, plaintext/key/credential or incompatible version",
+          "when": "negative validation runs",
+          "then": "CI fails with a stable path-specific diagnostic"
+        },
+        {
+          "id": "AC03",
+          "given": "the same canonical evidence inputs",
+          "when": "validation repeats",
+          "then": "manifest and gate fingerprints are byte-for-byte deterministic"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "contract",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E15-S01-ST02 schemas, fixtures and negative validation report"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-platform-contracts",
+        "roadmap-v1-3",
+        "source-vs-e15-s01-st02"
+      ],
+      "decisionNoteVi": "Leaf VS-E15-S01-ST02 chỉ sở hữu artifact của platform_contracts; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "contract",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E15-S02",
+      "sourceId": "VS-E15-S02-ST01",
+      "jiraKey": "SCRUM-797",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E15-S02",
+      "summary": "[VS-E15-S02-ST01] Publish canonical pilot migration bundle contract",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Platform Contracts defines a signed, versioned, owner-separated import bundle for only the approved pilot categories and a reconciliation envelope that never becomes a cross-service database contract.",
+      "context": "Approved categories are properties, effective contracts/terms, in-house guests, future bookings, deposits and open balances; full history is excluded. Exact record identities remain an activation decision in VS-E00-S07.",
+      "inScope": [
+        "Define bundle header, source snapshot/cutoff/timezone/currency, category files, canonical keys, owner service, revision, checksum and dependency order.",
+        "Specify Property inputs for properties/effective terms, User subject references, Booking in-house/future reservation snapshots and Finance deposit/open-balance opening entries.",
+        "Define count, canonical-key set, amount-by-currency, referential-integrity and exception reconciliation without embedding target database/table names.",
+        "Add valid empty/small/correction fixtures and invalid full-history, duplicate key, missing owner/reference, amount imbalance, mutable cutoff, PII/card/document payload and incompatible-version fixtures."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "platform_contracts"
+      ],
+      "primaryRepository": "platform_contracts",
+      "repositorySlices": [
+        {
+          "repository": "platform_contracts",
+          "paths": [
+            "docs/pilot-migration-bundle-v1.md",
+            "schemas/pilot-migration-bundle.v1.schema.json",
+            "schemas/pilot-reconciliation-report.v1.schema.json",
+            "fixtures/pilot-migration-boundaries.v1.json",
+            "scripts/validate-schemas.mjs"
+          ],
+          "artifacts": [
+            "owner-separated import bundle schema",
+            "reconciliation report schema",
+            "category/dependency/cutoff rules",
+            "valid/negative migration fixtures"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "cutover:migration-contract:publish"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "a valid approved-category bundle and reconciliation report",
+          "when": "validation runs",
+          "then": "owner, cutoff, key, count, amount, reference, checksum and exception invariants pass"
+        },
+        {
+          "id": "AC02",
+          "given": "full history, duplicate/missing key, wrong owner, broken reference, imbalance, PII/card/document data or incompatible change",
+          "when": "negative validation runs",
+          "then": "CI fails with a stable path-specific diagnostic"
+        },
+        {
+          "id": "AC03",
+          "given": "identical canonical source records and cutoff",
+          "when": "bundle creation repeats",
+          "then": "file, record and bundle fingerprints are deterministic"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "contract",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E15-S02-ST01 schemas, fixtures and negative validation report"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-platform-contracts",
+        "roadmap-v1-3",
+        "source-vs-e15-s02-st01"
+      ],
+      "decisionNoteVi": "Leaf VS-E15-S02-ST01 chỉ sở hữu artifact của platform_contracts; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "contract",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E15-S02",
+      "sourceId": "VS-E15-S02-ST02",
+      "jiraKey": "SCRUM-798",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E15-S02",
+      "summary": "[VS-E15-S02-ST02] Build API-driven pilot import orchestrator",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Infrastructure validates an approved canonical bundle and imports records through versioned owner-service APIs in dependency order with durable checkpoint, idempotency and rollback-safe lineage.",
+      "context": "No pilot importer exists. The orchestrator must not read or write service schemas directly; target services remain owners and return durable import results.",
+      "inScope": [
+        "Validate signature/checksums/version/cutoff and an approved dataset-manifest fingerprint before any call; support plan-only and execute modes.",
+        "Call Property, User, Booking and Finance import boundaries in documented dependency order with per-record idempotency key, source identity/revision and correlation ID.",
+        "Persist only a redacted local run/checkpoint/result manifest outside service databases; resume after crash and quarantine failed records without advancing dependent categories.",
+        "Provide dry-run, bounded concurrency, cancellation-before-commit, retry of transient failures and rollback instructions using service compensating/correction APIs rather than SQL deletion."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "platform_infrastructure"
+      ],
+      "primaryRepository": "platform_infrastructure",
+      "repositorySlices": [
+        {
+          "repository": "platform_infrastructure",
+          "paths": [
+            "scripts/New-PilotMigrationPlan.ps1",
+            "scripts/Invoke-PilotMigration.ps1",
+            "scripts/Test-PilotMigration.ps1",
+            "migration/README.md",
+            "migration/examples/pilot-bundle.example.json"
+          ],
+          "artifacts": [
+            "plan-only migration runner",
+            "API-driven checkpointed importer",
+            "redacted run/result manifest",
+            "crash/replay/dependency/rollback tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "cutover:migration:plan",
+          "cutover:migration:execute",
+          "cutover:migration:cancel"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E15-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E00-S07",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "a schema-valid bundle matching the approved dataset fingerprint and available owner APIs",
+          "when": "execute runs",
+          "then": "categories import in dependency order and each record has one durable owner result/checkpoint/lineage"
+        },
+        {
+          "id": "AC02",
+          "given": "unapproved record, bad signature/checksum/version, broken dependency, missing owner API, permanent error or decision gate absent",
+          "when": "plan/execute runs",
+          "then": "the run blocks or quarantines safely with no direct database/partial-dependent write"
+        },
+        {
+          "id": "AC03",
+          "given": "the runner crashes/replays or transient calls overlap",
+          "when": "resume runs",
+          "then": "completed results are reused, failed work resumes from checkpoint and no duplicate owner effect occurs"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "operational",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-PilotMigration.ps1",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E15-S02-ST02 machine-readable rehearsal report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "docker compose -f compose.yaml -f compose.full.yaml config",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "redacted immutable compose/configuration evidence"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-platform-infrastructure",
+        "roadmap-v1-3",
+        "source-vs-e15-s02-st02"
+      ],
+      "decisionNoteVi": "Leaf VS-E15-S02-ST02 chỉ sở hữu artifact của platform_infrastructure; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "infrastructure",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [
+        "VS-E00-S07 must name the exact approved pilot record identities and freeze its dataset-manifest fingerprint before execute mode; plan/test modes are not blocked."
+      ],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E15-S02",
+      "sourceId": "VS-E15-S02-ST03",
+      "jiraKey": "SCRUM-799",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E15-S02",
+      "summary": "[VS-E15-S02-ST03] Reconcile pilot counts keys amounts and exceptions",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Infrastructure collects bounded owner-service export/reconciliation snapshots and proves count, canonical-key, amount-by-currency and referential invariants before cutover readiness.",
+      "context": "Audit-RemoteDatabases.ps1 currently emits database table row counts, which is insufficient and crosses the intended business boundary. New reconciliation uses authenticated domain APIs and the canonical contract.",
+      "inScope": [
+        "Request source-bundle and target owner snapshots at the same cutoff/run identity without copying unrestricted domain rows.",
+        "Compare category counts and canonical-key sets; compare deposit/open-balance amounts by currency using decimal minor units; validate cross-owner property/user/booking/finance references.",
+        "Classify missing, extra, changed, duplicate, amount mismatch, broken reference and unavailable snapshot exceptions with owner and resolution status.",
+        "Block readiness on any unexplained exception; accepted exception requires named approver/reason/evidence and never edits source/target automatically."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "platform_infrastructure"
+      ],
+      "primaryRepository": "platform_infrastructure",
+      "repositorySlices": [
+        {
+          "repository": "platform_infrastructure",
+          "paths": [
+            "scripts/Compare-PilotMigration.ps1",
+            "scripts/Test-PilotReconciliation.ps1",
+            "migration/reconciliation-policy.json",
+            "docs/runbooks/pilot-reconciliation.md"
+          ],
+          "artifacts": [
+            "domain-level reconciliation runner",
+            "count/key/amount/reference report",
+            "typed exception register",
+            "repeatable zero-unexplained-difference gate"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "cutover:reconciliation:run",
+          "cutover:reconciliation:view",
+          "cutover:exception:approve"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E15-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E15-S02-ST02",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "matching source bundle and owner-service target snapshots at one cutoff",
+          "when": "reconciliation runs",
+          "then": "count/key/amount/reference comparisons pass and a signed zero-unexplained-difference report is produced"
+        },
+        {
+          "id": "AC02",
+          "given": "missing/extra/changed/duplicate key, amount/currency mismatch, broken reference, unavailable snapshot or unapproved exception",
+          "when": "the gate evaluates",
+          "then": "cutover readiness is blocked with an owner-classified redacted exception"
+        },
+        {
+          "id": "AC03",
+          "given": "reconciliation repeats or an exception decision changes",
+          "when": "comparison reruns",
+          "then": "the same inputs yield the same fingerprint and every decision revision remains append-only"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "operational",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-PilotReconciliation.ps1",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E15-S02-ST03 machine-readable rehearsal report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "docker compose -f compose.yaml -f compose.full.yaml config",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "redacted immutable compose/configuration evidence"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-platform-infrastructure",
+        "roadmap-v1-3",
+        "source-vs-e15-s02-st03"
+      ],
+      "decisionNoteVi": "Leaf VS-E15-S02-ST03 chỉ sở hữu artifact của platform_infrastructure; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "infrastructure",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E15-S03",
+      "sourceId": "VS-E15-S03-ST01",
+      "jiraKey": "SCRUM-800",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E15-S03",
+      "summary": "[VS-E15-S03-ST01] Automate cutover rehearsal and rollback",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "A single guarded runner rehearses freeze, backup/restore, import, reconciliation, smoke, go/no-go hold and rollback against an isolated pilot target while measuring every gate and duration.",
+      "context": "Existing scripts provision and inspect databases separately; no end-to-end cutover state machine or rollback drill exists.",
+      "inScope": [
+        "Implement PLAN -> PRECHECKED -> FROZEN -> BACKED_UP -> MIGRATED -> RECONCILED -> SMOKE_PASSED -> AWAITING_SIGNOFF -> CUTOVER/ROLLED_BACK state with durable evidence.",
+        "Run only allow-listed scripts/artifacts and explicit target environment; require typed confirmation for freeze/cutover/rollback and never target local wildcard/root paths.",
+        "Rollback routing/config to last immutable release and restore target snapshot or invoke corrections according to the current gate; never delete source evidence.",
+        "Measure outage, RPO/RTO, migration/reconciliation/smoke durations and prove repeat rehearsal cleanup."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "platform_infrastructure"
+      ],
+      "primaryRepository": "platform_infrastructure",
+      "repositorySlices": [
+        {
+          "repository": "platform_infrastructure",
+          "paths": [
+            "scripts/Invoke-PilotCutoverRehearsal.ps1",
+            "scripts/Invoke-PilotRollback.ps1",
+            "scripts/Test-PilotCutoverRehearsal.ps1",
+            "cutover/pilot-gates.json",
+            "docs/runbooks/pilot-cutover.md"
+          ],
+          "artifacts": [
+            "guarded cutover state-machine runner",
+            "gate/duration evidence manifest",
+            "rollback and immutable-release restoration",
+            "failure-injection/repeatability tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "cutover:rehearsal:execute",
+          "cutover:go-no-go:record",
+          "cutover:rollback:execute"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E15-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E15-S02-ST03",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E15-S03-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E00-S07",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "isolated target, validated artifacts and all technical gates",
+          "when": "rehearsal plus selected rollback point runs",
+          "then": "each state/gate/duration is evidenced and rollback restores the last verified service/data boundary"
+        },
+        {
+          "id": "AC02",
+          "given": "wrong target, missing approval/artifact, failed backup/import/reconciliation/smoke, RPO/RTO breach or unsafe path",
+          "when": "runner advances",
+          "then": "it stops before the next destructive/external step and emits the exact rollback instruction"
+        },
+        {
+          "id": "AC03",
+          "given": "a failed rehearsal or rollback command repeats",
+          "when": "cleanup/resume completes",
+          "then": "one run lineage remains, source evidence is intact and no step is applied twice"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "operational",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-PilotCutoverRehearsal.ps1",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E15-S03-ST01 machine-readable rehearsal report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "docker compose -f compose.yaml -f compose.full.yaml config",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "redacted immutable compose/configuration evidence"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-platform-infrastructure",
+        "roadmap-v1-3",
+        "source-vs-e15-s03-st01"
+      ],
+      "decisionNoteVi": "Leaf VS-E15-S03-ST01 chỉ sở hữu artifact của platform_infrastructure; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "infrastructure",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [
+        "VS-E00-S07 must name go/no-go, rollback, reconciliation sign-off and incident communication owners before a real cutover; isolated rehearsal is not blocked."
+      ],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E15-S03",
+      "sourceId": "VS-E15-S03-ST02",
+      "jiraKey": "SCRUM-801",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E15-S03",
+      "summary": "[VS-E15-S03-ST02] Publish go-no-go RACI and sign-off evidence contract",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Platform Contracts defines the named-role, separation-of-duties, gate, evidence and decision format used to authorize cutover or rollback without encoding personal credentials.",
+      "context": "The role names are known but the responsible people remain a decision in VS-E00-S07. The contract can be implemented now; production evidence cannot pass with placeholders.",
+      "inScope": [
+        "Define roles for ReleaseOwner, BusinessOwner, DataReconciliationOwner, RollbackOwner, Security/IncidentOwner and Support/CommunicationOwner.",
+        "Define required technical evidence references, decision timestamp, environment/release/dataset fingerprints, APPROVE/REJECT/ROLLBACK decision and immutable supersession.",
+        "Require separation between executor and final business approver; record subject references, not names/tokens in checked-in fixtures.",
+        "Reject absent/unresolved role binding, stale evidence, mismatched fingerprint, self-approval where prohibited, conditional/ambiguous decision and edited prior sign-off."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "platform_contracts"
+      ],
+      "primaryRepository": "platform_contracts",
+      "repositorySlices": [
+        {
+          "repository": "platform_contracts",
+          "paths": [
+            "docs/pilot-go-no-go-v1.md",
+            "schemas/pilot-cutover-decision.v1.schema.json",
+            "fixtures/pilot-cutover-decision.v1.json",
+            "scripts/validate-schemas.mjs"
+          ],
+          "artifacts": [
+            "cutover RACI contract",
+            "go/no-go/rollback decision schema",
+            "evidence/fingerprint requirements",
+            "valid/negative separation-of-duties fixtures"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "cutover:decision-contract:publish"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "all named role bindings and current matching gate evidence",
+          "when": "an authorized decision fixture validates",
+          "then": "one explicit APPROVE, REJECT or ROLLBACK decision and immutable fingerprint pass"
+        },
+        {
+          "id": "AC02",
+          "given": "placeholder/missing role, stale/mismatched evidence, prohibited self-approval, ambiguous decision or prior-record mutation",
+          "when": "negative validation runs",
+          "then": "CI fails with a stable path-specific diagnostic"
+        },
+        {
+          "id": "AC03",
+          "given": "the same decision/evidence inputs",
+          "when": "validation repeats",
+          "then": "the decision fingerprint is deterministic and supersession never rewrites prior evidence"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "contract",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E15-S03-ST02 schemas, fixtures and negative validation report"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-platform-contracts",
+        "roadmap-v1-3",
+        "source-vs-e15-s03-st02"
+      ],
+      "decisionNoteVi": "Leaf VS-E15-S03-ST02 chỉ sở hữu artifact của platform_contracts; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "contract",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E15-S04",
+      "sourceId": "VS-E15-S04-ST01",
+      "jiraKey": "SCRUM-802",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E15-S04",
+      "summary": "[VS-E15-S04-ST01] Operate full-pilot observability and SLO alerts",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Pilot observability expands the existing Authentication/User/Notification walking slice to every active pilot service and provides release, business-flow, backlog and security alerts with executable triage.",
+      "context": "Current OpenTelemetry collector, readiness and Prometheus contract covers only three services and debug-exported traces; no complete pilot dashboards or alert rules exist.",
+      "inScope": [
+        "Configure stable service/resource/release/environment attributes and readiness/metrics/traces for every active pilot service, edge, Kafka and databases without exposing public actuators.",
+        "Add dashboards and alerts for ingress errors/latency, readiness, DB pool/migration, Kafka lag, outbox/inbox age, booking/inventory conflicts, payment callback/reconciliation, OTA sync and notification delivery.",
+        "Define pilot SLO windows/thresholds as versioned config with owner/runbook link; verify alert fire and recovery using fault injection.",
+        "Keep logs/traces metadata-only and prove correlation from edge request ID through service/event IDs; collector failure remains fail-open for business traffic."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "platform_infrastructure"
+      ],
+      "primaryRepository": "platform_infrastructure",
+      "repositorySlices": [
+        {
+          "repository": "platform_infrastructure",
+          "paths": [
+            "compose.full.yaml",
+            "observability/otel-collector.yaml",
+            "observability/prometheus/prometheus.yml",
+            "observability/prometheus/alerts/pilot.yml",
+            "observability/grafana/dashboards/pilot.json",
+            "observability/README.md",
+            "scripts/Test-PilotObservability.ps1"
+          ],
+          "artifacts": [
+            "all-pilot telemetry configuration",
+            "pilot SLO dashboards/alerts",
+            "correlation and redaction rules",
+            "alert fire/recover test runner"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "pilot:observability:view",
+          "pilot:alert:test"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E01-T09",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "all active pilot components and a synthetic cross-service flow",
+          "when": "observability test runs",
+          "then": "readiness, bounded metrics/traces/log correlation and named dashboards/alerts are available internally"
+        },
+        {
+          "id": "AC02",
+          "given": "dependency fault, lag/backlog/error threshold or collector outage",
+          "when": "fault injection runs",
+          "then": "the correct alert fires/recovers with runbook link and business traffic remains safe according to dependency policy"
+        },
+        {
+          "id": "AC03",
+          "given": "logs/traces/config are scanned",
+          "when": "redaction assertions run",
+          "then": "no token, cookie, password, connection string, raw payload or protected business field appears"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "operational",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-PilotObservability.ps1",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E15-S04-ST01 machine-readable rehearsal report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "docker compose -f compose.yaml -f compose.full.yaml config",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "redacted immutable compose/configuration evidence"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-platform-infrastructure",
+        "roadmap-v1-3",
+        "source-vs-e15-s04-st01"
+      ],
+      "decisionNoteVi": "Leaf VS-E15-S04-ST01 chỉ sở hữu artifact của platform_infrastructure; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "infrastructure",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E15-S04",
+      "sourceId": "VS-E15-S04-ST02",
+      "jiraKey": "SCRUM-803",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E15-S04",
+      "summary": "[VS-E15-S04-ST02] Exercise pilot support and security incident runbooks",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Support and security responders execute repeatable drills for identity, data, payment, OTA, notification and infrastructure incidents with severity, evidence preservation, containment, recovery and communication ownership.",
+      "context": "Current runbooks cover limited observability and Redis security. E15 needs pilot-wide response evidence, not production HA automation.",
+      "inScope": [
+        "Publish severity/ownership/escalation matrix and runbooks for account/token compromise, PII/document exposure, database/backup failure, inventory/booking inconsistency, payment callback/reconciliation, OTA outage and notification backlog.",
+        "Each runbook defines detect, preserve correlation evidence, contain, rotate/revoke/pause, reconcile, recover, validate and communicate steps with safe commands.",
+        "Add tabletop/fault-injection scenarios with start/ack/contain/recover durations, expected alerts and artifact checklist.",
+        "Verify least-privilege break-glass access, immutable audit and post-incident corrective-action record; never include production secrets or customer data."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "platform_infrastructure"
+      ],
+      "primaryRepository": "platform_infrastructure",
+      "repositorySlices": [
+        {
+          "repository": "platform_infrastructure",
+          "paths": [
+            "docs/runbooks/pilot-incident-management.md",
+            "docs/runbooks/identity-incident.md",
+            "docs/runbooks/data-recovery-incident.md",
+            "docs/runbooks/payment-ota-incident.md",
+            "docs/runbooks/notification-backlog.md",
+            "security/pilot-incident-matrix.json",
+            "scripts/Test-PilotIncidentRunbooks.ps1"
+          ],
+          "artifacts": [
+            "pilot incident severity/RACI matrix",
+            "domain incident runbooks",
+            "tabletop/fault drill fixtures",
+            "response-time/evidence/redaction report"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "pilot:incident:declare",
+          "pilot:incident:contain",
+          "pilot:incident:recover"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E15-S04-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E15-S03-ST02",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "each required pilot incident scenario",
+          "when": "tabletop/fault drill runs",
+          "then": "alert, named role, safe containment/recovery, evidence and communication steps complete within documented targets"
+        },
+        {
+          "id": "AC02",
+          "given": "missing owner/runbook/evidence, unsafe command, excessive privilege, secret/PII content or recovery without reconciliation",
+          "when": "validation runs",
+          "then": "pilot support readiness fails with a stable scenario diagnostic"
+        },
+        {
+          "id": "AC03",
+          "given": "a drill repeats or changes severity",
+          "when": "evidence is regenerated",
+          "then": "prior drill remains immutable and the current run has one complete correlated timeline"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "operational",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-PilotIncidentRunbooks.ps1",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E15-S04-ST02 machine-readable rehearsal report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "docker compose -f compose.yaml -f compose.full.yaml config",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "redacted immutable compose/configuration evidence"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-platform-infrastructure",
+        "roadmap-v1-3",
+        "source-vs-e15-s04-st02"
+      ],
+      "decisionNoteVi": "Leaf VS-E15-S04-ST02 chỉ sở hữu artifact của platform_infrastructure; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "infrastructure",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E15-S05",
+      "sourceId": "VS-E15-S05-ST01",
+      "jiraKey": "SCRUM-804",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E15-S05",
+      "summary": "[VS-E15-S05-ST01] Gate public HTTPS VietQR callback activation",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Infrastructure keeps VietQR callback disabled by default and permits CALLBACK_ENABLED only when trusted public HTTPS, provider allow-list/UAT, secret references, alerting, reconciliation and rollback gates match one activation fingerprint.",
+      "context": "Compose currently defaults PAYMENT_ACTIVATION_MODE=DISABLED and exposes an HTTP local callback host. Payment already owns the activation plan; this leaf supplies environment/edge gate enforcement without duplicating callback logic.",
+      "inScope": [
+        "Add production environment contract for trusted hostname/certificate chain/expiry, TLS-only callback route, request size/rate controls, provider allow-list where supplied and no local-host fallback.",
+        "Load callback client credentials/API keys only from deployment secret references; reject checked-in/default/plain environment values and support audited rotation.",
+        "Validate Payment APPROVED activation plan/UAT evidence, alert health, reconciliation zero-exception and rollback target fingerprints before rendering/enabling CALLBACK_ENABLED.",
+        "Provide DISABLED/GENERATE_ONLY rollback that removes public callback reachability or returns the documented disabled response while preserving received/audit evidence."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "platform_infrastructure"
+      ],
+      "primaryRepository": "platform_infrastructure",
+      "repositorySlices": [
+        {
+          "repository": "platform_infrastructure",
+          "paths": [
+            "compose.production.yaml",
+            ".env.production.example",
+            "nginx/templates/payment-callback.conf.template",
+            "scripts/Test-VietQrActivationGate.ps1",
+            "scripts/Invoke-VietQrCallbackRollback.ps1",
+            "docs/runbooks/vietqr-public-activation.md"
+          ],
+          "artifacts": [
+            "public HTTPS callback environment contract",
+            "secret/certificate/allow-list gates",
+            "activation fingerprint validator",
+            "disable/rollback verification"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "payment:activation:view",
+          "payment:activation:enable",
+          "payment:activation:suspend"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E09-T07-ST04",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E09-S05-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E15-S04-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "matching approved activation, HTTPS/certificate, UAT, secret, alert, reconciliation and rollback evidence",
+          "when": "production config gate runs",
+          "then": "CALLBACK_ENABLED may render once with an immutable activation fingerprint"
+        },
+        {
+          "id": "AC02",
+          "given": "HTTP/local host, invalid/expiring certificate, missing UAT/secret/allow-list/alert/reconciliation/rollback or mismatched fingerprint",
+          "when": "activation is attempted",
+          "then": "configuration remains DISABLED/GENERATE_ONLY and no public callback secret is exposed"
+        },
+        {
+          "id": "AC03",
+          "given": "activation/rotation/rollback repeats or fails midway",
+          "when": "recovery completes",
+          "then": "one current mode/fingerprint remains, old secret is revoked and received/audit evidence is preserved"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "operational",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-VietQrActivationGate.ps1",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E15-S05-ST01 machine-readable rehearsal report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "docker compose -f compose.yaml -f compose.full.yaml config",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "redacted immutable compose/configuration evidence"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-platform-infrastructure",
+        "roadmap-v1-3",
+        "source-vs-e15-s05-st01"
+      ],
+      "decisionNoteVi": "Leaf VS-E15-S05-ST01 chỉ sở hữu artifact của platform_infrastructure; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "infrastructure",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [
+        "A trusted public HTTPS endpoint, real VietQR merchant UAT approval/allow-list and production secret references are required for CALLBACK_ENABLED; static/local gate tests remain executable."
+      ],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E15-S05",
+      "sourceId": "VS-E15-S05-ST02",
+      "jiraKey": "SCRUM-805",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E15-S05",
+      "summary": "[VS-E15-S05-ST02] Prove VietQR public UAT and rollback evidence",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "A guarded external-UAT runner proves token, valid/invalid/duplicate callback, Finance allocation/reconciliation, alerts and rollback against the approved public endpoint without storing merchant secrets in Postman artifacts.",
+      "context": "The existing Epic01 Postman callback flow is local, optional and HTTP. Extend E09 sandbox evidence with a production-gated UAT runner; never make ordinary local tests call the real provider.",
+      "inScope": [
+        "Require explicit ExternalUat switch, approved environment fingerprint and secret-store references; print only masked endpoint/certificate/evidence identities.",
+        "Exercise token issuance, one valid credit, invalid token/payload/amount/order, duplicate/replay and delayed/out-of-order callback with provider-approved test values.",
+        "Assert one Payment transaction, Finance allocation, booking/open-balance projection and reconciliation result plus callback/error/backlog alerts.",
+        "Execute DISABLED/GENERATE_ONLY rollback, verify provider retry receives the documented response, then reconcile and produce redacted Newman JSON/JUnit and sign-off checklist."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "platform_infrastructure"
+      ],
+      "primaryRepository": "platform_infrastructure",
+      "repositorySlices": [
+        {
+          "repository": "platform_infrastructure",
+          "paths": [
+            "postman/ViStay-VietQR-Public-UAT.postman_collection.json",
+            "postman/ViStay-VietQR-Public-UAT.postman_environment.example.json",
+            "scripts/Test-PostmanVietQrPublicUat.ps1",
+            "scripts/Test-VietQrPublicRollback.ps1",
+            "postman/README.md"
+          ],
+          "artifacts": [
+            "production-gated VietQR UAT collection",
+            "external UAT/negative/replay assertions",
+            "allocation/reconciliation/alert evidence",
+            "rollback and redacted sign-off report"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "payment:callback:test",
+          "payment:reconciliation:run",
+          "payment:activation:suspend"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E15-S05-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E09-T07-ST04",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "explicit external-UAT mode and all approved activation inputs",
+          "when": "public UAT and rollback runners execute",
+          "then": "positive/negative/replay/allocation/reconciliation/alert/rollback evidence passes with no secret in artifacts"
+        },
+        {
+          "id": "AC02",
+          "given": "missing switch/gate, wrong endpoint/certificate/credential, duplicate financial effect, reconciliation exception or rollback failure",
+          "when": "runner executes",
+          "then": "UAT/sign-off fails closed and CALLBACK_ENABLED is not approved"
+        },
+        {
+          "id": "AC03",
+          "given": "valid callback/provider retry or runner repeats",
+          "when": "processing/reconciliation completes",
+          "then": "one transaction/allocation remains and evidence links the durable original result"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "contract",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-PostmanVietQrPublicUat.ps1 -StaticOnly",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "collection/environment secret and gate validation report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "e2e",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-PostmanVietQrPublicUat.ps1 -ExternalUat",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "redacted public UAT Newman JSON/JUnit, reconciliation and rollback report"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-platform-infrastructure",
+        "roadmap-v1-3",
+        "source-vs-e15-s05-st02"
+      ],
+      "decisionNoteVi": "Leaf VS-E15-S05-ST02 chỉ sở hữu artifact của platform_infrastructure; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "infrastructure",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [
+        "Execution against the real public endpoint requires VietQR merchant UAT credentials, allow-list/certificate acceptance and approved provider test transactions; collection validation and local mock mode are not blocked."
+      ],
+      "externalBlockers": []
+    }
+  ]
+}
