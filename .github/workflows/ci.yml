@@ -20,4 +20,6 @@ jobs:
       - run: npm ci
       - run: npm test
       - uses: bufbuild/buf-setup-action@v1
+        with:
+          github_token: ${{ github.token }}
       - run: buf lint
