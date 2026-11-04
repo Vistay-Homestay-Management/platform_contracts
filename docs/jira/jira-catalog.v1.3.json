@@ -40299,8 +40299,8 @@
       "summary": "[VS-E11] Stay, Access & Guest Compliance",
       "manageDescription": true,
       "actor": "Stay operator and compliance reviewer",
-      "outcome": "Stay, Access & Guest Compliance is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This epic is part of the ViStay VS-E11 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "Stay operations are decomposed into pre-arrival roster, owner-separated identity/document references, access custody, explicit property-time transitions, restricted exceptions, responsive consumers, versioned contracts and deterministic evidence.",
+      "context": "The Epic and Stories coordinate outcomes only; executable leaves own repository paths, authorization, acceptance criteria and tests.",
       "inScope": [
         "Implement and verify: Stay, Access & Guest Compliance.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -40408,7 +40408,7 @@
         "source-vs-e11"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "web",
       "dispatchable": false,
       "testCases": [],
@@ -40424,8 +40424,8 @@
       "parentSourceId": "VS-E11",
       "manageDescription": true,
       "actor": "Stay operator and compliance reviewer",
-      "outcome": "Complete pre-arrival checklist and all-occupant roster is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E11 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "S01 has explicit executable Booking, User, Media, frontend, contract or infrastructure children with field-level ownership and lifecycle rules.",
+      "context": "Assign only executable children; the Story remains a non-dispatchable business outcome boundary.",
       "inScope": [
         "Implement and verify: Complete pre-arrival checklist and all-occupant roster.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -40533,13 +40533,553 @@
         "source-vs-e11-s01"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "web",
       "dispatchable": false,
       "testCases": [],
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E11-S01-ST01",
+      "jiraKey": "SCRUM-744",
+      "issueType": "Subtask",
+      "summary": "[VS-E11-S01-ST01] Implement pre-arrival checklist and occupant roster",
+      "parentSourceId": "VS-E11-S01",
+      "manageDescription": true,
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Booking manages a policy-versioned roster for every adult and minor, evaluates required pre-arrival items, and publishes a reservation readiness projection without owning identity documents.",
+      "context": "Booking V2 contains booking_guests but no roster/checklist application flow. Add the target V20 schema after the planned E08 booking migrations; preserve existing rows and do not treat the current encrypted document column as the future owner.",
+      "inScope": [
+        "Add additive V20 occupant, responsible-party, checklist-definition/version, checklist-item and readiness-projection tables; backfill current booking_guests as legacy-unverified roster entries.",
+        "Require every staying person, including minors, exactly once; require exactly one responsible primary adult and reconcile active adult/child counts with the reservation snapshot before PRE_ARRIVAL_READY.",
+        "Resolve required items from the frozen policy version, occupant category, nationality and stay context; do not assume every minor needs the same document.",
+        "Expose idempotent roster upsert/remove, checklist query/complete and readiness query operations with expectedVersion, immutable audit/outbox and no raw identity/document fields."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "businessRules": [
+        "Default check-in is 14:00 and checkout 12:00 in property timezone, with a configurable two-hour cleaning buffer.",
+        "No-show is a manual transition only; no automatic no-show classification.",
+        "Guest document access requires purpose, field-group grant, audit, and retention enforcement."
+      ],
+      "repositories": [
+        "service_booking"
+      ],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "Booking owns reservation-linked occupant membership, pre-arrival checklist/readiness, immutable User/Media references, access custody, stay timeline, compliance exceptions, and transition evidence; User owns identity and consent; Media owns document bytes, protected retention, and document access audit."
+      ],
+      "stateMachine": [
+        "Roster is DRAFT -> SUBMITTED -> VERIFIED/NEEDS_ACTION; a material occupant change returns it to NEEDS_ACTION and preserves prior revisions.",
+        "Checklist item is REQUIRED/OPTIONAL -> PENDING -> SATISFIED or WAIVED/EXPIRED; waiver requires a policy-allowed authorized reason.",
+        "Readiness is NOT_READY -> READY and may regress only when its frozen inputs change; it never overrides an unsatisfied authoritative requirement."
+      ],
+      "authorization": {
+        "actions": [
+          "stay:roster:view",
+          "stay:roster:manage",
+          "stay:checklist:view",
+          "stay:checklist:complete"
+        ],
+        "dataPartitions": [
+          "CUSTOMER_SELF for the authenticated booking party and invited occupants; ADMIN organization plus SITE/BRANCH for the booked property; SYSTEM only for authenticated projection, policy, or repair calls."
+        ],
+        "fieldGroups": [
+          "STAY_SUMMARY is baseline; PII, IDENTITY_STATUS, DOCUMENT, ACCESS_CUSTODY, COMPLIANCE, and INTERNAL_AUDIT require explicit field-group grants."
+        ]
+      },
+      "failureSemantics": [
+        "Fail closed when reservation, property partition, frozen stay policy, required roster/verification/consent, access custody, expected revision, or an authoritative dependency is absent or inconsistent.",
+        "Return distinct stable validation, forbidden, not-found, stale-revision, readiness, document-reference, custody, transition, exception, and dependency-unavailable codes without revealing protected identity/document fields.",
+        "Never copy raw identity numbers, document bytes, document lookup hashes, lock codes, or credentials into Booking tables, events, logs, or error payloads."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E11-T01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E11-T02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E08-S01-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "a confirmed reservation with matching adult/child roster, one responsible adult and every frozen required item satisfied",
+          "when": "readiness is evaluated",
+          "then": "one READY projection with policy/input revisions and no protected document value is stored and emitted"
+        },
+        {
+          "id": "AC02",
+          "given": "count mismatch, duplicate/missing occupant, no responsible adult, unsatisfied requirement, stale revision, missing grant or dependency failure",
+          "when": "roster/checklist/readiness is submitted",
+          "then": "a stable non-leaking error or NOT_READY reason is returned and no partial readiness transition occurs"
+        },
+        {
+          "id": "AC03",
+          "given": "roster commands or policy inputs replay/race",
+          "when": "processing completes",
+          "then": "one current revision and deterministic readiness fingerprint remain while previous revisions are auditable"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-booking",
+        "roadmap-v1-3",
+        "source-vs-e11-s01-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E11-S01-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*PreArrival*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *PreArrival*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*PreArrival*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *PreArrival*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "service_booking",
+      "repositorySlices": [
+        {
+          "repository": "service_booking",
+          "paths": [
+            "src/main/resources/db/migration/V20__pre_arrival_roster_checklist.sql",
+            "src/main/java/com/vistay/booking/domain/stay/OccupantRoster.java",
+            "src/main/java/com/vistay/booking/domain/stay/PreArrivalChecklist.java",
+            "src/main/java/com/vistay/booking/application/PreArrivalService.java",
+            "src/main/java/com/vistay/booking/adapter/in/graphql/PreArrivalController.java",
+            "src/test/java/com/vistay/booking/application/PreArrivalServiceIntegrationTest.java"
+          ],
+          "artifacts": [
+            "additive occupant/checklist schema",
+            "policy-versioned roster/checklist API",
+            "readiness projection and events",
+            "count/responsible-adult/authorization/replay tests"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
+      "sourceId": "VS-E11-S01-ST02",
+      "jiraKey": "SCRUM-745",
+      "issueType": "Subtask",
+      "summary": "[VS-E11-S01-ST02] Build Customer pre-arrival roster workflow",
+      "parentSourceId": "VS-E11-S01",
+      "manageDescription": true,
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Customer Web provides a responsive, accessible pre-arrival flow for occupant roster, responsible adult, outstanding requirements and readiness using authoritative Booking/User/Media results.",
+      "context": "frontend_customer is currently a simple Vite shell; these are new target routes and client artifacts, not an existing flow.",
+      "inScope": [
+        "Add typed queries/mutations and routes for CUSTOMER_SELF roster, responsible adult, checklist and readiness.",
+        "Build mobile-first adult/minor forms, count reconciliation, requirement-by-occupant progress and safe resume after authentication.",
+        "Link identity-document/consent steps to S02 without persisting document content or verification decisions in browser storage.",
+        "Handle loading, offline/retry, invalid invitation, validation, forbidden, stale revision, dependency failure, redacted fields and post-submit policy change."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "businessRules": [
+        "Default check-in is 14:00 and checkout 12:00 in property timezone, with a configurable two-hour cleaning buffer.",
+        "No-show is a manual transition only; no automatic no-show classification.",
+        "Guest document access requires purpose, field-group grant, audit, and retention enforcement."
+      ],
+      "repositories": [
+        "frontend_customer"
+      ],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "stay:roster:view",
+          "stay:roster:manage",
+          "stay:checklist:view",
+          "stay:checklist:complete"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E11-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E11-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E11-S02-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E11-T02",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authenticated booking party and editable confirmed reservation",
+          "when": "roster and checklist are completed",
+          "then": "the UI submits authoritative references and displays the returned readiness/revision without local eligibility calculation"
+        },
+        {
+          "id": "AC02",
+          "given": "invalid counts, minor/responsible-adult rule, missing requirement, forbidden field, stale revision, offline or dependency error",
+          "when": "the user edits/submits/resumes",
+          "then": "actionable non-leaking feedback preserves safe non-document form state and blocks false readiness"
+        },
+        {
+          "id": "AC03",
+          "given": "submit is repeated or the session resumes after server completion",
+          "when": "the page refetches",
+          "then": "one server revision is rendered and no duplicate occupant/checklist effect is created"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-frontend-customer",
+        "roadmap-v1-3",
+        "source-vs-e11-s01-st02"
+      ],
+      "decisionNoteVi": "Leaf VS-E11-S01-ST02 chỉ sở hữu artifact của frontend_customer; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E11-S01-ST02 client and responsive UI test report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "npm run typecheck",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "frontend_customer typecheck report"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "frontend_customer",
+      "repositorySlices": [
+        {
+          "repository": "frontend_customer",
+          "paths": [
+            "package.json",
+            "src/lib/preArrivalClient.ts",
+            "src/pages/PreArrivalPage.tsx",
+            "src/pages/PreArrivalPage.test.tsx",
+            "src/components/OccupantRosterForm.tsx",
+            "src/components/PreArrivalChecklist.tsx",
+            "src/App.tsx",
+            "src/App.css",
+            "vite.config.ts"
+          ],
+          "artifacts": [
+            "typed pre-arrival client",
+            "responsive roster/checklist route",
+            "safe resume and requirement progress",
+            "CUSTOMER_SELF/redaction/error tests"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
+      "sourceId": "VS-E11-S01-ST03",
+      "jiraKey": "SCRUM-746",
+      "issueType": "Subtask",
+      "summary": "[VS-E11-S01-ST03] Build Admin pre-arrival readiness workspace",
+      "parentSourceId": "VS-E11-S01",
+      "manageDescription": true,
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Admin Web and Mobile show branch-partitioned arrival readiness, roster counts, outstanding requirement categories and safe remediation actions without exposing document content by default.",
+      "context": "frontend_admin has no stay readiness screen today; implement new shared-client and Web/Mobile destinations against authoritative contracts.",
+      "inScope": [
+        "Add typed readiness list/detail, roster summary, checklist status and allowed reminder/waiver operations.",
+        "Build Web filters by branch/property/date/readiness/reason and detail timeline; build Mobile arrival summary/detail optimized for on-site staff.",
+        "Show identity/document status only with IDENTITY_STATUS and protected detail only through a purpose-bound DOCUMENT flow; never cache bytes or raw identifiers.",
+        "Test partition switching, redaction, reminder/waiver permission, stale revision, policy change, retry, empty/loading and dependency failure."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "businessRules": [
+        "Default check-in is 14:00 and checkout 12:00 in property timezone, with a configurable two-hour cleaning buffer.",
+        "No-show is a manual transition only; no automatic no-show classification.",
+        "Guest document access requires purpose, field-group grant, audit, and retention enforcement."
+      ],
+      "repositories": [
+        "frontend_admin"
+      ],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "stay:readiness:view",
+          "stay:checklist:view",
+          "stay:checklist:waive",
+          "stay:reminder:send"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E11-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E11-T02",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized branch operator and arrivals",
+          "when": "queue/detail loads or an allowed remediation succeeds",
+          "then": "only partition-eligible readiness data and the new authoritative revision/timeline are displayed"
+        },
+        {
+          "id": "AC02",
+          "given": "cross-branch access, missing action/field group, protected document field, stale revision or dependency failure",
+          "when": "view/action is attempted",
+          "then": "restricted content/action is absent and no cross-partition or false-ready state is shown"
+        },
+        {
+          "id": "AC03",
+          "given": "a reminder/waiver replays or app resumes",
+          "when": "current detail refetches",
+          "then": "one durable effect/current revision appears without duplicating notification or waiver"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-frontend-admin",
+        "roadmap-v1-3",
+        "source-vs-e11-s01-st03"
+      ],
+      "decisionNoteVi": "Leaf VS-E11-S01-ST03 chỉ sở hữu artifact của frontend_admin; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E11-S01-ST03 client and responsive UI test report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "npm run typecheck",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "frontend_admin typecheck report"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "frontend_admin",
+      "repositorySlices": [
+        {
+          "repository": "frontend_admin",
+          "paths": [
+            "packages/api-client/src/index.ts",
+            "packages/api-client/src/index.test.ts",
+            "apps/web/src/PreArrivalReadinessWorkspace.tsx",
+            "apps/web/src/PreArrivalReadinessWorkspace.test.tsx",
+            "apps/mobile/src/PreArrivalReadinessWorkspace.tsx",
+            "apps/mobile/src/PreArrivalReadinessWorkspace.test.tsx",
+            "apps/web/src/App.tsx",
+            "apps/mobile/App.tsx"
+          ],
+          "artifacts": [
+            "typed readiness client",
+            "Admin Web readiness queue/detail",
+            "Admin Mobile arrival view",
+            "partition/redaction/waiver/replay tests"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E11-S02",
@@ -40549,8 +41089,8 @@
       "parentSourceId": "VS-E11",
       "manageDescription": true,
       "actor": "Stay operator and compliance reviewer",
-      "outcome": "Capture/verify guest identity document references and consent is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E11 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "S02 has explicit executable Booking, User, Media, frontend, contract or infrastructure children with field-level ownership and lifecycle rules.",
+      "context": "Assign only executable children; the Story remains a non-dispatchable business outcome boundary.",
       "inScope": [
         "Implement and verify: Capture/verify guest identity document references and consent.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -40658,13 +41198,379 @@
         "source-vs-e11-s02"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "web",
       "dispatchable": false,
       "testCases": [],
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E11-S02-ST01",
+      "jiraKey": "SCRUM-747",
+      "issueType": "Subtask",
+      "summary": "[VS-E11-S02-ST01] Orchestrate guest identity verification and consent references",
+      "parentSourceId": "VS-E11-S02",
+      "manageDescription": true,
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Booking records only immutable User verification/consent and Media document references for each occupant, evaluates policy requirements, and never becomes an identity-document authority.",
+      "context": "This target V21 follows roster V20 and the T01 ownership remediation. Booking coordinates readiness through versioned service boundaries, not cross-database reads.",
+      "inScope": [
+        "Add V21 occupant identity-requirement/reference tables containing occupant ID, requirement/purpose/policy version, User subject/verification/consent receipt revisions, Media IDs and observed fingerprint only.",
+        "Call authenticated User verification/consent and Media reference-status boundaries; freeze the exact accepted revisions used for readiness.",
+        "Re-evaluate readiness on reference-expired, verification-changed, consent-withdrawn or media-retention events with event-ID/business-key deduplication.",
+        "Never accept or return raw document number/content/hash, private Media URL, reviewer note or unrelated identity history."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "businessRules": [
+        "Default check-in is 14:00 and checkout 12:00 in property timezone, with a configurable two-hour cleaning buffer.",
+        "No-show is a manual transition only; no automatic no-show classification.",
+        "Guest document access requires purpose, field-group grant, audit, and retention enforcement."
+      ],
+      "repositories": [
+        "service_booking"
+      ],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "Booking owns reservation-linked occupant membership, pre-arrival checklist/readiness, immutable User/Media references, access custody, stay timeline, compliance exceptions, and transition evidence; User owns identity and consent; Media owns document bytes, protected retention, and document access audit."
+      ],
+      "stateMachine": [
+        "Requirement is NOT_PROVIDED -> PENDING_VERIFICATION -> SATISFIED or REJECTED/EXPIRED/WITHDRAWN.",
+        "SATISFIED freezes User/Media revisions; a later authoritative change creates a new observed state and invalidates readiness where policy requires.",
+        "Dependency unavailability produces DEPENDENCY_UNAVAILABLE and NOT_READY, never an inferred verification."
+      ],
+      "authorization": {
+        "actions": [
+          "stay:identity-reference:view",
+          "stay:identity-reference:manage",
+          "stay:readiness:evaluate"
+        ],
+        "dataPartitions": [
+          "CUSTOMER_SELF for the authenticated booking party and invited occupants; ADMIN organization plus SITE/BRANCH for the booked property; SYSTEM only for authenticated projection, policy, or repair calls."
+        ],
+        "fieldGroups": [
+          "STAY_SUMMARY is baseline; PII, IDENTITY_STATUS, DOCUMENT, ACCESS_CUSTODY, COMPLIANCE, and INTERNAL_AUDIT require explicit field-group grants."
+        ]
+      },
+      "failureSemantics": [
+        "Fail closed when reservation, property partition, frozen stay policy, required roster/verification/consent, access custody, expected revision, or an authoritative dependency is absent or inconsistent.",
+        "Return distinct stable validation, forbidden, not-found, stale-revision, readiness, document-reference, custody, transition, exception, and dependency-unavailable codes without revealing protected identity/document fields.",
+        "Never copy raw identity numbers, document bytes, document lookup hashes, lock codes, or credentials into Booking tables, events, logs, or error payloads."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E11-T01-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E11-T01-ST03",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E11-T02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E11-S01-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an occupant with valid User verification/consent and available protected Media reference required by frozen policy",
+          "when": "compliance is evaluated",
+          "then": "Booking stores only immutable IDs/revisions/fingerprint and marks the requirement satisfied"
+        },
+        {
+          "id": "AC02",
+          "given": "missing/rejected/expired verification, withdrawn consent, unavailable/retained media, owner mismatch, forbidden call or dependency failure",
+          "when": "evaluation runs",
+          "then": "a stable NOT_READY reason is recorded without copying or leaking protected values"
+        },
+        {
+          "id": "AC03",
+          "given": "the same dependency event/call replays or races with roster change",
+          "when": "processing completes",
+          "then": "one current requirement revision/readiness result remains and stale occupant references cannot satisfy it"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-booking",
+        "roadmap-v1-3",
+        "source-vs-e11-s02-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E11-S02-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*GuestComplianceOrchestrator*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *GuestComplianceOrchestrator*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*GuestComplianceOrchestrator*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *GuestComplianceOrchestrator*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "service_booking",
+      "repositorySlices": [
+        {
+          "repository": "service_booking",
+          "paths": [
+            "src/main/resources/db/migration/V21__occupant_identity_references.sql",
+            "src/main/java/com/vistay/booking/domain/stay/OccupantIdentityRequirement.java",
+            "src/main/java/com/vistay/booking/application/GuestComplianceOrchestrator.java",
+            "src/main/java/com/vistay/booking/adapter/out/user/GuestIdentityClient.java",
+            "src/main/java/com/vistay/booking/adapter/out/media/ProtectedDocumentClient.java",
+            "src/test/java/com/vistay/booking/application/GuestComplianceOrchestratorIntegrationTest.java"
+          ],
+          "artifacts": [
+            "reference-only occupant compliance schema",
+            "User/Media dependency ports",
+            "readiness invalidation consumer",
+            "ownership/redaction/retry tests"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
+      "sourceId": "VS-E11-S02-ST02",
+      "jiraKey": "SCRUM-748",
+      "issueType": "Subtask",
+      "summary": "[VS-E11-S02-ST02] Build Customer identity document and consent flow",
+      "parentSourceId": "VS-E11-S02",
+      "manageDescription": true,
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Customer Web explains purpose and retention, captures required consent, uploads protected guest documents directly to Media, and shows authoritative verification status per occupant.",
+      "context": "This new frontend_customer flow consumes Booking requirements, User consent/verification and Media private-upload contracts; it does not verify documents in the client.",
+      "inScope": [
+        "Add typed requirement, consent receipt/withdrawal, protected upload/finalize and verification-status operations.",
+        "Display purpose, controller, required/optional basis, policy version, retention rule and withdrawal effect before consent/upload.",
+        "Upload bytes directly through short-lived Media instructions; retain only opaque IDs in memory and clear local preview/object URLs on completion/navigation.",
+        "Handle minor/responsible-adult relationship, unsupported/oversized/infected files, declined/withdrawn consent, pending/rejected/expired verification, retry/session refresh and dependency failure."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "businessRules": [
+        "Default check-in is 14:00 and checkout 12:00 in property timezone, with a configurable two-hour cleaning buffer.",
+        "No-show is a manual transition only; no automatic no-show classification.",
+        "Guest document access requires purpose, field-group grant, audit, and retention enforcement."
+      ],
+      "repositories": [
+        "frontend_customer"
+      ],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "guest:consent:view",
+          "guest:consent:record",
+          "guest:consent:withdraw",
+          "media:protected-document:upload",
+          "guest:verification:view"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E11-T01-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E11-T01-ST03",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E11-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E11-T02",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authenticated related customer and a required occupant item",
+          "when": "purpose/retention are acknowledged, consent is recorded and an allowed clean file finalizes",
+          "then": "the UI shows authoritative pending/verified status and sends Booking only opaque references"
+        },
+        {
+          "id": "AC02",
+          "given": "missing relationship, declined/withdrawn consent, invalid/infected file, expired upload, forbidden field or dependency failure",
+          "when": "the step runs",
+          "then": "protected content is cleared/not leaked and actionable status blocks false completion"
+        },
+        {
+          "id": "AC03",
+          "given": "upload/finalize/consent submit replays or the page resumes",
+          "when": "status is refetched",
+          "then": "one server receipt/asset/reference is displayed without retaining or resending document bytes"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-frontend-customer",
+        "roadmap-v1-3",
+        "source-vs-e11-s02-st02"
+      ],
+      "decisionNoteVi": "Leaf VS-E11-S02-ST02 chỉ sở hữu artifact của frontend_customer; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E11-S02-ST02 client and responsive UI test report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "npm run typecheck",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "frontend_customer typecheck report"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "frontend_customer",
+      "repositorySlices": [
+        {
+          "repository": "frontend_customer",
+          "paths": [
+            "src/lib/guestComplianceClient.ts",
+            "src/pages/GuestCompliancePage.tsx",
+            "src/pages/GuestCompliancePage.test.tsx",
+            "src/components/ConsentReceiptForm.tsx",
+            "src/components/ProtectedDocumentUpload.tsx",
+            "src/App.tsx",
+            "src/App.css"
+          ],
+          "artifacts": [
+            "typed guest compliance client",
+            "purpose/retention/consent UI",
+            "private direct-upload component",
+            "minor/redaction/upload/retry tests"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E11-S03",
@@ -40674,8 +41580,8 @@
       "parentSourceId": "VS-E11",
       "manageDescription": true,
       "actor": "Stay operator and compliance reviewer",
-      "outcome": "Handover/return access with accountable evidence is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E11 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "S03 has explicit executable Booking, User, Media, frontend, contract or infrastructure children with field-level ownership and lifecycle rules.",
+      "context": "Assign only executable children; the Story remains a non-dispatchable business outcome boundary.",
       "inScope": [
         "Implement and verify: Handover/return access with accountable evidence.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -40783,13 +41689,188 @@
         "source-vs-e11-s03"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "web",
       "dispatchable": false,
       "testCases": [],
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E11-S03-ST01",
+      "jiraKey": "SCRUM-749",
+      "issueType": "Subtask",
+      "summary": "[VS-E11-S03-ST01] Implement access handover and return custody ledger",
+      "parentSourceId": "VS-E11-S03",
+      "manageDescription": true,
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Booking maintains an append-only custody ledger for physical/digital access handed to and returned by a stay, using only masked/external secret references and explicit exception handling.",
+      "context": "No access custody aggregate exists in Booking. The planned V22 schema follows roster/identity references; raw lock codes and secrets remain outside Booking.",
+      "inScope": [
+        "Add V22 access requirement/item/custody movement tables linked to reservation/stay, with credential type, masked/external secret reference, quantity, issuer/recipient occupant, timestamps, evidence Media IDs and revision.",
+        "Implement prepare, handOver, acknowledge, return, markLost/Damaged and query operations with expectedVersion/idempotency and immutable movement history.",
+        "Require configured handover prerequisites and valid recipient; at checkout require every mandatory item returned/resolved unless an authorized time/scope-bounded compliance exception exists.",
+        "Never store raw key code, PIN, token, credential payload or unmasked secret in database, outbox, audit, logs or API response."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "businessRules": [
+        "Default check-in is 14:00 and checkout 12:00 in property timezone, with a configurable two-hour cleaning buffer.",
+        "No-show is a manual transition only; no automatic no-show classification.",
+        "Guest document access requires purpose, field-group grant, audit, and retention enforcement."
+      ],
+      "repositories": [
+        "service_booking"
+      ],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "Booking owns reservation-linked occupant membership, pre-arrival checklist/readiness, immutable User/Media references, access custody, stay timeline, compliance exceptions, and transition evidence; User owns identity and consent; Media owns document bytes, protected retention, and document access audit."
+      ],
+      "stateMachine": [
+        "Access item is PREPARED -> HANDED_OVER -> ACKNOWLEDGED -> RETURNED, or LOST/DAMAGED/EXCEPTION_PENDING -> RESOLVED.",
+        "Every transition appends a custody movement; handed-over identity and original movement are immutable.",
+        "Checkout is blocked while a required item is unreturned/unresolved unless an effective authorized exception explicitly covers it."
+      ],
+      "authorization": {
+        "actions": [
+          "stay:access:view",
+          "stay:access:prepare",
+          "stay:access:handover",
+          "stay:access:return",
+          "stay:access:exception"
+        ],
+        "dataPartitions": [
+          "CUSTOMER_SELF for the authenticated booking party and invited occupants; ADMIN organization plus SITE/BRANCH for the booked property; SYSTEM only for authenticated projection, policy, or repair calls."
+        ],
+        "fieldGroups": [
+          "STAY_SUMMARY is baseline; PII, IDENTITY_STATUS, DOCUMENT, ACCESS_CUSTODY, COMPLIANCE, and INTERNAL_AUDIT require explicit field-group grants."
+        ]
+      },
+      "failureSemantics": [
+        "Fail closed when reservation, property partition, frozen stay policy, required roster/verification/consent, access custody, expected revision, or an authoritative dependency is absent or inconsistent.",
+        "Return distinct stable validation, forbidden, not-found, stale-revision, readiness, document-reference, custody, transition, exception, and dependency-unavailable codes without revealing protected identity/document fields.",
+        "Never copy raw identity numbers, document bytes, document lookup hashes, lock codes, or credentials into Booking tables, events, logs, or error payloads."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E11-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E11-T02",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an eligible stay, prepared item and authorized issuer/recipient",
+          "when": "handover then return is recorded",
+          "then": "ordered immutable movements, masked references, evidence IDs and current custody state are persisted/emitted once"
+        },
+        {
+          "id": "AC02",
+          "given": "a raw secret, invalid recipient/quantity/state, missing prerequisite/grant, stale revision, unreturned checkout or dependency failure",
+          "when": "a custody transition runs",
+          "then": "a stable error blocks the transition and no raw credential or partial movement is retained"
+        },
+        {
+          "id": "AC03",
+          "given": "handover/return commands replay or two operators race",
+          "when": "processing completes",
+          "then": "one custody movement per business action/current state remains and history reconciles"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-booking",
+        "roadmap-v1-3",
+        "source-vs-e11-s03-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E11-S03-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*AccessCustody*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *AccessCustody*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*AccessCustody*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *AccessCustody*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "service_booking",
+      "repositorySlices": [
+        {
+          "repository": "service_booking",
+          "paths": [
+            "src/main/resources/db/migration/V22__stay_access_custody.sql",
+            "src/main/java/com/vistay/booking/domain/stay/AccessCustody.java",
+            "src/main/java/com/vistay/booking/application/AccessCustodyService.java",
+            "src/main/java/com/vistay/booking/adapter/in/graphql/AccessCustodyController.java",
+            "src/test/java/com/vistay/booking/application/AccessCustodyServiceIntegrationTest.java"
+          ],
+          "artifacts": [
+            "access custody schema/aggregate",
+            "handover/acknowledge/return API",
+            "masked reference and evidence handling",
+            "custody/checkout/authorization/replay tests"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E11-S04",
@@ -40799,8 +41880,8 @@
       "parentSourceId": "VS-E11",
       "manageDescription": true,
       "actor": "Stay operator and compliance reviewer",
-      "outcome": "Check in/no-show/check out with stay timeline is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E11 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "S04 has explicit executable Booking, User, Media, frontend, contract or infrastructure children with field-level ownership and lifecycle rules.",
+      "context": "Assign only executable children; the Story remains a non-dispatchable business outcome boundary.",
       "inScope": [
         "Implement and verify: Check in/no-show/check out with stay timeline.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -40908,13 +41989,386 @@
         "source-vs-e11-s04"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "web",
       "dispatchable": false,
       "testCases": [],
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E11-S04-ST01",
+      "jiraKey": "SCRUM-750",
+      "issueType": "Subtask",
+      "summary": "[VS-E11-S04-ST01] Implement check-in no-show and checkout timeline",
+      "parentSourceId": "VS-E11-S04",
+      "manageDescription": true,
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Booking performs explicit, policy-frozen check-in, manual no-show and checkout transitions in property time with prerequisite, custody and exception enforcement and immutable timeline evidence.",
+      "context": "Booking V2 has CHECKED_IN, COMPLETED and NO_SHOW status values plus timestamps but no application transition service. Add V23 timeline/policy snapshots without rewriting legacy status history.",
+      "inScope": [
+        "Add V23 stay policy snapshot and immutable stay-timeline entries; default policy is 14:00 check-in, 12:00 checkout and 2-hour cleaning buffer in property timezone, all configurable/versioned.",
+        "Implement checkIn, markNoShow and checkOut commands with expectedVersion/idempotency, actor/reason/source and outbox; no-show is explicit manual only and never scheduled automatically.",
+        "Require confirmed eligible reservation and configured readiness/compliance/access prerequisites; early/late operations require explicit action, reason and authorized override/exception.",
+        "At checkout enforce access return/resolution, record actual time and release downstream cleaning/inventory signals without calculating money locally."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "businessRules": [
+        "Default check-in is 14:00 and checkout 12:00 in property timezone, with a configurable two-hour cleaning buffer.",
+        "No-show is a manual transition only; no automatic no-show classification.",
+        "Guest document access requires purpose, field-group grant, audit, and retention enforcement."
+      ],
+      "repositories": [
+        "service_booking"
+      ],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "Booking owns reservation-linked occupant membership, pre-arrival checklist/readiness, immutable User/Media references, access custody, stay timeline, compliance exceptions, and transition evidence; User owns identity and consent; Media owns document bytes, protected retention, and document access audit."
+      ],
+      "stateMachine": [
+        "Stay is CONFIRMED -> CHECKED_IN -> CHECKED_OUT; CONFIRMED may become NO_SHOW only by an explicit authorized command after the policy threshold.",
+        "Early/late transition is not a hidden state change: it records policy time, actual time, action, reason and effective exception/override reference.",
+        "CHECKED_OUT and NO_SHOW are terminal for the same stay revision; corrections append an authorized timeline correction and never delete history."
+      ],
+      "authorization": {
+        "actions": [
+          "stay:checkin",
+          "stay:no-show:mark",
+          "stay:checkout",
+          "stay:time:override"
+        ],
+        "dataPartitions": [
+          "CUSTOMER_SELF for the authenticated booking party and invited occupants; ADMIN organization plus SITE/BRANCH for the booked property; SYSTEM only for authenticated projection, policy, or repair calls."
+        ],
+        "fieldGroups": [
+          "STAY_SUMMARY is baseline; PII, IDENTITY_STATUS, DOCUMENT, ACCESS_CUSTODY, COMPLIANCE, and INTERNAL_AUDIT require explicit field-group grants."
+        ]
+      },
+      "failureSemantics": [
+        "Fail closed when reservation, property partition, frozen stay policy, required roster/verification/consent, access custody, expected revision, or an authoritative dependency is absent or inconsistent.",
+        "Return distinct stable validation, forbidden, not-found, stale-revision, readiness, document-reference, custody, transition, exception, and dependency-unavailable codes without revealing protected identity/document fields.",
+        "Never copy raw identity numbers, document bytes, document lookup hashes, lock codes, or credentials into Booking tables, events, logs, or error payloads."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E11-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E11-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E11-S03-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E11-S05-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E11-T02",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "a confirmed ready stay in its property timezone with required access/compliance state",
+          "when": "authorized check-in and checkout run",
+          "then": "one ordered immutable timeline and current status are committed with policy/actual times and events"
+        },
+        {
+          "id": "AC02",
+          "given": "automatic no-show attempt, wrong state/timezone window, unmet readiness/custody, missing override/grant, stale revision or dependency failure",
+          "when": "a transition runs",
+          "then": "a stable error blocks all partial status/inventory effects"
+        },
+        {
+          "id": "AC03",
+          "given": "transition commands replay or check-in/no-show/checkout race",
+          "when": "processing completes",
+          "then": "one valid terminal path wins and timeline/status/outbox reconcile"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-booking",
+        "roadmap-v1-3",
+        "source-vs-e11-s04-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E11-S04-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*StayTransition*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *StayTransition*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*StayTransition*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *StayTransition*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "service_booking",
+      "repositorySlices": [
+        {
+          "repository": "service_booking",
+          "paths": [
+            "src/main/resources/db/migration/V23__stay_timeline_policy.sql",
+            "src/main/java/com/vistay/booking/domain/stay/StayTimeline.java",
+            "src/main/java/com/vistay/booking/application/StayTransitionService.java",
+            "src/main/java/com/vistay/booking/adapter/in/graphql/StayTransitionController.java",
+            "src/test/java/com/vistay/booking/application/StayTransitionServiceIntegrationTest.java"
+          ],
+          "artifacts": [
+            "frozen stay policy/timeline schema",
+            "check-in/manual no-show/checkout commands",
+            "prerequisite and custody gates",
+            "timezone/override/race/outbox tests"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
+      "sourceId": "VS-E11-S04-ST02",
+      "jiraKey": "SCRUM-751",
+      "issueType": "Subtask",
+      "summary": "[VS-E11-S04-ST02] Build Admin stay and access operations workspace",
+      "parentSourceId": "VS-E11-S04",
+      "manageDescription": true,
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Admin Web and Mobile provide branch-safe arrival/departure queues, access custody, check-in, explicit no-show and checkout controls using authoritative Booking revisions.",
+      "context": "These are new frontend_admin target destinations; Mobile focuses on on-site handover/return while Web includes filters and full timeline.",
+      "inScope": [
+        "Add typed stay queue/detail/timeline, access prepare/handover/return, check-in, manual no-show, checkout and allowed override operations.",
+        "Build Web arrival/departure filters/detail/timeline and Mobile scan-friendly custody/check-in/out screens with confirmations for terminal/high-risk actions.",
+        "Display policy versus actual property-local time, readiness/custody blockers and exception reference; never display raw credential/document value.",
+        "Test branch partition, offline/retry, permission/field redaction, manual no-show confirmation, early/late reason, stale revision, race and dependency failure."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "businessRules": [
+        "Default check-in is 14:00 and checkout 12:00 in property timezone, with a configurable two-hour cleaning buffer.",
+        "No-show is a manual transition only; no automatic no-show classification.",
+        "Guest document access requires purpose, field-group grant, audit, and retention enforcement."
+      ],
+      "repositories": [
+        "frontend_admin"
+      ],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "stay:view",
+          "stay:access:handover",
+          "stay:access:return",
+          "stay:checkin",
+          "stay:no-show:mark",
+          "stay:checkout",
+          "stay:time:override"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E11-S03-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E11-S04-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E11-S05-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E11-T02",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized on-site operator and an eligible current stay revision",
+          "when": "custody/check-in/no-show/checkout action is confirmed",
+          "then": "the returned status/timeline is rendered and queue counts refresh without local transition logic"
+        },
+        {
+          "id": "AC02",
+          "given": "cross-branch stay, missing grant/field, raw secret/document, unmet blocker, absent override reason, stale revision, offline or dependency error",
+          "when": "view/submit occurs",
+          "then": "restricted content/action is absent and no optimistic false success remains"
+        },
+        {
+          "id": "AC03",
+          "given": "a terminal/custody action is tapped twice or app resumes",
+          "when": "detail refetches",
+          "then": "one server effect/current timeline is shown and the UI cannot submit a duplicate transition"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-frontend-admin",
+        "roadmap-v1-3",
+        "source-vs-e11-s04-st02"
+      ],
+      "decisionNoteVi": "Leaf VS-E11-S04-ST02 chỉ sở hữu artifact của frontend_admin; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E11-S04-ST02 client and responsive UI test report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "npm run typecheck",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "frontend_admin typecheck report"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "frontend_admin",
+      "repositorySlices": [
+        {
+          "repository": "frontend_admin",
+          "paths": [
+            "packages/api-client/src/index.ts",
+            "packages/api-client/src/index.test.ts",
+            "apps/web/src/StayOperationsWorkspace.tsx",
+            "apps/web/src/StayOperationsWorkspace.test.tsx",
+            "apps/mobile/src/StayOperationsWorkspace.tsx",
+            "apps/mobile/src/StayOperationsWorkspace.test.tsx",
+            "apps/web/src/App.tsx",
+            "apps/mobile/App.tsx"
+          ],
+          "artifacts": [
+            "typed stay/access client",
+            "Admin Web arrival/departure workspace",
+            "Admin Mobile custody/check-in/out flow",
+            "partition/terminal-action/offline/replay tests"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E11-S05",
@@ -40924,8 +42378,8 @@
       "parentSourceId": "VS-E11",
       "manageDescription": true,
       "actor": "Stay operator and compliance reviewer",
-      "outcome": "Review compliance exception under restricted access/audit is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E11 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "S05 has explicit executable Booking, User, Media, frontend, contract or infrastructure children with field-level ownership and lifecycle rules.",
+      "context": "Assign only executable children; the Story remains a non-dispatchable business outcome boundary.",
       "inScope": [
         "Implement and verify: Review compliance exception under restricted access/audit.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -41033,7 +42487,7 @@
         "source-vs-e11-s05"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "web",
       "dispatchable": false,
       "testCases": [],
@@ -41042,14 +42496,373 @@
       "activationBlockers": []
     },
     {
+      "sourceId": "VS-E11-S05-ST01",
+      "jiraKey": "SCRUM-752",
+      "issueType": "Subtask",
+      "summary": "[VS-E11-S05-ST01] Implement restricted compliance exception workflow",
+      "parentSourceId": "VS-E11-S05",
+      "manageDescription": true,
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Booking controls temporary, scope-bound stay compliance exceptions with immutable evidence, risk-based maker-checker review and automatic expiry without changing source facts.",
+      "context": "No compliance exception aggregate exists. Planned V24 follows roster, identity reference, custody and timeline schemas and supplies only a controlled bypass decision.",
+      "inScope": [
+        "Add V24 exception request, review decision, effective scope, expiry, evidence Media references and transition history for missing roster/document/consent, access unreturned, and early/late situations.",
+        "Implement request, submit, review, approve/reject, expire and resolve operations; approval states exactly which requirement/transition is covered and never edits the source record.",
+        "Require distinct reviewer for high-risk DOCUMENT bypass, enforce configured risk/role policy, bounded duration and branch partition, and re-evaluate the target operation at use time.",
+        "Expose redacted queue/detail and immutable audit/outbox; raw document content/identity/access secret never appears in the exception."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "businessRules": [
+        "Default check-in is 14:00 and checkout 12:00 in property timezone, with a configurable two-hour cleaning buffer.",
+        "No-show is a manual transition only; no automatic no-show classification.",
+        "Guest document access requires purpose, field-group grant, audit, and retention enforcement."
+      ],
+      "repositories": [
+        "service_booking"
+      ],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "Booking owns reservation-linked occupant membership, pre-arrival checklist/readiness, immutable User/Media references, access custody, stay timeline, compliance exceptions, and transition evidence; User owns identity and consent; Media owns document bytes, protected retention, and document access audit."
+      ],
+      "stateMachine": [
+        "Exception is DRAFT/REQUESTED -> IN_REVIEW -> APPROVED or REJECTED/EXPIRED -> RESOLVED; APPROVED is effective only inside its exact scope/time.",
+        "High-risk DOCUMENT bypass proposer and approver are distinct; an approval never changes verification, consent, media, custody or roster source state.",
+        "Expired/rejected/resolved approval cannot authorize a transition; correction appends a linked replacement request."
+      ],
+      "authorization": {
+        "actions": [
+          "stay:compliance-exception:view",
+          "stay:compliance-exception:request",
+          "stay:compliance-exception:review",
+          "stay:compliance-exception:resolve"
+        ],
+        "dataPartitions": [
+          "CUSTOMER_SELF for the authenticated booking party and invited occupants; ADMIN organization plus SITE/BRANCH for the booked property; SYSTEM only for authenticated projection, policy, or repair calls."
+        ],
+        "fieldGroups": [
+          "STAY_SUMMARY is baseline; PII, IDENTITY_STATUS, DOCUMENT, ACCESS_CUSTODY, COMPLIANCE, and INTERNAL_AUDIT require explicit field-group grants."
+        ]
+      },
+      "failureSemantics": [
+        "Fail closed when reservation, property partition, frozen stay policy, required roster/verification/consent, access custody, expected revision, or an authoritative dependency is absent or inconsistent.",
+        "Return distinct stable validation, forbidden, not-found, stale-revision, readiness, document-reference, custody, transition, exception, and dependency-unavailable codes without revealing protected identity/document fields.",
+        "Never copy raw identity numbers, document bytes, document lookup hashes, lock codes, or credentials into Booking tables, events, logs, or error payloads."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E11-T02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E11-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E11-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E11-S03-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized requester, policy-allowed requirement, bounded scope/expiry and distinct qualified reviewer where required",
+          "when": "the exception is approved and consumed",
+          "then": "only the named transition/requirement is bypassed once within scope while source evidence remains unchanged"
+        },
+        {
+          "id": "AC02",
+          "given": "self-approval, forbidden/high-risk policy, cross-branch target, missing reason/evidence, expired/wrong scope, stale revision or dependency failure",
+          "when": "review/use occurs",
+          "then": "a stable denial blocks the bypass without leaking protected source facts"
+        },
+        {
+          "id": "AC03",
+          "given": "request/review/use/expiry replays or races",
+          "when": "processing completes",
+          "then": "one immutable decision/current state remains and no expired or duplicate approval effect is accepted"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-booking",
+        "roadmap-v1-3",
+        "source-vs-e11-s05-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E11-S05-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*ComplianceException*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *ComplianceException*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*ComplianceException*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *ComplianceException*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "service_booking",
+      "repositorySlices": [
+        {
+          "repository": "service_booking",
+          "paths": [
+            "src/main/resources/db/migration/V24__stay_compliance_exceptions.sql",
+            "src/main/java/com/vistay/booking/domain/stay/ComplianceException.java",
+            "src/main/java/com/vistay/booking/application/ComplianceExceptionService.java",
+            "src/main/java/com/vistay/booking/adapter/in/graphql/ComplianceExceptionController.java",
+            "src/test/java/com/vistay/booking/application/ComplianceExceptionServiceIntegrationTest.java"
+          ],
+          "artifacts": [
+            "compliance exception aggregate/schema",
+            "risk-based maker-checker API",
+            "expiry/use-time enforcement",
+            "partition/redaction/race/replay tests"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
+      "sourceId": "VS-E11-S05-ST02",
+      "jiraKey": "SCRUM-753",
+      "issueType": "Subtask",
+      "summary": "[VS-E11-S05-ST02] Build Admin compliance review queue",
+      "parentSourceId": "VS-E11-S05",
+      "manageDescription": true,
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Admin Web provides a restricted compliance exception queue and evidence-safe review workspace; Mobile exposes only authorized status and bounded on-site request actions.",
+      "context": "No frontend_admin compliance queue exists. The UI must consume redacted Booking projections and open Media content only through purpose-bound authorization.",
+      "inScope": [
+        "Add typed exception list/detail/request/review/resolve operations with stable reason/error mapping.",
+        "Build Web filters by branch/type/risk/state/age/expiry, source-status comparison, scope/expiry editor and maker-checker approval confirmation.",
+        "Build Mobile request/status/resolve flow; omit high-risk review unless the explicit review action and COMPLIANCE/INTERNAL_AUDIT grants are present.",
+        "Open evidence through short-lived Media authorization after purpose entry; test redaction, self-review, expiry, stale source/revision, cross-partition, retry and dependency failure."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "businessRules": [
+        "Default check-in is 14:00 and checkout 12:00 in property timezone, with a configurable two-hour cleaning buffer.",
+        "No-show is a manual transition only; no automatic no-show classification.",
+        "Guest document access requires purpose, field-group grant, audit, and retention enforcement."
+      ],
+      "repositories": [
+        "frontend_admin"
+      ],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "stay:compliance-exception:view",
+          "stay:compliance-exception:request",
+          "stay:compliance-exception:review",
+          "stay:compliance-exception:resolve",
+          "media:protected-document:view"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E11-S05-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E11-T02",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized reviewer and eligible in-scope request",
+          "when": "review/resolve succeeds",
+          "then": "the exact returned decision/scope/expiry/timeline is rendered and source status remains separately visible/read-only"
+        },
+        {
+          "id": "AC02",
+          "given": "self-review, missing action/field group/purpose, cross-branch target, expired/stale request or dependency failure",
+          "when": "view/review/evidence access runs",
+          "then": "restricted content/action is absent and no optimistic approval or document cache remains"
+        },
+        {
+          "id": "AC03",
+          "given": "review/request replays or app resumes after completion",
+          "when": "queue/detail refetches",
+          "then": "one durable decision/current revision appears without duplicate approval"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-frontend-admin",
+        "roadmap-v1-3",
+        "source-vs-e11-s05-st02"
+      ],
+      "decisionNoteVi": "Leaf VS-E11-S05-ST02 chỉ sở hữu artifact của frontend_admin; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E11-S05-ST02 client and responsive UI test report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "npm run typecheck",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "frontend_admin typecheck report"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "frontend_admin",
+      "repositorySlices": [
+        {
+          "repository": "frontend_admin",
+          "paths": [
+            "packages/api-client/src/index.ts",
+            "packages/api-client/src/index.test.ts",
+            "apps/web/src/ComplianceExceptionWorkspace.tsx",
+            "apps/web/src/ComplianceExceptionWorkspace.test.tsx",
+            "apps/mobile/src/ComplianceExceptionWorkspace.tsx",
+            "apps/mobile/src/ComplianceExceptionWorkspace.test.tsx",
+            "apps/web/src/App.tsx",
+            "apps/mobile/App.tsx"
+          ],
+          "artifacts": [
+            "typed compliance exception client",
+            "Admin Web review queue/detail",
+            "Admin Mobile request/status view",
+            "maker-checker/redaction/evidence/expiry tests"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
       "sourceId": "VS-E11-T01",
       "issueType": "Task",
       "summary": "[VS-E11-T01] Remediate guest-document media ownership and retention boundaries",
       "parentSourceId": "VS-E11",
       "manageDescription": true,
       "actor": "Stay operator and compliance reviewer",
-      "outcome": "Remediate guest-document media ownership and retention boundaries is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This task is part of the ViStay VS-E11 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "Guest-document ownership remediation is split into additive Booking cleanup, User identity/consent authority, Media protected-document authority, Admin migration visibility and contracts.",
+      "context": "The coordinating Task is non-dispatchable; publish ownership contracts, expand User/Media, backfill and verify references, cut over Booking reads/writes, then retire the legacy encrypted payload only after evidence.",
       "inScope": [
         "Implement and verify: Remediate guest-document media ownership and retention boundaries.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -41158,7 +42971,7 @@
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
       "jiraKey": "SCRUM-590",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "web",
       "dispatchable": false,
       "testCases": [],
@@ -41172,18 +42985,19 @@
       "summary": "[VS-E11-T01-ST01] service_booking delivery slice for Remediate guest-document media ownership and retention boundaries",
       "parentSourceId": "VS-E11-T01",
       "manageDescription": true,
-      "actor": "Repository ServiceOwner and implementing engineer",
-      "outcome": "service_booking supplies its bounded contract, implementation, tests, and evidence for parent VS-E11-T01.",
-      "context": "This is the service_booking implementation slice of VS-E11-T01. It must not duplicate authority assigned to another repository.",
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Booking migrates the legacy encrypted_identity_document payload to owner-service references through expand/backfill/shadow/cutover/retire phases without losing reservation or audit history.",
+      "context": "Verified Booking V2 stores encrypted_identity_document directly in booking_guests. This is the current implementation defect to remediate; V25 is a target migration after planned E08 and E11 V20-V24 migrations.",
       "inScope": [
-        "Change only service_booking plus generated artifacts explicitly owned by it.",
-        "Implement the service_booking responsibilities and interfaces stated in parent VS-E11-T01.",
-        "Attach focused unit/integration evidence and compatibility or rollback notes."
+        "Add V25 legacy migration state, source-row identity, target User subject/verification/consent and Media reference revisions, canonical fingerprint, comparison result and cutover mode; do not drop the legacy column initially.",
+        "Export each non-null legacy payload through authenticated migration ports to Media/User, record no plaintext in logs/events, and classify migrated, already-migrated, invalid, missing-key, conflict or manual-review.",
+        "Run shadow comparison against reference-only reads; require complete count/checksum/reference reconciliation and zero unexplained mismatch before switching LEGACY_READ -> SHADOW_READ -> OWNER_SERVICES.",
+        "After bounded rollback/evidence and explicit approval, disable legacy writes, cryptographically erase/deprecate payload where policy permits, retain tombstone/lineage/audit, and never reconstruct bytes in Booking."
       ],
       "outOfScope": [
-        "Implementing another repository ownership slice.",
-        "Cross-service database access or copying an authoritative aggregate.",
-        "Closing the parent without end-to-end and Postman/Newman evidence."
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
       ],
       "businessRules": [
         "Default check-in is 14:00 and checkout 12:00 in property timezone, with a configurable two-hour cleaning buffer.",
@@ -41194,82 +43008,95 @@
         "service_booking"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
       ],
       "dataOwnership": [
-        "Booking owns stay timeline and roster references; User owns identity; Media owns protected document objects and access audit."
+        "Booking owns reservation-linked occupant membership, pre-arrival checklist/readiness, immutable User/Media references, access custody, stay timeline, compliance exceptions, and transition evidence; User owns identity and consent; Media owns document bytes, protected retention, and document access audit."
       ],
       "stateMachine": [
-        "Model legal states and transitions for service_booking delivery slice for Remediate guest-document media ownership and retention boundaries; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "Legacy row is DISCOVERED -> EXPORTED -> OWNER_REFERENCES_CREATED -> VERIFIED or EXCEPTION -> CUTOVER_READY -> RETIRED.",
+        "Cutover is LEGACY_READ -> SHADOW_READ -> OWNER_SERVICES; rollback before retirement restores the last verified read mode without deleting owner records.",
+        "Retirement retains lineage/tombstone/audit but no readable protected payload in Booking."
       ],
       "authorization": {
         "actions": [
-          "vs-e11-t01-st01:view",
-          "vs-e11-t01-st01:manage"
+          "stay:guest-document:migrate",
+          "stay:guest-document:reconcile",
+          "stay:guest-document:cutover"
         ],
         "dataPartitions": [
-          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+          "CUSTOMER_SELF for the authenticated booking party and invited occupants; ADMIN organization plus SITE/BRANCH for the booked property; SYSTEM only for authenticated projection, policy, or repair calls."
         ],
         "fieldGroups": [
-          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+          "STAY_SUMMARY is baseline; PII, IDENTITY_STATUS, DOCUMENT, ACCESS_CUSTODY, COMPLIANCE, and INTERNAL_AUDIT require explicit field-group grants."
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Fail closed when reservation, property partition, frozen stay policy, required roster/verification/consent, access custody, expected revision, or an authoritative dependency is absent or inconsistent.",
+        "Return distinct stable validation, forbidden, not-found, stale-revision, readiness, document-reference, custody, transition, exception, and dependency-unavailable codes without revealing protected identity/document fields.",
+        "Never copy raw identity numbers, document bytes, document lookup hashes, lock codes, or credentials into Booking tables, events, logs, or error payloads."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
       ],
-      "dependencies": [],
+      "dependencies": [
+        {
+          "sourceId": "VS-E11-T01-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E11-T01-ST03",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E11-T01-ST05",
+          "relation": "is-blocked-by"
+        }
+      ],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for service_booking delivery slice for Remediate guest-document media ownership and retention boundaries",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "legacy Booking guest documents and available User/Media migration boundaries",
+          "when": "backfill/shadow reconciliation completes",
+          "then": "each source row has owner references and deterministic verified/exception evidence without plaintext exposure"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "missing key, invalid payload, owner conflict, count/fingerprint mismatch, unauthorized cutover or dependency failure",
+          "when": "migration advances",
+          "then": "the row/cutover is blocked for repair and neither legacy nor owner history is silently dropped"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "export/backfill/events/cutover commands replay",
+          "when": "processing repeats",
+          "then": "one owner reference set/migration state remains and OWNER_SERVICES mode rejects new legacy writes"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
       ],
       "evidence": [
-        "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
       ],
       "externalBlockers": [],
       "labels": [
@@ -41277,15 +43104,58 @@
         "roadmap-v1-3",
         "source-vs-e11-t01-st01"
       ],
-      "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo service_booking cho VS-E11-T01; không được lấy quyền sở hữu dữ liệu của service khác.",
+      "decisionNoteVi": "Leaf triển khai VS-E11-T01-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
       "jiraKey": "SCRUM-591",
-      "specStatus": "needs-refinement",
-      "workKind": "decision",
-      "dispatchable": false,
-      "testCases": [],
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*GuestDocumentMigration*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *GuestDocumentMigration*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*GuestDocumentMigration*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *GuestDocumentMigration*; include persistence, authorization, and retry assertions"
+        }
+      ],
       "decisions": [],
       "implementationBlockers": [],
-      "activationBlockers": []
+      "activationBlockers": [],
+      "primaryRepository": "service_booking",
+      "repositorySlices": [
+        {
+          "repository": "service_booking",
+          "paths": [
+            "src/main/resources/db/migration/V25__legacy_guest_document_cutover.sql",
+            "src/main/java/com/vistay/booking/application/migration/GuestDocumentMigrationService.java",
+            "src/main/java/com/vistay/booking/adapter/out/user/GuestIdentityMigrationClient.java",
+            "src/main/java/com/vistay/booking/adapter/out/media/ProtectedDocumentMigrationClient.java",
+            "src/main/java/com/vistay/booking/application/GuestDocumentCutoverService.java",
+            "src/test/java/com/vistay/booking/application/migration/GuestDocumentMigrationIntegrationTest.java"
+          ],
+          "artifacts": [
+            "additive legacy migration/cutover schema",
+            "User/Media migration ports",
+            "shadow reconciliation/cutover report",
+            "legacy write rejection and rollback tests"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E11-T01-ST02",
@@ -41293,18 +43163,19 @@
       "summary": "[VS-E11-T01-ST02] service_user delivery slice for Remediate guest-document media ownership and retention boundaries",
       "parentSourceId": "VS-E11-T01",
       "manageDescription": true,
-      "actor": "Repository ServiceOwner and implementing engineer",
-      "outcome": "service_user supplies its bounded contract, implementation, tests, and evidence for parent VS-E11-T01.",
-      "context": "This is the service_user implementation slice of VS-E11-T01. It must not duplicate authority assigned to another repository.",
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "User becomes the authoritative guest identity, verification and consent service and provides bounded status/reference operations to Booking and migration clients.",
+      "context": "Verified User V2 has customer/admin/host profiles but no guest identity verification or consent aggregate. Planned V12 is additive and stores no document bytes.",
       "inScope": [
-        "Change only service_user plus generated artifacts explicitly owned by it.",
-        "Implement the service_user responsibilities and interfaces stated in parent VS-E11-T01.",
-        "Attach focused unit/integration evidence and compatibility or rollback notes."
+        "Add V12 guest identity subject, identity metadata (type/country/issuer/expiry/last4 and protected lookup), verification revision/decision and consent receipt/withdrawal tables with retention/hold metadata.",
+        "Implement create/link subject, record/decide/correct verification, record/withdraw consent and bounded status/reference gRPC operations with purpose, expectedVersion and audit/outbox.",
+        "Allow responsible-adult relationship for minors under a policy version; prevent unrelated account enumeration and duplicate active identity linkage.",
+        "Support idempotent legacy migration import using Booking source identity/fingerprint and Media IDs while keeping document bytes and access URLs out of User."
       ],
       "outOfScope": [
-        "Implementing another repository ownership slice.",
-        "Cross-service database access or copying an authoritative aggregate.",
-        "Closing the parent without end-to-end and Postman/Newman evidence."
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
       ],
       "businessRules": [
         "Default check-in is 14:00 and checkout 12:00 in property timezone, with a configurable two-hour cleaning buffer.",
@@ -41315,82 +43186,90 @@
         "service_user"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
       ],
       "dataOwnership": [
-        "Booking owns stay timeline and roster references; User owns identity; Media owns protected document objects and access audit."
+        "User owns guest identity subjects, normalized identity metadata, verification decisions, consent receipts and withdrawal history; Booking owns stay membership and readiness references; Media owns protected document bytes and their access/retention audit."
       ],
       "stateMachine": [
-        "Model legal states and transitions for service_user delivery slice for Remediate guest-document media ownership and retention boundaries; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "Verification is NOT_SUBMITTED -> PENDING -> VERIFIED or REJECTED/EXPIRED/SUPERSEDED; correction appends a new revision.",
+        "Consent is ACTIVE -> WITHDRAWN/EXPIRED/SUPERSEDED; withdrawal affects optional future processing but does not erase mandatory retained evidence/legal hold.",
+        "Migration import is RECEIVED -> MATCHED/CREATED -> VERIFIED or CONFLICT; a replay returns the original result."
       ],
       "authorization": {
         "actions": [
-          "vs-e11-t01-st02:view",
-          "vs-e11-t01-st02:manage"
+          "guest:identity:view",
+          "guest:identity:manage",
+          "guest:verification:decide",
+          "guest:consent:record",
+          "guest:consent:withdraw",
+          "guest:identity:migrate"
         ],
         "dataPartitions": [
-          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+          "CUSTOMER_SELF for the authenticated booking party and invited occupants; ADMIN organization plus SITE/BRANCH for the booked property; SYSTEM only for authenticated projection, policy, or repair calls."
         ],
         "fieldGroups": [
-          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+          "STAY_SUMMARY is baseline; PII, IDENTITY_STATUS, DOCUMENT, ACCESS_CUSTODY, COMPLIANCE, and INTERNAL_AUDIT require explicit field-group grants."
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Reject identity or consent mutation without subject relationship, purpose, policy version, field-group authorization, expected revision, or a valid Media reference.",
+        "Expose only verification/consent status and bounded metadata to Booking; raw numbers, hashes, document content, reviewer notes, and unrelated identity history never cross the boundary.",
+        "Corrections append a new verification/consent revision; legal/compliance retention or hold is never removed by an optional-consent withdrawal."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
       ],
-      "dependencies": [],
+      "dependencies": [
+        {
+          "sourceId": "VS-E11-T01-ST05",
+          "relation": "is-blocked-by"
+        }
+      ],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for service_user delivery slice for Remediate guest-document media ownership and retention boundaries",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "an authorized related actor or trusted Booking migration call with valid Media references and policy",
+          "when": "identity/verification/consent is recorded",
+          "then": "one authoritative revision/status/reference is persisted and only bounded status is returned to Booking"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "unrelated subject, duplicate identity, invalid/expired document metadata, missing purpose/grant, illegal withdrawal, stale revision or dependency failure",
+          "when": "a command/query runs",
+          "then": "a stable non-enumerating error is returned without bytes/hash/reviewer-note leakage or partial state"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "migration/consent/decision replays or races",
+          "when": "processing completes",
+          "then": "one current append-only revision and deterministic source mapping remain"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
       ],
       "evidence": [
-        "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
       ],
       "externalBlockers": [],
       "labels": [
@@ -41398,15 +43277,58 @@
         "roadmap-v1-3",
         "source-vs-e11-t01-st02"
       ],
-      "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo service_user cho VS-E11-T01; không được lấy quyền sở hữu dữ liệu của service khác.",
+      "decisionNoteVi": "Leaf triển khai VS-E11-T01-ST02 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
       "jiraKey": "SCRUM-592",
-      "specStatus": "needs-refinement",
-      "workKind": "decision",
-      "dispatchable": false,
-      "testCases": [],
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*GuestIdentity*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *GuestIdentity*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*GuestIdentity*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *GuestIdentity*; include persistence, authorization, and retry assertions"
+        }
+      ],
       "decisions": [],
       "implementationBlockers": [],
-      "activationBlockers": []
+      "activationBlockers": [],
+      "primaryRepository": "service_user",
+      "repositorySlices": [
+        {
+          "repository": "service_user",
+          "paths": [
+            "src/main/resources/db/migration/V12__guest_identity_verification_consent.sql",
+            "src/main/java/com/vistay/user/domain/guest/**",
+            "src/main/java/com/vistay/user/application/GuestIdentityService.java",
+            "src/main/java/com/vistay/user/adapter/in/grpc/GuestIdentityGrpcService.java",
+            "src/main/java/com/vistay/user/adapter/out/persistence/**",
+            "src/test/java/com/vistay/user/application/GuestIdentityServiceIntegrationTest.java"
+          ],
+          "artifacts": [
+            "guest identity/verification/consent schema",
+            "bounded gRPC status/reference API",
+            "legacy idempotent import",
+            "relationship/redaction/correction tests"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E11-T01-ST03",
@@ -41414,18 +43336,19 @@
       "summary": "[VS-E11-T01-ST03] service_media delivery slice for Remediate guest-document media ownership and retention boundaries",
       "parentSourceId": "VS-E11-T01",
       "manageDescription": true,
-      "actor": "Repository ServiceOwner and implementing engineer",
-      "outcome": "service_media supplies its bounded contract, implementation, tests, and evidence for parent VS-E11-T01.",
-      "context": "This is the service_media implementation slice of VS-E11-T01. It must not duplicate authority assigned to another repository.",
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Media adds a protected guest-document purpose, retention/legal-hold controls and purpose-bound access/migration APIs while retaining private-object and access-audit ownership.",
+      "context": "Verified Media V2 has upload sessions, assets, retention_until, deletion requests and access audit but only a serviceInfo application skeleton. Planned V4 follows the planned general Media V3 work.",
       "inScope": [
-        "Change only service_media plus generated artifacts explicitly owned by it.",
-        "Implement the service_media responsibilities and interfaces stated in parent VS-E11-T01.",
-        "Attach focused unit/integration evidence and compatibility or rollback notes."
+        "Add V4 protected-document classification/purpose, owner subject/reference, policy version, retention source, legal/compliance hold and migration source mapping without making the bucket public.",
+        "Implement protected upload/finalize, bounded reference status, purpose-bound download authorization, hold/release and idempotent legacy import using encrypted transport and private storage.",
+        "Calculate retentionUntil as the maximum configured policy requirement and active hold; production duration is configuration/version data, not a hard-coded invented number.",
+        "Audit allow/deny/import/hold/retention decisions without storing URL/object content; emit only opaque ID/status/revision/purpose-class events."
       ],
       "outOfScope": [
-        "Implementing another repository ownership slice.",
-        "Cross-service database access or copying an authoritative aggregate.",
-        "Closing the parent without end-to-end and Postman/Newman evidence."
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
       ],
       "businessRules": [
         "Default check-in is 14:00 and checkout 12:00 in property timezone, with a configurable two-hour cleaning buffer.",
@@ -41436,82 +43359,100 @@
         "service_media"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
       ],
       "dataOwnership": [
-        "Booking owns stay timeline and roster references; User owns identity; Media owns protected document objects and access audit."
+        "Media owns private guest-document objects, purpose classification, retention/legal hold, scan state, protected access decisions and audit; User owns identity/consent decisions and Booking stores only immutable media references."
       ],
       "stateMachine": [
-        "Model legal states and transitions for service_media delivery slice for Remediate guest-document media ownership and retention boundaries; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "Protected asset follows upload/scan AVAILABLE lifecycle plus retention/hold eligibility; non-clean/non-available content never satisfies a guest requirement.",
+        "Retention is ACTIVE -> EXPIRY_ELIGIBLE -> DELETION_PENDING -> DELETED, but an active hold keeps it RETAINED.",
+        "Migration import is RECEIVED -> STORED -> VERIFIED or FAILED/CONFLICT; replay never creates another object for the same source fingerprint."
       ],
       "authorization": {
         "actions": [
-          "vs-e11-t01-st03:view",
-          "vs-e11-t01-st03:manage"
+          "media:protected-document:upload",
+          "media:protected-document:view",
+          "media:protected-document:hold",
+          "media:protected-document:migrate"
         ],
         "dataPartitions": [
-          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+          "CUSTOMER_SELF for the authenticated booking party and invited occupants; ADMIN organization plus SITE/BRANCH for the booked property; SYSTEM only for authenticated projection, policy, or repair calls."
         ],
         "fieldGroups": [
-          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+          "STAY_SUMMARY is baseline; PII, IDENTITY_STATUS, DOCUMENT, ACCESS_CUSTODY, COMPLIANCE, and INTERNAL_AUDIT require explicit field-group grants."
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Reject upload/download/retention mutation without an allowed protected-document purpose, owner reference, DOCUMENT grant, partition, policy version, and audit reason.",
+        "Never expose object keys, presigned URLs, document content, or document existence in events, logs, generic errors, or unauthorized responses.",
+        "Retention expiry is the maximum required policy date and active compliance/legal hold; optional consent withdrawal cannot shorten a mandatory hold."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
       ],
-      "dependencies": [],
+      "dependencies": [
+        {
+          "sourceId": "VS-E11-T01-ST05",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E03-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E03-S03-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E03-S04-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for service_media delivery slice for Remediate guest-document media ownership and retention boundaries",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "an authorized purpose-bound clean upload/import with owner reference and policy",
+          "when": "processing completes",
+          "then": "one private protected asset/reference/status and immutable retention/access evidence are produced"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "missing DOCUMENT/purpose/owner, unsafe file, retention/hold violation, cross-partition request, replay fingerprint conflict or dependency failure",
+          "when": "upload/access/delete/import runs",
+          "then": "a stable non-enumerating error blocks exposure/deletion and no URL/content enters audit/event output"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "import/access/hold events replay or retention workers race",
+          "when": "processing completes",
+          "then": "one object/current retention state remains and active hold wins over deletion"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
       ],
       "evidence": [
-        "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
       ],
       "externalBlockers": [],
       "labels": [
@@ -41519,15 +43460,58 @@
         "roadmap-v1-3",
         "source-vs-e11-t01-st03"
       ],
-      "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo service_media cho VS-E11-T01; không được lấy quyền sở hữu dữ liệu của service khác.",
+      "decisionNoteVi": "Leaf triển khai VS-E11-T01-ST03 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
       "jiraKey": "SCRUM-593",
-      "specStatus": "needs-refinement",
-      "workKind": "decision",
-      "dispatchable": false,
-      "testCases": [],
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*ProtectedDocument*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *ProtectedDocument*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*ProtectedDocument*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *ProtectedDocument*; include persistence, authorization, and retry assertions"
+        }
+      ],
       "decisions": [],
       "implementationBlockers": [],
-      "activationBlockers": []
+      "activationBlockers": [],
+      "primaryRepository": "service_media",
+      "repositorySlices": [
+        {
+          "repository": "service_media",
+          "paths": [
+            "src/main/resources/db/migration/V4__protected_guest_documents.sql",
+            "src/main/java/com/vistay/media/domain/protecteddocument/**",
+            "src/main/java/com/vistay/media/application/ProtectedDocumentService.java",
+            "src/main/java/com/vistay/media/adapter/in/grpc/ProtectedDocumentGrpcService.java",
+            "src/main/java/com/vistay/media/adapter/out/persistence/**",
+            "src/test/java/com/vistay/media/application/ProtectedDocumentServiceIntegrationTest.java"
+          ],
+          "artifacts": [
+            "protected-document purpose/retention schema",
+            "private import/upload/status/access APIs",
+            "legal/compliance hold enforcement",
+            "purpose/redaction/retention/replay tests"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E11-T01-ST04",
@@ -41535,18 +43519,19 @@
       "summary": "[VS-E11-T01-ST04] frontend_admin delivery slice for Remediate guest-document media ownership and retention boundaries",
       "parentSourceId": "VS-E11-T01",
       "manageDescription": true,
-      "actor": "Repository ServiceOwner and implementing engineer",
-      "outcome": "frontend_admin supplies its bounded contract, implementation, tests, and evidence for parent VS-E11-T01.",
-      "context": "This is the frontend_admin implementation slice of VS-E11-T01. It must not duplicate authority assigned to another repository.",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Admin Web/Mobile expose redacted guest-document migration/reconciliation status and permitted repair actions without ever rendering or caching legacy payloads or raw identity values.",
+      "context": "This is a new diagnostic UI built after Booking/User/Media migration APIs; it is not proof that migration or protected document screens exist today.",
       "inScope": [
-        "Change only frontend_admin plus generated artifacts explicitly owned by it.",
-        "Implement the frontend_admin responsibilities and interfaces stated in parent VS-E11-T01.",
-        "Attach focused unit/integration evidence and compatibility or rollback notes."
+        "Add typed migration batch/row status, reconciliation, exception classification, retry and cutover readiness operations.",
+        "Build Web counts/filter/detail for source state, owner references/revisions, fingerprint match, exception age and cutover gates; Mobile provides summary/status only.",
+        "Require INTERNAL_AUDIT plus partition for migration detail and separate high-risk action for retry/cutover; redact all content, hashes, last4 unless explicitly granted, object keys and URLs always.",
+        "Test missing grant, cross-branch row, conflict, dependency unavailable, stale revision, replay, rollback mode and completed retirement."
       ],
       "outOfScope": [
-        "Implementing another repository ownership slice.",
-        "Cross-service database access or copying an authoritative aggregate.",
-        "Closing the parent without end-to-end and Postman/Newman evidence."
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
       ],
       "businessRules": [
         "Default check-in is 14:00 and checkout 12:00 in property timezone, with a configurable two-hour cleaning buffer.",
@@ -41557,82 +43542,97 @@
         "frontend_admin"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
       ],
       "dataOwnership": [
-        "Booking owns stay timeline and roster references; User owns identity; Media owns protected document objects and access audit."
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
       ],
       "stateMachine": [
-        "Model legal states and transitions for frontend_admin delivery slice for Remediate guest-document media ownership and retention boundaries; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
       ],
       "authorization": {
         "actions": [
-          "vs-e11-t01-st04:view",
-          "vs-e11-t01-st04:manage"
+          "stay:guest-document:migration:view",
+          "stay:guest-document:migrate",
+          "stay:guest-document:cutover"
         ],
         "dataPartitions": [
-          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
         ],
         "fieldGroups": [
-          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
       ],
-      "dependencies": [],
+      "dependencies": [
+        {
+          "sourceId": "VS-E11-T01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E11-T01-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E11-T01-ST03",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E11-T01-ST05",
+          "relation": "is-blocked-by"
+        }
+      ],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for frontend_admin delivery slice for Remediate guest-document media ownership and retention boundaries",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "an authorized internal auditor and migration results",
+          "when": "workspace loads or an allowed retry/cutover runs",
+          "then": "redacted source-to-owner lineage, reconciliation gates and returned current mode/revision are displayed"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "missing action/partition/INTERNAL_AUDIT, protected value, unresolved mismatch, stale revision or dependency failure",
+          "when": "view/action occurs",
+          "then": "restricted content/action is absent and cutover cannot appear successful"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "retry/cutover replays or app resumes",
+          "when": "status refetches",
+          "then": "one durable migration result/current mode is shown without document payload access or duplicate import"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
       ],
       "evidence": [
-        "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
       ],
       "externalBlockers": [],
       "labels": [
@@ -41640,15 +43640,59 @@
         "roadmap-v1-3",
         "source-vs-e11-t01-st04"
       ],
-      "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo frontend_admin cho VS-E11-T01; không được lấy quyền sở hữu dữ liệu của service khác.",
+      "decisionNoteVi": "Leaf VS-E11-T01-ST04 chỉ sở hữu artifact của frontend_admin; không được tự đưa credential hoặc giá trị production vào repo.",
       "jiraKey": "SCRUM-594",
-      "specStatus": "needs-refinement",
+      "specStatus": "executable",
       "workKind": "web",
-      "dispatchable": false,
-      "testCases": [],
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "migration shared-client plus Admin Web/Mobile tests"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "npm run typecheck",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "frontend_admin typecheck report"
+        }
+      ],
       "decisions": [],
       "implementationBlockers": [],
-      "activationBlockers": []
+      "activationBlockers": [],
+      "primaryRepository": "frontend_admin",
+      "repositorySlices": [
+        {
+          "repository": "frontend_admin",
+          "paths": [
+            "packages/api-client/src/index.ts",
+            "packages/api-client/src/index.test.ts",
+            "apps/web/src/GuestDocumentMigrationWorkspace.tsx",
+            "apps/web/src/GuestDocumentMigrationWorkspace.test.tsx",
+            "apps/mobile/src/GuestDocumentMigrationStatus.tsx",
+            "apps/mobile/src/GuestDocumentMigrationStatus.test.tsx"
+          ],
+          "artifacts": [
+            "typed migration diagnostics client",
+            "Admin Web migration/reconciliation workspace",
+            "Admin Mobile status view",
+            "redaction/cutover/retry/rollback tests"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E11-T01-ST05",
@@ -41656,18 +43700,19 @@
       "summary": "[VS-E11-T01-ST05] platform_contracts delivery slice for Remediate guest-document media ownership and retention boundaries",
       "parentSourceId": "VS-E11-T01",
       "manageDescription": true,
-      "actor": "Repository ServiceOwner and implementing engineer",
-      "outcome": "platform_contracts supplies its bounded contract, implementation, tests, and evidence for parent VS-E11-T01.",
-      "context": "This is the platform_contracts implementation slice of VS-E11-T01. It must not duplicate authority assigned to another repository.",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Platform Contracts defines the authoritative Booking/User/Media guest-document owner map, migration modes, reference boundaries and reconciliation/retirement invariants before code cutover.",
+      "context": "The legacy Booking encrypted document column is verified current state. The owner-service APIs/events and migration contract below are planned artifacts, not claims of implementation.",
       "inScope": [
-        "Change only platform_contracts plus generated artifacts explicitly owned by it.",
-        "Implement the platform_contracts responsibilities and interfaces stated in parent VS-E11-T01.",
-        "Attach focused unit/integration evidence and compatibility or rollback notes."
+        "Publish a field/command/event owner matrix forbidding raw identity/document values in Booking and document bytes/access URLs in User.",
+        "Define User verification/consent and Media protected-document reference/import boundaries plus Booking legacy snapshot/migration-state contracts with source identity, revision and canonical fingerprint.",
+        "Specify expand/backfill/shadow/cutover/rollback/retire modes, zero-unexplained-difference gate, no-plaintext evidence and non-destructive history/tombstone rules.",
+        "Add valid migration/replay/rollback/retention-hold fixtures and invalid dual-owner, missing lineage, plaintext event/log field, destructive early drop, mismatch bypass and incompatible-change fixtures."
       ],
       "outOfScope": [
-        "Implementing another repository ownership slice.",
-        "Cross-service database access or copying an authoritative aggregate.",
-        "Closing the parent without end-to-end and Postman/Newman evidence."
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
       ],
       "businessRules": [
         "Default check-in is 14:00 and checkout 12:00 in property timezone, with a configurable two-hour cleaning buffer.",
@@ -41678,82 +43723,79 @@
         "platform_contracts"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
       ],
       "dataOwnership": [
-        "Booking owns stay timeline and roster references; User owns identity; Media owns protected document objects and access audit."
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
       ],
       "stateMachine": [
-        "Model legal states and transitions for platform_contracts delivery slice for Remediate guest-document media ownership and retention boundaries; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
       ],
       "authorization": {
         "actions": [
-          "vs-e11-t01-st05:view",
-          "vs-e11-t01-st05:manage"
+          "guest-document:contract:publish",
+          "guest-document:migration-contract:publish"
         ],
         "dataPartitions": [
-          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
         ],
         "fieldGroups": [
-          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
       ],
       "dependencies": [],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for platform_contracts delivery slice for Remediate guest-document media ownership and retention boundaries",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "valid owner/migration/retention fixtures",
+          "when": "contract validation runs",
+          "then": "one owner per field/command, complete source-to-target lineage and safe cutover/rollback/retirement invariants validate"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "dual authority, raw payload outside Media, missing fingerprint/revision, plaintext evidence, destructive early drop, mismatch bypass or incompatible v1 change",
+          "when": "negative validation runs",
+          "then": "CI fails with a stable path-specific diagnostic"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "identical legacy source and policy",
+          "when": "validation repeats",
+          "then": "the same canonical fingerprint, target identities and compatibility result are produced"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
       ],
       "evidence": [
-        "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
       ],
       "externalBlockers": [],
       "labels": [
@@ -41761,15 +43803,423 @@
         "roadmap-v1-3",
         "source-vs-e11-t01-st05"
       ],
-      "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo platform_contracts cho VS-E11-T01; không được lấy quyền sở hữu dữ liệu của service khác.",
+      "decisionNoteVi": "Leaf VS-E11-T01-ST05 chỉ sở hữu artifact của platform_contracts; không được tự đưa credential hoặc giá trị production vào repo.",
       "jiraKey": "SCRUM-595",
-      "specStatus": "needs-refinement",
+      "specStatus": "executable",
       "workKind": "contract",
-      "dispatchable": false,
-      "testCases": [],
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "contract",
+          "command": "npm run validate:proto",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "User/Media reference contract compile report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "owner matrix, event and migration-fixture validation report"
+        }
+      ],
       "decisions": [],
       "implementationBlockers": [],
-      "activationBlockers": []
+      "activationBlockers": [],
+      "primaryRepository": "platform_contracts",
+      "repositorySlices": [
+        {
+          "repository": "platform_contracts",
+          "paths": [
+            "docs/guest-document-ownership-migration-v1.md",
+            "proto/vistay/user/v1/guest_identity_verification.proto",
+            "proto/vistay/media/v1/protected_document_reference.proto",
+            "events/v1/booking.legacy-guest-document.event.schema.json",
+            "events/v1/user.guest-verification.event.schema.json",
+            "events/v1/media.protected-document.event.schema.json",
+            "fixtures/guest-document-migration.v1.json",
+            "scripts/validate-schemas.mjs"
+          ],
+          "artifacts": [
+            "field-level Booking/User/Media owner matrix",
+            "versioned reference/import/event contracts",
+            "migration mode and reconciliation rules",
+            "valid/negative cutover fixtures"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
+      "sourceId": "VS-E11-T02",
+      "jiraKey": "SCRUM-754",
+      "issueType": "Task",
+      "summary": "[VS-E11-T02] Publish stay access and guest compliance contracts",
+      "manageDescription": true,
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Platform Contracts publishes owner-separated stay roster/readiness, guest verification/consent reference, access custody, timeline and compliance-exception contracts plus boundary fixtures before implementation cutover.",
+      "context": "These GraphQL/gRPC/event artifacts do not exist today. They are planned target artifacts and must encode User/Media/Booking ownership without documenting the legacy Booking document column as valid authority.",
+      "inScope": [
+        "Document field/command/event ownership and forbidden fields: Booking roster/timeline/custody/references, User identity/verification/consent, Media bytes/purpose/retention/access audit.",
+        "Add Booking backoffice/customer GraphQL operations, User guest-verification gRPC boundary, Media protected-document reference boundary and versioned stay/readiness/identity/custody/timeline/exception events.",
+        "Define configurable property-time policy snapshot, explicit manual no-show, roster/count/responsible-adult, requirement, retention/legal-hold, masked-secret and exception maker-checker invariants.",
+        "Add valid end-to-end fixtures and invalid raw-document/secret, cross-owner, false-ready, automatic-no-show, unreturned-access, self-approval, expired-scope, replay and incompatible-change fixtures."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "businessRules": [
+        "Default check-in is 14:00 and checkout 12:00 in property timezone, with a configurable two-hour cleaning buffer.",
+        "No-show is a manual transition only; no automatic no-show classification.",
+        "Guest document access requires purpose, field-group grant, audit, and retention enforcement."
+      ],
+      "repositories": [
+        "platform_contracts"
+      ],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "stay:contract:publish",
+          "guest-identity:contract:publish",
+          "protected-document:contract:publish"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "valid roster through checkout/exception fixtures",
+          "when": "contract validation runs",
+          "then": "owner, policy/revision, state, authorization partition/field group and compatibility invariants validate deterministically"
+        },
+        {
+          "id": "AC02",
+          "given": "raw document/secret in Booking, cross-owner write, false readiness, automatic no-show, unreturned access checkout, self-approved/expired bypass or incompatible v1 change",
+          "when": "negative fixtures run",
+          "then": "CI fails with a stable path-specific diagnostic"
+        },
+        {
+          "id": "AC03",
+          "given": "identical canonical inputs and policy versions",
+          "when": "validation repeats",
+          "then": "the same fingerprints, operation/event identities and compatibility result are produced"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-platform-contracts",
+        "roadmap-v1-3",
+        "source-vs-e11-t02"
+      ],
+      "decisionNoteVi": "Leaf VS-E11-T02 chỉ sở hữu artifact của platform_contracts; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "contract",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "contract",
+          "command": "npm run validate:graphql",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "stay customer/backoffice GraphQL composition and operation report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "User/Media proto, Booking event and boundary-fixture validation report"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "parentSourceId": "VS-E11",
+      "primaryRepository": "platform_contracts",
+      "repositorySlices": [
+        {
+          "repository": "platform_contracts",
+          "paths": [
+            "docs/stay-guest-compliance-ownership-v1.md",
+            "graphql/backoffice/subgraphs/booking.graphql",
+            "graphql/backoffice/operations/stay-operations.graphql",
+            "graphql/customer/operations/pre-arrival.graphql",
+            "proto/vistay/user/v1/guest_identity_verification.proto",
+            "proto/vistay/media/v1/protected_document_reference.proto",
+            "events/v1/booking.stay-readiness.event.schema.json",
+            "events/v1/booking.stay-timeline.event.schema.json",
+            "events/v1/booking.compliance-exception.event.schema.json",
+            "fixtures/stay-guest-compliance-boundaries.v1.json",
+            "scripts/validate-schemas.mjs",
+            "scripts/validate-graphql.mjs"
+          ],
+          "artifacts": [
+            "field-level stay/identity/document ownership contract",
+            "Booking customer/backoffice GraphQL operations",
+            "User/Media reference protos and Booking events",
+            "valid/negative ownership and lifecycle fixtures"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
+      "sourceId": "VS-E11-T03",
+      "jiraKey": "SCRUM-755",
+      "issueType": "Task",
+      "summary": "[VS-E11-T03] Add stay and compliance Postman evidence",
+      "manageDescription": true,
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "A deterministic Postman/Newman flow proves roster, protected document/consent references, readiness, access custody, explicit stay transitions and compliance exceptions across local services.",
+      "context": "platform_infrastructure has no stay/compliance collection today. Add only local deterministic fixtures and redacted evidence after the service/UI-independent APIs are implemented.",
+      "inScope": [
+        "Add collection/environment plus Booking/User/Media fixtures for adult/minor roster, policy requirements, consent, clean protected document references, access items and property-time policy.",
+        "Exercise roster/checklist, protected upload/finalize, verification/consent reference, readiness, custody handover/return, check-in, explicit manual no-show alternate case, checkout and exception review/use/expiry.",
+        "Assert count/responsible-adult, raw field rejection, purpose/DOCUMENT denial, cross-branch/customer access, false readiness, automatic no-show absence, early/late override, unreturned access, self-review, expired scope, stale revision, replay and dependency failure.",
+        "Provide readiness/seed/run/reconcile/cleanup PowerShell runner producing redacted Newman JSON/JUnit and safe repeatability evidence."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "businessRules": [
+        "Default check-in is 14:00 and checkout 12:00 in property timezone, with a configurable two-hour cleaning buffer.",
+        "No-show is a manual transition only; no automatic no-show classification.",
+        "Guest document access requires purpose, field-group grant, audit, and retention enforcement."
+      ],
+      "repositories": [
+        "platform_infrastructure"
+      ],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "stay:roster:manage",
+          "guest:consent:record",
+          "media:protected-document:upload",
+          "stay:access:handover",
+          "stay:checkin",
+          "stay:no-show:mark",
+          "stay:checkout",
+          "stay:compliance-exception:review"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E11-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E11-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E11-S03-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E11-S04-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E11-S05-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E11-T02",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "clean local services and deterministic adult/minor/identity/access fixtures",
+          "when": "the runner executes",
+          "then": "roster through ready/check-in/access-return/checkout and the separate no-show/exception scenarios pass with owner/revision evidence"
+        },
+        {
+          "id": "AC02",
+          "given": "ownership, authorization, readiness, custody, transition, maker-checker, expiry, stale revision or dependency negative case",
+          "when": "the collection runs",
+          "then": "the exact stable error/redaction and absence of partial business effect are asserted"
+        },
+        {
+          "id": "AC03",
+          "given": "the runner executes twice",
+          "when": "cleanup/reseed/replay complete",
+          "then": "no duplicate occupant, consent, media reference, custody movement, timeline or exception decision remains"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-platform-infrastructure",
+        "roadmap-v1-3",
+        "source-vs-e11-t03"
+      ],
+      "decisionNoteVi": "Leaf VS-E11-T03 chỉ sở hữu artifact của platform_infrastructure; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "infrastructure",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "operational",
+          "command": "docker compose -f compose.full.yaml config",
+          "verifies": [
+            "AC01"
+          ],
+          "evidence": "redacted compose/routing validation output"
+        },
+        {
+          "id": "TEST-02",
+          "level": "e2e",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-PostmanStayCompliance.ps1",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "stay/compliance Newman JSON/JUnit and reconciliation/cleanup report"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "parentSourceId": "VS-E11",
+      "primaryRepository": "platform_infrastructure",
+      "repositorySlices": [
+        {
+          "repository": "platform_infrastructure",
+          "paths": [
+            "postman/ViStay-Stay-Compliance.postman_collection.json",
+            "postman/ViStay-Local.postman_environment.json",
+            "postman/fixtures/stay-booking.sql",
+            "postman/fixtures/stay-user.sql",
+            "postman/fixtures/stay-media.sql",
+            "scripts/Seed-StayComplianceE2E.ps1",
+            "scripts/Test-PostmanStayCompliance.ps1",
+            "postman/README.md"
+          ],
+          "artifacts": [
+            "stay/compliance Postman collection",
+            "deterministic Booking/User/Media fixtures",
+            "repeatable PowerShell/Newman runner",
+            "ownership/authorization/lifecycle/reconciliation evidence"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E12",
