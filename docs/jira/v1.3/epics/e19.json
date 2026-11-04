@@ -1,0 +1,1632 @@
+{
+  "shard": "E19",
+  "issues": [
+    {
+      "sourceId": "VS-E19",
+      "jiraKey": "SCRUM-310",
+      "issueType": "Epic",
+      "summary": "[VS-E19] Customer Search, Booking & Payment",
+      "manageDescription": true,
+      "actor": "Customer",
+      "outcome": "Customer Search, Booking & Payment is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
+      "context": "This epic is part of the ViStay VS-E19 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "inScope": [
+        "Implement and verify: Customer Search, Booking & Payment.",
+        "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
+        "Provide repository-specific automated tests and Postman/Newman evidence for callable APIs."
+      ],
+      "outOfScope": [
+        "Unlisted provider credentials and production policy values.",
+        "Direct cross-service database reads or duplicated ownership.",
+        "Unreviewed workflow transitions, historical rewrites, or destructive migration shortcuts."
+      ],
+      "businessRules": [
+        "Customer cancellation uses a short-lived server quote and explicit confirmation.",
+        "Customer sees trust tier and safe reason codes, never the raw numeric trust score or anti-fraud evidence.",
+        "All ownership-negative tests prove one customer cannot access another customer booking or payment."
+      ],
+      "repositories": [
+        "frontend_customer",
+        "service_booking",
+        "service_finance",
+        "service_payment",
+        "platform_contracts"
+      ],
+      "interfaces": [
+        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
+        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
+        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+      ],
+      "dataOwnership": [
+        "Customer UI reads Booking availability/reservation and Finance/Payment projections; it never joins service databases."
+      ],
+      "stateMachine": [
+        "Model legal states and transitions for Customer Search, Booking & Payment; reject illegal transitions with stable error codes.",
+        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
+        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+      ],
+      "authorization": {
+        "actions": [
+          "vs-e19:view",
+          "vs-e19:manage"
+        ],
+        "dataPartitions": [
+          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+        ]
+      },
+      "failureSemantics": [
+        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
+        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
+        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+      ],
+      "idempotencyConcurrency": [
+        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
+        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
+        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized actor with a valid partition and a complete request for Customer Search, Booking & Payment",
+          "when": "the command or query is executed",
+          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+        },
+        {
+          "id": "AC02",
+          "given": "a caller missing the action, partition, or requested field-group grant",
+          "when": "the same operation is attempted",
+          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+        },
+        {
+          "id": "AC03",
+          "given": "the same mutation is replayed or two requests use the same expected revision",
+          "when": "processing overlaps or retries occur",
+          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+        }
+      ],
+      "tests": [
+        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
+        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
+        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+      ],
+      "observability": [
+        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
+        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
+        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+      ],
+      "definitionOfDone": [
+        "Catalog validation and all affected repository CI checks pass.",
+        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
+        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
+        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+      ],
+      "evidence": [
+        "Pull request and commit links per repository.",
+        "Automated test and Newman report with fixture version.",
+        "Migration/rollback or compatibility evidence where data/contracts change.",
+        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "owner-frontend-customer",
+        "roadmap-v1-3",
+        "source-vs-e19"
+      ],
+      "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
+      "specStatus": "needs-refinement",
+      "workKind": "web",
+      "dispatchable": false,
+      "testCases": [],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E19-S01",
+      "jiraKey": "SCRUM-430",
+      "issueType": "Story",
+      "summary": "[VS-E19-S01] discover/filter/listing",
+      "parentSourceId": "VS-E19",
+      "manageDescription": true,
+      "actor": "Customer",
+      "outcome": "discover/filter/listing is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
+      "context": "This story is part of the ViStay VS-E19 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "inScope": [
+        "Implement and verify: discover/filter/listing.",
+        "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
+        "Provide repository-specific automated tests and Postman/Newman evidence for callable APIs."
+      ],
+      "outOfScope": [
+        "Unlisted provider credentials and production policy values.",
+        "Direct cross-service database reads or duplicated ownership.",
+        "Unreviewed workflow transitions, historical rewrites, or destructive migration shortcuts."
+      ],
+      "businessRules": [
+        "Customer cancellation uses a short-lived server quote and explicit confirmation.",
+        "Customer sees trust tier and safe reason codes, never the raw numeric trust score or anti-fraud evidence.",
+        "All ownership-negative tests prove one customer cannot access another customer booking or payment."
+      ],
+      "repositories": [
+        "frontend_customer",
+        "service_booking",
+        "service_finance",
+        "service_payment",
+        "platform_contracts"
+      ],
+      "interfaces": [
+        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
+        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
+        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+      ],
+      "dataOwnership": [
+        "Customer UI reads Booking availability/reservation and Finance/Payment projections; it never joins service databases."
+      ],
+      "stateMachine": [
+        "Model legal states and transitions for discover/filter/listing; reject illegal transitions with stable error codes.",
+        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
+        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+      ],
+      "authorization": {
+        "actions": [
+          "vs-e19-s01:view",
+          "vs-e19-s01:manage"
+        ],
+        "dataPartitions": [
+          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+        ]
+      },
+      "failureSemantics": [
+        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
+        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
+        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+      ],
+      "idempotencyConcurrency": [
+        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
+        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
+        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized actor with a valid partition and a complete request for discover/filter/listing",
+          "when": "the command or query is executed",
+          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+        },
+        {
+          "id": "AC02",
+          "given": "a caller missing the action, partition, or requested field-group grant",
+          "when": "the same operation is attempted",
+          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+        },
+        {
+          "id": "AC03",
+          "given": "the same mutation is replayed or two requests use the same expected revision",
+          "when": "processing overlaps or retries occur",
+          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+        }
+      ],
+      "tests": [
+        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
+        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
+        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+      ],
+      "observability": [
+        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
+        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
+        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+      ],
+      "definitionOfDone": [
+        "Catalog validation and all affected repository CI checks pass.",
+        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
+        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
+        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+      ],
+      "evidence": [
+        "Pull request and commit links per repository.",
+        "Automated test and Newman report with fixture version.",
+        "Migration/rollback or compatibility evidence where data/contracts change.",
+        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "owner-frontend-customer",
+        "roadmap-v1-3",
+        "source-vs-e19-s01"
+      ],
+      "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
+      "specStatus": "needs-refinement",
+      "workKind": "web",
+      "dispatchable": false,
+      "testCases": [],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E19-S02",
+      "jiraKey": "SCRUM-431",
+      "issueType": "Story",
+      "summary": "[VS-E19-S02] detail/media/availability",
+      "parentSourceId": "VS-E19",
+      "manageDescription": true,
+      "actor": "Customer",
+      "outcome": "detail/media/availability is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
+      "context": "This story is part of the ViStay VS-E19 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "inScope": [
+        "Implement and verify: detail/media/availability.",
+        "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
+        "Provide repository-specific automated tests and Postman/Newman evidence for callable APIs."
+      ],
+      "outOfScope": [
+        "Unlisted provider credentials and production policy values.",
+        "Direct cross-service database reads or duplicated ownership.",
+        "Unreviewed workflow transitions, historical rewrites, or destructive migration shortcuts."
+      ],
+      "businessRules": [
+        "Customer cancellation uses a short-lived server quote and explicit confirmation.",
+        "Customer sees trust tier and safe reason codes, never the raw numeric trust score or anti-fraud evidence.",
+        "All ownership-negative tests prove one customer cannot access another customer booking or payment."
+      ],
+      "repositories": [
+        "frontend_customer",
+        "service_booking",
+        "service_finance",
+        "service_payment",
+        "platform_contracts"
+      ],
+      "interfaces": [
+        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
+        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
+        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+      ],
+      "dataOwnership": [
+        "Customer UI reads Booking availability/reservation and Finance/Payment projections; it never joins service databases."
+      ],
+      "stateMachine": [
+        "Model legal states and transitions for detail/media/availability; reject illegal transitions with stable error codes.",
+        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
+        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+      ],
+      "authorization": {
+        "actions": [
+          "vs-e19-s02:view",
+          "vs-e19-s02:manage"
+        ],
+        "dataPartitions": [
+          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+        ]
+      },
+      "failureSemantics": [
+        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
+        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
+        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+      ],
+      "idempotencyConcurrency": [
+        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
+        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
+        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized actor with a valid partition and a complete request for detail/media/availability",
+          "when": "the command or query is executed",
+          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+        },
+        {
+          "id": "AC02",
+          "given": "a caller missing the action, partition, or requested field-group grant",
+          "when": "the same operation is attempted",
+          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+        },
+        {
+          "id": "AC03",
+          "given": "the same mutation is replayed or two requests use the same expected revision",
+          "when": "processing overlaps or retries occur",
+          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+        }
+      ],
+      "tests": [
+        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
+        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
+        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+      ],
+      "observability": [
+        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
+        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
+        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+      ],
+      "definitionOfDone": [
+        "Catalog validation and all affected repository CI checks pass.",
+        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
+        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
+        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+      ],
+      "evidence": [
+        "Pull request and commit links per repository.",
+        "Automated test and Newman report with fixture version.",
+        "Migration/rollback or compatibility evidence where data/contracts change.",
+        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "owner-frontend-customer",
+        "roadmap-v1-3",
+        "source-vs-e19-s02"
+      ],
+      "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
+      "specStatus": "needs-refinement",
+      "workKind": "web",
+      "dispatchable": false,
+      "testCases": [],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E19-S03",
+      "jiraKey": "SCRUM-432",
+      "issueType": "Story",
+      "summary": "[VS-E19-S03] quote/hold",
+      "parentSourceId": "VS-E19",
+      "manageDescription": true,
+      "actor": "Customer",
+      "outcome": "quote/hold is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
+      "context": "This story is part of the ViStay VS-E19 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "inScope": [
+        "Implement and verify: quote/hold.",
+        "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
+        "Provide repository-specific automated tests and Postman/Newman evidence for callable APIs."
+      ],
+      "outOfScope": [
+        "Unlisted provider credentials and production policy values.",
+        "Direct cross-service database reads or duplicated ownership.",
+        "Unreviewed workflow transitions, historical rewrites, or destructive migration shortcuts."
+      ],
+      "businessRules": [
+        "Customer cancellation uses a short-lived server quote and explicit confirmation.",
+        "Customer sees trust tier and safe reason codes, never the raw numeric trust score or anti-fraud evidence.",
+        "All ownership-negative tests prove one customer cannot access another customer booking or payment."
+      ],
+      "repositories": [
+        "frontend_customer",
+        "service_booking",
+        "service_finance",
+        "service_payment",
+        "platform_contracts"
+      ],
+      "interfaces": [
+        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
+        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
+        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+      ],
+      "dataOwnership": [
+        "Customer UI reads Booking availability/reservation and Finance/Payment projections; it never joins service databases."
+      ],
+      "stateMachine": [
+        "Model legal states and transitions for quote/hold; reject illegal transitions with stable error codes.",
+        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
+        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+      ],
+      "authorization": {
+        "actions": [
+          "vs-e19-s03:view",
+          "vs-e19-s03:manage"
+        ],
+        "dataPartitions": [
+          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+        ]
+      },
+      "failureSemantics": [
+        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
+        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
+        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+      ],
+      "idempotencyConcurrency": [
+        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
+        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
+        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized actor with a valid partition and a complete request for quote/hold",
+          "when": "the command or query is executed",
+          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+        },
+        {
+          "id": "AC02",
+          "given": "a caller missing the action, partition, or requested field-group grant",
+          "when": "the same operation is attempted",
+          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+        },
+        {
+          "id": "AC03",
+          "given": "the same mutation is replayed or two requests use the same expected revision",
+          "when": "processing overlaps or retries occur",
+          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+        }
+      ],
+      "tests": [
+        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
+        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
+        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+      ],
+      "observability": [
+        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
+        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
+        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+      ],
+      "definitionOfDone": [
+        "Catalog validation and all affected repository CI checks pass.",
+        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
+        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
+        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+      ],
+      "evidence": [
+        "Pull request and commit links per repository.",
+        "Automated test and Newman report with fixture version.",
+        "Migration/rollback or compatibility evidence where data/contracts change.",
+        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "owner-frontend-customer",
+        "roadmap-v1-3",
+        "source-vs-e19-s03"
+      ],
+      "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
+      "specStatus": "needs-refinement",
+      "workKind": "web",
+      "dispatchable": false,
+      "testCases": [],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E19-S04",
+      "jiraKey": "SCRUM-433",
+      "issueType": "Story",
+      "summary": "[VS-E19-S04] confirm/manage/cancel booking",
+      "parentSourceId": "VS-E19",
+      "manageDescription": true,
+      "actor": "Customer",
+      "outcome": "confirm/manage/cancel booking is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
+      "context": "This story is part of the ViStay VS-E19 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "inScope": [
+        "Implement and verify: confirm/manage/cancel booking.",
+        "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
+        "Provide repository-specific automated tests and Postman/Newman evidence for callable APIs."
+      ],
+      "outOfScope": [
+        "Unlisted provider credentials and production policy values.",
+        "Direct cross-service database reads or duplicated ownership.",
+        "Unreviewed workflow transitions, historical rewrites, or destructive migration shortcuts."
+      ],
+      "businessRules": [
+        "Customer cancellation uses a short-lived server quote and explicit confirmation.",
+        "Customer sees trust tier and safe reason codes, never the raw numeric trust score or anti-fraud evidence.",
+        "All ownership-negative tests prove one customer cannot access another customer booking or payment."
+      ],
+      "repositories": [
+        "frontend_customer",
+        "service_booking",
+        "service_finance",
+        "service_payment",
+        "platform_contracts"
+      ],
+      "interfaces": [
+        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
+        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
+        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+      ],
+      "dataOwnership": [
+        "Customer UI reads Booking availability/reservation and Finance/Payment projections; it never joins service databases."
+      ],
+      "stateMachine": [
+        "Model legal states and transitions for confirm/manage/cancel booking; reject illegal transitions with stable error codes.",
+        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
+        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+      ],
+      "authorization": {
+        "actions": [
+          "vs-e19-s04:view",
+          "vs-e19-s04:manage"
+        ],
+        "dataPartitions": [
+          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+        ]
+      },
+      "failureSemantics": [
+        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
+        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
+        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+      ],
+      "idempotencyConcurrency": [
+        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
+        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
+        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized actor with a valid partition and a complete request for confirm/manage/cancel booking",
+          "when": "the command or query is executed",
+          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+        },
+        {
+          "id": "AC02",
+          "given": "a caller missing the action, partition, or requested field-group grant",
+          "when": "the same operation is attempted",
+          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+        },
+        {
+          "id": "AC03",
+          "given": "the same mutation is replayed or two requests use the same expected revision",
+          "when": "processing overlaps or retries occur",
+          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+        }
+      ],
+      "tests": [
+        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
+        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
+        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+      ],
+      "observability": [
+        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
+        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
+        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+      ],
+      "definitionOfDone": [
+        "Catalog validation and all affected repository CI checks pass.",
+        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
+        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
+        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+      ],
+      "evidence": [
+        "Pull request and commit links per repository.",
+        "Automated test and Newman report with fixture version.",
+        "Migration/rollback or compatibility evidence where data/contracts change.",
+        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "owner-frontend-customer",
+        "roadmap-v1-3",
+        "source-vs-e19-s04"
+      ],
+      "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
+      "specStatus": "needs-refinement",
+      "workKind": "web",
+      "dispatchable": false,
+      "testCases": [],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E19-S05",
+      "jiraKey": "SCRUM-434",
+      "issueType": "Story",
+      "summary": "[VS-E19-S05] create/display/track VietQR with manual fallback",
+      "parentSourceId": "VS-E19",
+      "manageDescription": true,
+      "actor": "Customer",
+      "outcome": "create/display/track VietQR with manual fallback is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
+      "context": "This story is part of the ViStay VS-E19 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "inScope": [
+        "Implement and verify: create/display/track VietQR with manual fallback.",
+        "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
+        "Provide repository-specific automated tests and Postman/Newman evidence for callable APIs."
+      ],
+      "outOfScope": [
+        "Unlisted provider credentials and production policy values.",
+        "Direct cross-service database reads or duplicated ownership.",
+        "Unreviewed workflow transitions, historical rewrites, or destructive migration shortcuts."
+      ],
+      "businessRules": [
+        "Customer cancellation uses a short-lived server quote and explicit confirmation.",
+        "Customer sees trust tier and safe reason codes, never the raw numeric trust score or anti-fraud evidence.",
+        "All ownership-negative tests prove one customer cannot access another customer booking or payment."
+      ],
+      "repositories": [
+        "frontend_customer",
+        "service_booking",
+        "service_finance",
+        "service_payment",
+        "platform_contracts"
+      ],
+      "interfaces": [
+        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
+        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
+        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+      ],
+      "dataOwnership": [
+        "Customer UI reads Booking availability/reservation and Finance/Payment projections; it never joins service databases."
+      ],
+      "stateMachine": [
+        "Model legal states and transitions for create/display/track VietQR with manual fallback; reject illegal transitions with stable error codes.",
+        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
+        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+      ],
+      "authorization": {
+        "actions": [
+          "vs-e19-s05:view",
+          "vs-e19-s05:manage"
+        ],
+        "dataPartitions": [
+          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+        ]
+      },
+      "failureSemantics": [
+        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
+        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
+        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+      ],
+      "idempotencyConcurrency": [
+        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
+        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
+        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E09-T01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E09-S07",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized actor with a valid partition and a complete request for create/display/track VietQR with manual fallback",
+          "when": "the command or query is executed",
+          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+        },
+        {
+          "id": "AC02",
+          "given": "a caller missing the action, partition, or requested field-group grant",
+          "when": "the same operation is attempted",
+          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+        },
+        {
+          "id": "AC03",
+          "given": "the same mutation is replayed or two requests use the same expected revision",
+          "when": "processing overlaps or retries occur",
+          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+        }
+      ],
+      "tests": [
+        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
+        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
+        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+      ],
+      "observability": [
+        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
+        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
+        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+      ],
+      "definitionOfDone": [
+        "Catalog validation and all affected repository CI checks pass.",
+        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
+        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
+        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+      ],
+      "evidence": [
+        "Pull request and commit links per repository.",
+        "Automated test and Newman report with fixture version.",
+        "Migration/rollback or compatibility evidence where data/contracts change.",
+        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "owner-frontend-customer",
+        "roadmap-v1-3",
+        "source-vs-e19-s05"
+      ],
+      "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
+      "specStatus": "needs-refinement",
+      "workKind": "web",
+      "dispatchable": false,
+      "testCases": [],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E19-S06",
+      "jiraKey": "SCRUM-435",
+      "issueType": "Story",
+      "summary": "[VS-E19-S06] payment/cancel/refund notification and ownership-negative tests",
+      "parentSourceId": "VS-E19",
+      "manageDescription": true,
+      "actor": "Customer",
+      "outcome": "payment/cancel/refund notification and ownership-negative tests is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
+      "context": "This story is part of the ViStay VS-E19 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "inScope": [
+        "Implement and verify: payment/cancel/refund notification and ownership-negative tests.",
+        "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
+        "Provide repository-specific automated tests and Postman/Newman evidence for callable APIs."
+      ],
+      "outOfScope": [
+        "Unlisted provider credentials and production policy values.",
+        "Direct cross-service database reads or duplicated ownership.",
+        "Unreviewed workflow transitions, historical rewrites, or destructive migration shortcuts."
+      ],
+      "businessRules": [
+        "Customer cancellation uses a short-lived server quote and explicit confirmation.",
+        "Customer sees trust tier and safe reason codes, never the raw numeric trust score or anti-fraud evidence.",
+        "All ownership-negative tests prove one customer cannot access another customer booking or payment."
+      ],
+      "repositories": [
+        "frontend_customer",
+        "service_booking",
+        "service_finance",
+        "service_payment",
+        "platform_contracts"
+      ],
+      "interfaces": [
+        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
+        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
+        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+      ],
+      "dataOwnership": [
+        "Customer UI reads Booking availability/reservation and Finance/Payment projections; it never joins service databases."
+      ],
+      "stateMachine": [
+        "Model legal states and transitions for payment/cancel/refund notification and ownership-negative tests; reject illegal transitions with stable error codes.",
+        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
+        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+      ],
+      "authorization": {
+        "actions": [
+          "vs-e19-s06:view",
+          "vs-e19-s06:manage"
+        ],
+        "dataPartitions": [
+          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+        ]
+      },
+      "failureSemantics": [
+        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
+        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
+        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+      ],
+      "idempotencyConcurrency": [
+        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
+        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
+        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized actor with a valid partition and a complete request for payment/cancel/refund notification and ownership-negative tests",
+          "when": "the command or query is executed",
+          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+        },
+        {
+          "id": "AC02",
+          "given": "a caller missing the action, partition, or requested field-group grant",
+          "when": "the same operation is attempted",
+          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+        },
+        {
+          "id": "AC03",
+          "given": "the same mutation is replayed or two requests use the same expected revision",
+          "when": "processing overlaps or retries occur",
+          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+        }
+      ],
+      "tests": [
+        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
+        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
+        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+      ],
+      "observability": [
+        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
+        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
+        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+      ],
+      "definitionOfDone": [
+        "Catalog validation and all affected repository CI checks pass.",
+        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
+        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
+        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+      ],
+      "evidence": [
+        "Pull request and commit links per repository.",
+        "Automated test and Newman report with fixture version.",
+        "Migration/rollback or compatibility evidence where data/contracts change.",
+        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "owner-frontend-customer",
+        "roadmap-v1-3",
+        "source-vs-e19-s06"
+      ],
+      "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
+      "specStatus": "needs-refinement",
+      "workKind": "web",
+      "dispatchable": false,
+      "testCases": [],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E19-S07",
+      "issueType": "Story",
+      "summary": "[VS-E19-S07] Request deposit waiver and appeal a customer trust decision",
+      "parentSourceId": "VS-E19",
+      "manageDescription": true,
+      "actor": "Customer",
+      "outcome": "Request deposit waiver and appeal a customer trust decision is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
+      "context": "This story is part of the ViStay VS-E19 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "inScope": [
+        "Implement and verify: Request deposit waiver and appeal a customer trust decision.",
+        "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
+        "Provide repository-specific automated tests and Postman/Newman evidence for callable APIs."
+      ],
+      "outOfScope": [
+        "Unlisted provider credentials and production policy values.",
+        "Direct cross-service database reads or duplicated ownership.",
+        "Unreviewed workflow transitions, historical rewrites, or destructive migration shortcuts."
+      ],
+      "businessRules": [
+        "Customer cancellation uses a short-lived server quote and explicit confirmation.",
+        "Customer sees trust tier and safe reason codes, never the raw numeric trust score or anti-fraud evidence.",
+        "All ownership-negative tests prove one customer cannot access another customer booking or payment.",
+        "When automatic waiver is enabled and the customer is eligible, display zero deposit without a request.",
+        "When automatic waiver is disabled and the customer is eligible, create REVIEW_PENDING and let a Branch Manager decide.",
+        "Below threshold requires deposit; only Super Admin may waive one booking with mandatory reason, evidence, and audit.",
+        "A waiver request does not extend the hold; expiry applies the standard deposit or releases inventory.",
+        "Waived late cancellation/no-show creates a trust fact but never invents money debt."
+      ],
+      "repositories": [
+        "frontend_customer",
+        "service_booking",
+        "service_finance",
+        "service_payment",
+        "platform_contracts"
+      ],
+      "interfaces": [
+        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
+        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
+        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+      ],
+      "dataOwnership": [
+        "Customer UI reads Booking availability/reservation and Finance/Payment projections; it never joins service databases."
+      ],
+      "stateMachine": [
+        "Model legal states and transitions for Request deposit waiver and appeal a customer trust decision; reject illegal transitions with stable error codes.",
+        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
+        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+      ],
+      "authorization": {
+        "actions": [
+          "vs-e19-s07:view",
+          "vs-e19-s07:manage"
+        ],
+        "dataPartitions": [
+          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+        ]
+      },
+      "failureSemantics": [
+        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
+        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
+        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+      ],
+      "idempotencyConcurrency": [
+        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
+        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
+        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E23-S04",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E08-S06",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized actor with a valid partition and a complete request for Request deposit waiver and appeal a customer trust decision",
+          "when": "the command or query is executed",
+          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+        },
+        {
+          "id": "AC02",
+          "given": "a caller missing the action, partition, or requested field-group grant",
+          "when": "the same operation is attempted",
+          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+        },
+        {
+          "id": "AC03",
+          "given": "the same mutation is replayed or two requests use the same expected revision",
+          "when": "processing overlaps or retries occur",
+          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+        }
+      ],
+      "tests": [
+        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
+        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
+        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+      ],
+      "observability": [
+        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
+        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
+        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+      ],
+      "definitionOfDone": [
+        "Catalog validation and all affected repository CI checks pass.",
+        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
+        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
+        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+      ],
+      "evidence": [
+        "Pull request and commit links per repository.",
+        "Automated test and Newman report with fixture version.",
+        "Migration/rollback or compatibility evidence where data/contracts change.",
+        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "owner-frontend-customer",
+        "roadmap-v1-3",
+        "source-vs-e19-s07"
+      ],
+      "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
+      "jiraKey": "SCRUM-602",
+      "specStatus": "needs-refinement",
+      "workKind": "web",
+      "dispatchable": false,
+      "testCases": [],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E19-S07-ST01",
+      "issueType": "Subtask",
+      "summary": "[VS-E19-S07-ST01] frontend_customer delivery slice for Request deposit waiver and appeal a customer trust decision",
+      "parentSourceId": "VS-E19-S07",
+      "manageDescription": true,
+      "actor": "Repository ServiceOwner and implementing engineer",
+      "outcome": "frontend_customer supplies its bounded contract, implementation, tests, and evidence for parent VS-E19-S07.",
+      "context": "This is the frontend_customer implementation slice of VS-E19-S07. It must not duplicate authority assigned to another repository.",
+      "inScope": [
+        "Change only frontend_customer plus generated artifacts explicitly owned by it.",
+        "Implement the frontend_customer responsibilities and interfaces stated in parent VS-E19-S07.",
+        "Attach focused unit/integration evidence and compatibility or rollback notes."
+      ],
+      "outOfScope": [
+        "Implementing another repository ownership slice.",
+        "Cross-service database access or copying an authoritative aggregate.",
+        "Closing the parent without end-to-end and Postman/Newman evidence."
+      ],
+      "businessRules": [
+        "Customer cancellation uses a short-lived server quote and explicit confirmation.",
+        "Customer sees trust tier and safe reason codes, never the raw numeric trust score or anti-fraud evidence.",
+        "All ownership-negative tests prove one customer cannot access another customer booking or payment."
+      ],
+      "repositories": [
+        "frontend_customer"
+      ],
+      "interfaces": [
+        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
+        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
+        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+      ],
+      "dataOwnership": [
+        "Customer UI reads Booking availability/reservation and Finance/Payment projections; it never joins service databases."
+      ],
+      "stateMachine": [
+        "Model legal states and transitions for frontend_customer delivery slice for Request deposit waiver and appeal a customer trust decision; reject illegal transitions with stable error codes.",
+        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
+        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+      ],
+      "authorization": {
+        "actions": [
+          "vs-e19-s07-st01:view",
+          "vs-e19-s07-st01:manage"
+        ],
+        "dataPartitions": [
+          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+        ]
+      },
+      "failureSemantics": [
+        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
+        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
+        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+      ],
+      "idempotencyConcurrency": [
+        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
+        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
+        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized actor with a valid partition and a complete request for frontend_customer delivery slice for Request deposit waiver and appeal a customer trust decision",
+          "when": "the command or query is executed",
+          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+        },
+        {
+          "id": "AC02",
+          "given": "a caller missing the action, partition, or requested field-group grant",
+          "when": "the same operation is attempted",
+          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+        },
+        {
+          "id": "AC03",
+          "given": "the same mutation is replayed or two requests use the same expected revision",
+          "when": "processing overlaps or retries occur",
+          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+        }
+      ],
+      "tests": [
+        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
+        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
+        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+      ],
+      "observability": [
+        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
+        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
+        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+      ],
+      "definitionOfDone": [
+        "Catalog validation and all affected repository CI checks pass.",
+        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
+        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
+        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+      ],
+      "evidence": [
+        "Pull request and commit links per repository.",
+        "Automated test and Newman report with fixture version.",
+        "Migration/rollback or compatibility evidence where data/contracts change.",
+        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-frontend-customer",
+        "roadmap-v1-3",
+        "source-vs-e19-s07-st01"
+      ],
+      "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo frontend_customer cho VS-E19-S07; không được lấy quyền sở hữu dữ liệu của service khác.",
+      "jiraKey": "SCRUM-603",
+      "specStatus": "needs-refinement",
+      "workKind": "web",
+      "dispatchable": false,
+      "testCases": [],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E19-S07-ST02",
+      "issueType": "Subtask",
+      "summary": "[VS-E19-S07-ST02] service_booking delivery slice for Request deposit waiver and appeal a customer trust decision",
+      "parentSourceId": "VS-E19-S07",
+      "manageDescription": true,
+      "actor": "Repository ServiceOwner and implementing engineer",
+      "outcome": "service_booking supplies its bounded contract, implementation, tests, and evidence for parent VS-E19-S07.",
+      "context": "This is the service_booking implementation slice of VS-E19-S07. It must not duplicate authority assigned to another repository.",
+      "inScope": [
+        "Change only service_booking plus generated artifacts explicitly owned by it.",
+        "Implement the service_booking responsibilities and interfaces stated in parent VS-E19-S07.",
+        "Attach focused unit/integration evidence and compatibility or rollback notes."
+      ],
+      "outOfScope": [
+        "Implementing another repository ownership slice.",
+        "Cross-service database access or copying an authoritative aggregate.",
+        "Closing the parent without end-to-end and Postman/Newman evidence."
+      ],
+      "businessRules": [
+        "Customer cancellation uses a short-lived server quote and explicit confirmation.",
+        "Customer sees trust tier and safe reason codes, never the raw numeric trust score or anti-fraud evidence.",
+        "All ownership-negative tests prove one customer cannot access another customer booking or payment."
+      ],
+      "repositories": [
+        "service_booking"
+      ],
+      "interfaces": [
+        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
+        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
+        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+      ],
+      "dataOwnership": [
+        "Customer UI reads Booking availability/reservation and Finance/Payment projections; it never joins service databases."
+      ],
+      "stateMachine": [
+        "Model legal states and transitions for service_booking delivery slice for Request deposit waiver and appeal a customer trust decision; reject illegal transitions with stable error codes.",
+        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
+        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+      ],
+      "authorization": {
+        "actions": [
+          "vs-e19-s07-st02:view",
+          "vs-e19-s07-st02:manage"
+        ],
+        "dataPartitions": [
+          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+        ]
+      },
+      "failureSemantics": [
+        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
+        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
+        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+      ],
+      "idempotencyConcurrency": [
+        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
+        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
+        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized actor with a valid partition and a complete request for service_booking delivery slice for Request deposit waiver and appeal a customer trust decision",
+          "when": "the command or query is executed",
+          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+        },
+        {
+          "id": "AC02",
+          "given": "a caller missing the action, partition, or requested field-group grant",
+          "when": "the same operation is attempted",
+          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+        },
+        {
+          "id": "AC03",
+          "given": "the same mutation is replayed or two requests use the same expected revision",
+          "when": "processing overlaps or retries occur",
+          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+        }
+      ],
+      "tests": [
+        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
+        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
+        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+      ],
+      "observability": [
+        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
+        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
+        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+      ],
+      "definitionOfDone": [
+        "Catalog validation and all affected repository CI checks pass.",
+        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
+        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
+        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+      ],
+      "evidence": [
+        "Pull request and commit links per repository.",
+        "Automated test and Newman report with fixture version.",
+        "Migration/rollback or compatibility evidence where data/contracts change.",
+        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-booking",
+        "roadmap-v1-3",
+        "source-vs-e19-s07-st02"
+      ],
+      "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo service_booking cho VS-E19-S07; không được lấy quyền sở hữu dữ liệu của service khác.",
+      "jiraKey": "SCRUM-604",
+      "specStatus": "needs-refinement",
+      "workKind": "decision",
+      "dispatchable": false,
+      "testCases": [],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E19-S07-ST03",
+      "issueType": "Subtask",
+      "summary": "[VS-E19-S07-ST03] service_finance delivery slice for Request deposit waiver and appeal a customer trust decision",
+      "parentSourceId": "VS-E19-S07",
+      "manageDescription": true,
+      "actor": "Repository ServiceOwner and implementing engineer",
+      "outcome": "service_finance supplies its bounded contract, implementation, tests, and evidence for parent VS-E19-S07.",
+      "context": "This is the service_finance implementation slice of VS-E19-S07. It must not duplicate authority assigned to another repository.",
+      "inScope": [
+        "Change only service_finance plus generated artifacts explicitly owned by it.",
+        "Implement the service_finance responsibilities and interfaces stated in parent VS-E19-S07.",
+        "Attach focused unit/integration evidence and compatibility or rollback notes."
+      ],
+      "outOfScope": [
+        "Implementing another repository ownership slice.",
+        "Cross-service database access or copying an authoritative aggregate.",
+        "Closing the parent without end-to-end and Postman/Newman evidence."
+      ],
+      "businessRules": [
+        "Customer cancellation uses a short-lived server quote and explicit confirmation.",
+        "Customer sees trust tier and safe reason codes, never the raw numeric trust score or anti-fraud evidence.",
+        "All ownership-negative tests prove one customer cannot access another customer booking or payment."
+      ],
+      "repositories": [
+        "service_finance"
+      ],
+      "interfaces": [
+        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
+        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
+        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+      ],
+      "dataOwnership": [
+        "Customer UI reads Booking availability/reservation and Finance/Payment projections; it never joins service databases."
+      ],
+      "stateMachine": [
+        "Model legal states and transitions for service_finance delivery slice for Request deposit waiver and appeal a customer trust decision; reject illegal transitions with stable error codes.",
+        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
+        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+      ],
+      "authorization": {
+        "actions": [
+          "vs-e19-s07-st03:view",
+          "vs-e19-s07-st03:manage"
+        ],
+        "dataPartitions": [
+          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+        ]
+      },
+      "failureSemantics": [
+        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
+        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
+        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+      ],
+      "idempotencyConcurrency": [
+        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
+        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
+        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized actor with a valid partition and a complete request for service_finance delivery slice for Request deposit waiver and appeal a customer trust decision",
+          "when": "the command or query is executed",
+          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+        },
+        {
+          "id": "AC02",
+          "given": "a caller missing the action, partition, or requested field-group grant",
+          "when": "the same operation is attempted",
+          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+        },
+        {
+          "id": "AC03",
+          "given": "the same mutation is replayed or two requests use the same expected revision",
+          "when": "processing overlaps or retries occur",
+          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+        }
+      ],
+      "tests": [
+        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
+        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
+        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+      ],
+      "observability": [
+        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
+        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
+        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+      ],
+      "definitionOfDone": [
+        "Catalog validation and all affected repository CI checks pass.",
+        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
+        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
+        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+      ],
+      "evidence": [
+        "Pull request and commit links per repository.",
+        "Automated test and Newman report with fixture version.",
+        "Migration/rollback or compatibility evidence where data/contracts change.",
+        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-finance",
+        "roadmap-v1-3",
+        "source-vs-e19-s07-st03"
+      ],
+      "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo service_finance cho VS-E19-S07; không được lấy quyền sở hữu dữ liệu của service khác.",
+      "jiraKey": "SCRUM-605",
+      "specStatus": "needs-refinement",
+      "workKind": "decision",
+      "dispatchable": false,
+      "testCases": [],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E19-S07-ST04",
+      "issueType": "Subtask",
+      "summary": "[VS-E19-S07-ST04] service_payment delivery slice for Request deposit waiver and appeal a customer trust decision",
+      "parentSourceId": "VS-E19-S07",
+      "manageDescription": true,
+      "actor": "Repository ServiceOwner and implementing engineer",
+      "outcome": "service_payment supplies its bounded contract, implementation, tests, and evidence for parent VS-E19-S07.",
+      "context": "This is the service_payment implementation slice of VS-E19-S07. It must not duplicate authority assigned to another repository.",
+      "inScope": [
+        "Change only service_payment plus generated artifacts explicitly owned by it.",
+        "Implement the service_payment responsibilities and interfaces stated in parent VS-E19-S07.",
+        "Attach focused unit/integration evidence and compatibility or rollback notes."
+      ],
+      "outOfScope": [
+        "Implementing another repository ownership slice.",
+        "Cross-service database access or copying an authoritative aggregate.",
+        "Closing the parent without end-to-end and Postman/Newman evidence."
+      ],
+      "businessRules": [
+        "Customer cancellation uses a short-lived server quote and explicit confirmation.",
+        "Customer sees trust tier and safe reason codes, never the raw numeric trust score or anti-fraud evidence.",
+        "All ownership-negative tests prove one customer cannot access another customer booking or payment."
+      ],
+      "repositories": [
+        "service_payment"
+      ],
+      "interfaces": [
+        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
+        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
+        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+      ],
+      "dataOwnership": [
+        "Customer UI reads Booking availability/reservation and Finance/Payment projections; it never joins service databases."
+      ],
+      "stateMachine": [
+        "Model legal states and transitions for service_payment delivery slice for Request deposit waiver and appeal a customer trust decision; reject illegal transitions with stable error codes.",
+        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
+        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+      ],
+      "authorization": {
+        "actions": [
+          "vs-e19-s07-st04:view",
+          "vs-e19-s07-st04:manage"
+        ],
+        "dataPartitions": [
+          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+        ]
+      },
+      "failureSemantics": [
+        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
+        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
+        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+      ],
+      "idempotencyConcurrency": [
+        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
+        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
+        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized actor with a valid partition and a complete request for service_payment delivery slice for Request deposit waiver and appeal a customer trust decision",
+          "when": "the command or query is executed",
+          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+        },
+        {
+          "id": "AC02",
+          "given": "a caller missing the action, partition, or requested field-group grant",
+          "when": "the same operation is attempted",
+          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+        },
+        {
+          "id": "AC03",
+          "given": "the same mutation is replayed or two requests use the same expected revision",
+          "when": "processing overlaps or retries occur",
+          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+        }
+      ],
+      "tests": [
+        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
+        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
+        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+      ],
+      "observability": [
+        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
+        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
+        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+      ],
+      "definitionOfDone": [
+        "Catalog validation and all affected repository CI checks pass.",
+        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
+        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
+        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+      ],
+      "evidence": [
+        "Pull request and commit links per repository.",
+        "Automated test and Newman report with fixture version.",
+        "Migration/rollback or compatibility evidence where data/contracts change.",
+        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-payment",
+        "roadmap-v1-3",
+        "source-vs-e19-s07-st04"
+      ],
+      "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo service_payment cho VS-E19-S07; không được lấy quyền sở hữu dữ liệu của service khác.",
+      "jiraKey": "SCRUM-606",
+      "specStatus": "needs-refinement",
+      "workKind": "decision",
+      "dispatchable": false,
+      "testCases": [],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E19-S07-ST05",
+      "issueType": "Subtask",
+      "summary": "[VS-E19-S07-ST05] platform_contracts delivery slice for Request deposit waiver and appeal a customer trust decision",
+      "parentSourceId": "VS-E19-S07",
+      "manageDescription": true,
+      "actor": "Repository ServiceOwner and implementing engineer",
+      "outcome": "platform_contracts supplies its bounded contract, implementation, tests, and evidence for parent VS-E19-S07.",
+      "context": "This is the platform_contracts implementation slice of VS-E19-S07. It must not duplicate authority assigned to another repository.",
+      "inScope": [
+        "Change only platform_contracts plus generated artifacts explicitly owned by it.",
+        "Implement the platform_contracts responsibilities and interfaces stated in parent VS-E19-S07.",
+        "Attach focused unit/integration evidence and compatibility or rollback notes."
+      ],
+      "outOfScope": [
+        "Implementing another repository ownership slice.",
+        "Cross-service database access or copying an authoritative aggregate.",
+        "Closing the parent without end-to-end and Postman/Newman evidence."
+      ],
+      "businessRules": [
+        "Customer cancellation uses a short-lived server quote and explicit confirmation.",
+        "Customer sees trust tier and safe reason codes, never the raw numeric trust score or anti-fraud evidence.",
+        "All ownership-negative tests prove one customer cannot access another customer booking or payment."
+      ],
+      "repositories": [
+        "platform_contracts"
+      ],
+      "interfaces": [
+        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
+        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
+        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+      ],
+      "dataOwnership": [
+        "Customer UI reads Booking availability/reservation and Finance/Payment projections; it never joins service databases."
+      ],
+      "stateMachine": [
+        "Model legal states and transitions for platform_contracts delivery slice for Request deposit waiver and appeal a customer trust decision; reject illegal transitions with stable error codes.",
+        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
+        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+      ],
+      "authorization": {
+        "actions": [
+          "vs-e19-s07-st05:view",
+          "vs-e19-s07-st05:manage"
+        ],
+        "dataPartitions": [
+          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+        ]
+      },
+      "failureSemantics": [
+        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
+        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
+        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+      ],
+      "idempotencyConcurrency": [
+        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
+        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
+        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized actor with a valid partition and a complete request for platform_contracts delivery slice for Request deposit waiver and appeal a customer trust decision",
+          "when": "the command or query is executed",
+          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+        },
+        {
+          "id": "AC02",
+          "given": "a caller missing the action, partition, or requested field-group grant",
+          "when": "the same operation is attempted",
+          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+        },
+        {
+          "id": "AC03",
+          "given": "the same mutation is replayed or two requests use the same expected revision",
+          "when": "processing overlaps or retries occur",
+          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+        }
+      ],
+      "tests": [
+        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
+        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
+        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+      ],
+      "observability": [
+        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
+        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
+        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+      ],
+      "definitionOfDone": [
+        "Catalog validation and all affected repository CI checks pass.",
+        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
+        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
+        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+      ],
+      "evidence": [
+        "Pull request and commit links per repository.",
+        "Automated test and Newman report with fixture version.",
+        "Migration/rollback or compatibility evidence where data/contracts change.",
+        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-platform-contracts",
+        "roadmap-v1-3",
+        "source-vs-e19-s07-st05"
+      ],
+      "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo platform_contracts cho VS-E19-S07; không được lấy quyền sở hữu dữ liệu của service khác.",
+      "jiraKey": "SCRUM-607",
+      "specStatus": "needs-refinement",
+      "workKind": "contract",
+      "dispatchable": false,
+      "testCases": [],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": []
+    }
+  ]
+}

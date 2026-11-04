@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package vistay.finance.v1;
+
+import "google/protobuf/timestamp.proto";
+import "vistay/common/v1/common.proto";
+
+option java_multiple_files = true;
+option java_package = "com.vistay.contracts.finance.v1";
+
+// Trusted read used by Payment to obtain immutable amount/purpose/account data.
+// Caller identity is derived from mTLS, never request metadata supplied by a client.
+service FinancePaymentInstructionService {
+  rpc GetPaymentInstruction(GetPaymentInstructionRequest)
+      returns (GetPaymentInstructionResponse);
+}
+
+message GetPaymentInstructionRequest {
+  string finance_payment_request_id = 1;
+}
+
+message GetPaymentInstructionResponse {
+  string finance_payment_request_id = 1;
+  optional string booking_id = 2;
+  optional string customer_id = 3;
+  vistay.common.v1.Money amount = 4;
+  string purpose = 5;
+  string payer_reference = 6;
+  google.protobuf.Timestamp expires_at = 7;
+  int64 version = 8;
+}

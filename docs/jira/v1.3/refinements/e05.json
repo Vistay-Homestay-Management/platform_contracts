@@ -1,0 +1,997 @@
+{
+  "refinements": [
+    {
+      "sourceId": "VS-E05",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "Pricing hardening is split into durable Booking behavior, versioned contract evidence, authorization invalidation, and separate Admin Web/Mobile workspaces.",
+      "context": "Completed historical pricing Stories remain immutable; only the open Task/Subtask leaves below are dispatchable."
+    },
+    {
+      "sourceId": "VS-E05-T01",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "Durable idempotency reservation and quote-snapshot verification are divided into Booking, contract, and Admin evidence slices.",
+      "context": "The parent coordinates the three repository leaves and is never assigned directly."
+    },
+    {
+      "sourceId": "VS-E05-T01-ST01",
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Booking Service durably reserves pricing mutation idempotency keys before side effects and verifies every stored quote snapshot against the immutable publication fingerprint and explicit price components.",
+      "context": "Pricing authoring/publication/snapshot code already exists. Harden crash recovery and mismatch detection without changing the configured short/medium/long formulas or rewriting historical snapshots.",
+      "inScope": [
+        "Add a pricing idempotency reservation table with scoped key, canonical request hash, state, durable result/error reference, lease/recovery timestamps, and uniqueness constraints.",
+        "Reserve before publish/override/snapshot effects; identical replay returns the durable result and mismatched payload returns IDEMPOTENCY_KEY_REUSED.",
+        "Verify publication/profile/rule/override fingerprints plus base, discount, staff-markup, rounding, and total components when reading or reconciling snapshots.",
+        "Add repair/reconciliation for expired IN_PROGRESS reservations and fingerprint mismatches without editing immutable financial history."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "repositories": [
+        "service_booking"
+      ],
+      "primaryRepository": "service_booking",
+      "repositorySlices": [
+        {
+          "repository": "service_booking",
+          "paths": [
+            "src/main/resources/db/migration/V9__pricing_idempotency_and_snapshot_verification.sql",
+            "src/main/java/com/vistay/booking/application/PricingIdempotencyService.java",
+            "src/main/java/com/vistay/booking/application/PricingQuoteSnapshotService.java",
+            "src/main/java/com/vistay/booking/application/PricingPublicationService.java",
+            "src/main/java/com/vistay/booking/application/PricingOverrideService.java",
+            "src/main/java/com/vistay/booking/adapter/in/grpc/PricingPublicationReconciliationGrpcService.java",
+            "src/test/java/com/vistay/booking/application/PricingIdempotencyIntegrationTest.java",
+            "src/test/java/com/vistay/booking/application/PricingSnapshotVerificationIntegrationTest.java"
+          ],
+          "artifacts": [
+            "durable pricing idempotency reservation",
+            "snapshot fingerprint verifier",
+            "stale reservation repair path",
+            "crash/replay/mismatch integration tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "Booking owns pricing profile versions, publications, manual overrides, idempotency reservations, and immutable quote snapshots; Property supplies unit identity/eligibility and Finance consumes financial projections."
+      ],
+      "stateMachine": [
+        "Reservation is IN_PROGRESS -> SUCCEEDED or FAILED; an expired IN_PROGRESS lease may be reclaimed by the deterministic repair path.",
+        "A completed reservation is immutable and identical replay returns its stored outcome.",
+        "Snapshot verification is VERIFIED or MISMATCH; mismatch blocks downstream use and appends reconciliation evidence rather than editing the snapshot."
+      ],
+      "authorization": {
+        "actions": [
+          "pricing:publish",
+          "pricing:override",
+          "pricing:quote-snapshot:create",
+          "pricing:reconcile"
+        ],
+        "dataPartitions": [
+          "ADMIN organization plus SITE/BRANCH membership for the target property; SYSTEM is limited to authenticated internal repair or projection calls."
+        ],
+        "fieldGroups": [
+          "SUMMARY is baseline; DOCUMENT and INTERNAL_AUDIT require explicit field-group grants."
+        ]
+      },
+      "failureSemantics": [
+        "Reject malformed, unauthorized, or fingerprint-mismatched pricing commands before committing a new financial effect.",
+        "Map key reuse, stale revision, publication mismatch, and dependency failure to distinct stable codes.",
+        "Retry only transient authorization/event-publication work; stale reservations require the explicit bounded repair path."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized pricing command with a new scoped idempotency key",
+          "when": "the transaction commits or the process crashes after reservation",
+          "then": "at most one pricing effect exists and a retry deterministically completes or returns the durable outcome"
+        },
+        {
+          "id": "AC02",
+          "given": "the same key with a different canonical request or a snapshot with changed component/fingerprint data",
+          "when": "processing or verification runs",
+          "then": "a stable mismatch error is returned and no financial history is overwritten"
+        },
+        {
+          "id": "AC03",
+          "given": "an expired IN_PROGRESS reservation or verification failure",
+          "when": "the repair/reconciliation command runs twice",
+          "then": "one final reservation state and one append-only repair result remain"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*PricingIdempotency*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *PricingIdempotency*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*PricingIdempotency*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *PricingIdempotency*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "labels": [
+        "repo-service-booking",
+        "roadmap-v1-3",
+        "source-vs-e05-t01-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E05-T01-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "sourceId": "VS-E05-T01-ST02",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Platform Contracts specifies the pricing idempotency reservation, immutable quote snapshot components, verification fingerprint, and reconciliation result consumed by Booking and operators.",
+      "context": "Extend existing pricing v1 documents, fixtures, event schema, and validators; do not embed configured commercial values in the contract repository.",
+      "inScope": [
+        "Document scoped idempotency identity, canonical request fingerprint, durable terminal result, lease recovery, and mismatch code.",
+        "Specify snapshot fields for base price, short-only discount level, stay product, staff markup, rounding, publication/profile/override identity, and verification fingerprint.",
+        "Extend rate-profile-published event and valid/invalid fixtures for cache invalidation and snapshot verification.",
+        "Fail validation on implicit monetary defaults, component/total mismatch, mutable effective artifact, or non-canonical fingerprint input."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "platform_contracts"
+      ],
+      "primaryRepository": "platform_contracts",
+      "repositorySlices": [
+        {
+          "repository": "platform_contracts",
+          "paths": [
+            "docs/pricing-v1-publication-and-snapshots.md",
+            "docs/pricing-v1-quote-calculation.md",
+            "docs/pricing-v1-rate-profile-published-event.md",
+            "events/v1/booking.rate-profile-published.payload.schema.json",
+            "events/v1/examples/booking.rate-profile-published.event.example.json",
+            "fixtures/pricing-v1-publication-fingerprint.v1.json",
+            "scripts/validate-pricing-publication.mjs"
+          ],
+          "artifacts": [
+            "pricing idempotency contract",
+            "quote snapshot component contract",
+            "cache-invalidation event fields",
+            "valid and invalid fingerprint fixtures"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "pricing:contract:view",
+          "pricing:contract:publish"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "a complete publication and snapshot fixture",
+          "when": "pricing validation runs",
+          "then": "the canonical publication and snapshot verification fingerprints are deterministic and all component identities are explicit"
+        },
+        {
+          "id": "AC02",
+          "given": "a reused key with changed request, changed effective artifact, missing component, or mismatched total",
+          "when": "the invalid fixture is validated",
+          "then": "validation fails with a stable path-specific diagnostic"
+        },
+        {
+          "id": "AC03",
+          "given": "the same valid fixture on repeated runs",
+          "when": "fingerprints are compared",
+          "then": "the output is byte-for-byte identical and contains no environment secret or production default"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "contract",
+          "command": "npm run validate:pricing",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "pricing publication/snapshot validation log and fingerprints"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "full platform_contracts CI-equivalent log"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-platform-contracts",
+        "roadmap-v1-3",
+        "source-vs-e05-t01-st02"
+      ],
+      "decisionNoteVi": "Leaf VS-E05-T01-ST02 chỉ sở hữu artifact của platform_contracts; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "contract",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "sourceId": "VS-E05-T01-ST03",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Admin Web exposes safe pricing command replay status and quote-snapshot verification detail without allowing operators to edit immutable financial evidence.",
+      "context": "Use the shared API client. This leaf is an operational view for the hardened Booking contract, not the full pricing authoring workspace delivered by VS-E05-T03.",
+      "inScope": [
+        "Add typed idempotency/verification fields and stable errors to the shared API client.",
+        "Show command outcome, replay/mismatch state, component totals, fingerprint, publication/profile/override identity, and repair status in an accessible detail panel.",
+        "Hide staff markup and other FINANCIAL components unless explicitly granted.",
+        "Provide loading, unavailable, mismatch, repair-in-progress, forbidden, and stale-revision component tests."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "frontend_admin"
+      ],
+      "primaryRepository": "frontend_admin",
+      "repositorySlices": [
+        {
+          "repository": "frontend_admin",
+          "paths": [
+            "packages/api-client/src/index.ts",
+            "packages/api-client/src/index.test.ts",
+            "apps/web/src/PricingVerificationPanel.tsx",
+            "apps/web/src/PricingVerificationPanel.test.tsx",
+            "apps/web/src/App.tsx",
+            "apps/web/src/App.css"
+          ],
+          "artifacts": [
+            "typed pricing verification client",
+            "immutable snapshot detail panel",
+            "replay/mismatch/permission component tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "pricing:snapshot:view",
+          "pricing:reconcile:view"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E05-T01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E05-T01-ST02",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized operator opens a verified snapshot or completed replay",
+          "when": "the panel loads",
+          "then": "it shows the authoritative component/fingerprint/result evidence and no edit control"
+        },
+        {
+          "id": "AC02",
+          "given": "the actor lacks FINANCIAL or the snapshot is forbidden/unavailable",
+          "when": "the panel renders",
+          "then": "restricted components are absent and a non-leaking state is shown"
+        },
+        {
+          "id": "AC03",
+          "given": "a mismatch or repair-in-progress result",
+          "when": "data refreshes",
+          "then": "the panel keeps the failure visible, links the correlation evidence, and never shows false success"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "api-client and PricingVerificationPanel Vitest report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "npm run typecheck",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "frontend workspace typecheck log"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-frontend-admin",
+        "roadmap-v1-3",
+        "source-vs-e05-t01-st03"
+      ],
+      "decisionNoteVi": "Leaf VS-E05-T01-ST03 chỉ sở hữu artifact của frontend_admin; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "sourceId": "VS-E05-T02",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Booking pricing authorization uses the approved action catalogue and invalidates cached grants at or below the authorizationVersion carried by user.authorization-changed.",
+      "context": "AuthorizationClient already caches snapshots and tracks minimum versions. Complete pricing-specific action validation, monotonic invalidation, fail-closed concurrency, and evidence.",
+      "inScope": [
+        "Define the exact pricing read/author/preview/publish/override/large-override/reconcile action set and reject unrecognized aliases.",
+        "Consume user.authorization-changed, advance per-account minimumAuthorizationVersion monotonically, and evict stale cached snapshots.",
+        "Require the current Property SITE/BRANCH partition and FINANCIAL/INTERNAL_AUDIT field groups per operation.",
+        "Add race tests for an in-flight pricing command concurrent with grant revocation or version advancement."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "service_booking"
+      ],
+      "primaryRepository": "service_booking",
+      "repositorySlices": [
+        {
+          "repository": "service_booking",
+          "paths": [
+            "src/main/java/com/vistay/booking/application/AuthorizationClient.java",
+            "src/main/java/com/vistay/booking/application/PricingScopePolicy.java",
+            "src/main/java/com/vistay/booking/adapter/in/messaging/UserAuthorizationChangedListener.java",
+            "src/main/java/com/vistay/booking/config/SecurityConfig.java",
+            "src/test/java/com/vistay/booking/application/AuthorizationClientTest.java",
+            "src/test/java/com/vistay/booking/application/PricingScopePolicyTest.java",
+            "src/test/java/com/vistay/booking/application/PricingAuthorizationInvalidationIntegrationTest.java"
+          ],
+          "artifacts": [
+            "pricing action catalogue",
+            "authorization-version cache invalidation",
+            "revocation race tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "pricing:read",
+          "pricing:author",
+          "pricing:preview",
+          "pricing:publish",
+          "pricing:override",
+          "pricing:override-large",
+          "pricing:reconcile"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "a current authorization snapshot with the exact pricing action, partition, and field group",
+          "when": "the pricing operation is called",
+          "then": "the operation may proceed and records authorizationVersion and scope evidence"
+        },
+        {
+          "id": "AC02",
+          "given": "a revocation event advances the minimum version or the action/partition/field group is absent",
+          "when": "a cached or in-flight call checks authorization",
+          "then": "it fails closed and cannot commit with stale grant evidence"
+        },
+        {
+          "id": "AC03",
+          "given": "duplicate or out-of-order authorization-change events",
+          "when": "the listener processes them",
+          "then": "the minimum version remains monotonic and cache eviction is replay safe"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*PricingScopePolicyTest\" --tests \"*AuthorizationClientTest\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "pricing authorization unit test XML"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*PricingAuthorizationInvalidationIntegrationTest\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "authorization invalidation/revocation race integration report"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-service-booking",
+        "roadmap-v1-3",
+        "source-vs-e05-t02"
+      ],
+      "decisionNoteVi": "Leaf VS-E05-T02 chỉ sở hữu artifact của service_booking; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "sourceId": "VS-E05-T03",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Admin Web provides a branch-scoped pricing authoring, rule-priority, quote-preview, manual-override, approval, publication, and immutable-history workspace.",
+      "context": "Consume existing Booking pricing GraphQL operations through the shared client and follow the green visual direction; the UI never calculates an authoritative total itself.",
+      "inScope": [
+        "Build profile/version list and editor for configured stay boundaries, base rate, five SHORT discount levels, medium/long percentages, check-in/out, rounding, dated rules, and priority.",
+        "Preview authoritative quote explanation and component order; display staff markup separately from base/discount.",
+        "Add manual override with reason, cap validation, large-override approval state, publish confirmation, and immutable publication/snapshot history.",
+        "Cover permissions, branch selection, FINANCIAL redaction, validation, stale revision, conflict, loading, empty, dependency failure, and success refresh."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "frontend_admin"
+      ],
+      "primaryRepository": "frontend_admin",
+      "repositorySlices": [
+        {
+          "repository": "frontend_admin",
+          "paths": [
+            "packages/api-client/src/index.ts",
+            "packages/api-client/src/index.test.ts",
+            "apps/web/src/PricingWorkspace.tsx",
+            "apps/web/src/PricingWorkspace.test.tsx",
+            "apps/web/src/App.tsx",
+            "apps/web/src/App.css",
+            "apps/web/src/index.css"
+          ],
+          "artifacts": [
+            "typed pricing admin client",
+            "Admin Web PricingWorkspace",
+            "author/preview/publish/override tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "pricing:read",
+          "pricing:author",
+          "pricing:preview",
+          "pricing:publish",
+          "pricing:override",
+          "pricing:override-large"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E05-T01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E05-T01-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E05-T02",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized operator authors valid rules and requests preview/publication",
+          "when": "the Booking operations succeed",
+          "then": "the UI shows authoritative revisions, explanation, fingerprint, and immutable published state"
+        },
+        {
+          "id": "AC02",
+          "given": "missing action/branch/FINANCIAL grant, invalid boundary/rule/cap, or stale revision",
+          "when": "the form renders or submits",
+          "then": "restricted controls/data are absent or a specific non-leaking error is shown with no false success"
+        },
+        {
+          "id": "AC03",
+          "given": "publication or override is replayed or conflicts",
+          "when": "the response arrives",
+          "then": "the UI shows the durable original outcome or conflict and refreshes the authoritative version exactly once"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "api-client and PricingWorkspace Vitest report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "npm run typecheck",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "frontend workspace typecheck log"
+        },
+        {
+          "id": "TEST-03",
+          "level": "operational",
+          "command": "npm run build",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Admin Web production build log"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-frontend-admin",
+        "roadmap-v1-3",
+        "source-vs-e05-t03"
+      ],
+      "decisionNoteVi": "Leaf VS-E05-T03 chỉ sở hữu artifact của frontend_admin; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "sourceId": "VS-E05-T04",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Admin Mobile provides touch-first pricing inspection, quote preview, bounded override, approval, and publication parity without duplicating the desktop rule editor.",
+      "context": "Use the same shared client and OIDC session as Web. Mobile supports operational review and bounded edits; complex bulk rule authoring remains a Web workflow.",
+      "inScope": [
+        "Add a Pricing destination with property/profile selection, current publication, compact rule summary, quote preview, and component explanation.",
+        "Provide touch-first override/reason, large-override approval, and publish confirmation actions when granted.",
+        "Refresh after background/network recovery and before enabling any financial mutation; never queue a mutation offline.",
+        "Test permission/FINANCIAL redaction, validation, conflict, replay result, loading, empty, and dependency failure."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "frontend_admin"
+      ],
+      "primaryRepository": "frontend_admin",
+      "repositorySlices": [
+        {
+          "repository": "frontend_admin",
+          "paths": [
+            "packages/api-client/src/index.ts",
+            "packages/api-client/src/index.test.ts",
+            "apps/mobile/src/PricingWorkspace.tsx",
+            "apps/mobile/src/PricingWorkspace.test.tsx",
+            "apps/mobile/App.tsx"
+          ],
+          "artifacts": [
+            "Admin Mobile pricing destination",
+            "touch-first preview/override/publish flows",
+            "mobile permission and recovery tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "pricing:read",
+          "pricing:preview",
+          "pricing:publish",
+          "pricing:override",
+          "pricing:override-large"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E05-T01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E05-T01-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E05-T02",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an online authorized operator selects a property/profile",
+          "when": "preview or an allowed action completes",
+          "then": "mobile shows the authoritative revision, components, fingerprint, and durable result"
+        },
+        {
+          "id": "AC02",
+          "given": "the app resumes, loses network, lacks permission/FINANCIAL, or has a stale observation",
+          "when": "a mutation is considered",
+          "then": "the app refreshes or disables it and reveals no restricted value"
+        },
+        {
+          "id": "AC03",
+          "given": "a conflict, mismatch, or replay result",
+          "when": "the response is rendered",
+          "then": "the app clears pending success, displays actionable stable feedback, and does not silently resubmit"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm run test:mobile",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "PricingWorkspace mobile Vitest report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "npm run typecheck",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "mobile/shared-client typecheck log"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-frontend-admin",
+        "roadmap-v1-3",
+        "source-vs-e05-t04"
+      ],
+      "decisionNoteVi": "Leaf VS-E05-T04 chỉ sở hữu artifact của frontend_admin; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "mobile",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    }
+  ]
+}

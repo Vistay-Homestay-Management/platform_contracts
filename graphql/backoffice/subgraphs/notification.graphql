@@ -1,0 +1,51 @@
+extend schema
+  @link(
+    url: "https://specs.apollo.dev/federation/v2.7"
+    import: ["@authenticated", "@requiresScopes"]
+  )
+
+"""
+An opaque non-negative decimal sequence. Clients must persist and return it
+unchanged; its numeric representation is an implementation detail.
+"""
+scalar Cursor
+
+"""An RFC 3339 timestamp with an offset."""
+scalar DateTime
+
+type Subscription {
+  """
+  Streams this viewer's durable inbox strictly after `afterCursor`. A null
+  cursor starts at the earliest retained entry. Delivery is at least once, so
+  clients deduplicate by `notification.id` and persist each received cursor.
+  """
+  notificationStream(afterCursor: Cursor): NotificationStreamEvent!
+    @authenticated
+    @requiresScopes(scopes: [["notifications:read"]])
+}
+
+type NotificationStreamEvent {
+  cursor: Cursor!
+  notification: Notification!
+}
+
+type Notification {
+  id: ID!
+  category: NotificationCategory!
+  title: String!
+  body: String!
+  channels: [NotificationChannel!]!
+  createdAt: DateTime!
+  readAt: DateTime
+}
+
+enum NotificationCategory {
+  WELCOME
+  SECURITY
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  PUSH
+}

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/events/v1/payment.qr-ready.event.schema.json",
+  "title": "Payment QR ready event v1",
+  "allOf": [
+    { "$ref": "https://contracts.vistay.vn/events/v1/common-event-envelope.schema.json" },
+    { "type": "object", "properties": {
+      "type": { "const": "vistay.payment.qr-ready" },
+      "version": { "const": 1 },
+      "data": { "$ref": "https://contracts.vistay.vn/events/v1/payment.intent-status.payload.schema.json" }
+    } }
+  ]
+}

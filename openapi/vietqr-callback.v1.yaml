@@ -1,0 +1,58 @@
+openapi: 3.1.0
+info:
+  title: ViStay VietQR Callback API
+  version: 1.0.0
+  description: Provider-facing callback surface. It is disabled until merchant UAT and public HTTPS gates pass.
+paths:
+  /webhooks/vietqr/token:
+    post:
+      operationId: issueVietQrCallbackToken
+      security:
+        - basicAuth: []
+      responses:
+        '200':
+          description: Short-lived callback bearer token.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [access_token, token_type, expires_in]
+                properties:
+                  access_token: { type: string }
+                  token_type: { type: string, const: Bearer }
+                  expires_in: { type: integer, minimum: 1 }
+        '401': { description: Invalid provider credentials. }
+        '404': { description: Callback activation is disabled. }
+  /webhooks/vietqr/transactions:
+    post:
+      operationId: receiveVietQrTransaction
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VietQrTransaction'
+      responses:
+        '200': { description: Accepted or already processed idempotently. }
+        '400': { description: Malformed payload. }
+        '401': { description: Invalid or expired callback token. }
+        '404': { description: Callback activation is disabled. }
+components:
+  securitySchemes:
+    basicAuth: { type: http, scheme: basic }
+    bearerAuth: { type: http, scheme: bearer }
+  schemas:
+    VietQrTransaction:
+      type: object
+      additionalProperties: true
+      required: [referenceNumber, amount, transactionType, transactionTime]
+      properties:
+        referenceNumber: { type: string, minLength: 1, maxLength: 180 }
+        transactionId: { type: string, maxLength: 180 }
+        orderId: { type: string, maxLength: 13 }
+        amount: { type: number, exclusiveMinimum: 0 }
+        transactionType: { type: string, enum: [CREDIT, DEBIT] }
+        content: { type: string, maxLength: 500 }
+        transactionTime: { type: string, format: date-time }

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/events/v1/booking.inventory-block-changed.event.schema.json",
+  "title": "Booking inventory block changed event v1",
+  "allOf": [
+    { "$ref": "https://contracts.vistay.vn/events/v1/common-event-envelope.schema.json" },
+    {
+      "type": "object",
+      "properties": {
+        "type": { "const": "vistay.booking.inventory-block-changed" },
+        "version": { "const": 1 },
+        "data": {
+          "$ref": "https://contracts.vistay.vn/events/v1/booking.inventory-block-changed.payload.schema.json"
+        }
+      }
+    }
+  ]
+}
+

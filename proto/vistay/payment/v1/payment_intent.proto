@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package vistay.payment.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "com.vistay.contracts.payment.v1";
+
+// Internal payment-intent commands for trusted ViStay services.
+// Clients MUST use mTLS, propagate correlation ID and set a deadline <= 2s.
+service PaymentIntentService {
+  rpc CreateVietQrIntent(CreateVietQrIntentRequest) returns (CreateVietQrIntentResponse);
+  rpc GetPaymentIntent(GetPaymentIntentRequest) returns (GetPaymentIntentResponse);
+  rpc CancelPaymentIntent(CancelPaymentIntentRequest) returns (CancelPaymentIntentResponse);
+}
+
+message CreateVietQrIntentRequest {
+  string finance_payment_request_id = 1;
+  string idempotency_key = 2;
+}
+
+message GetPaymentIntentRequest {
+  string payment_intent_id = 1;
+}
+
+message CancelPaymentIntentRequest {
+  string payment_intent_id = 1;
+  int64 expected_version = 2;
+  string reason = 3;
+}
+
+message CreateVietQrIntentResponse {
+  PaymentIntent payment_intent = 1;
+}
+
+message GetPaymentIntentResponse {
+  PaymentIntent payment_intent = 1;
+}
+
+message CancelPaymentIntentResponse {
+  PaymentIntent payment_intent = 1;
+}
+
+message PaymentIntent {
+  string payment_intent_id = 1;
+  string intent_code = 2;
+  string finance_payment_request_id = 3;
+  int64 amount_minor_units = 4;
+  string currency = 5;
+  string status = 6;
+  optional string qr_payload = 7;
+  optional string qr_image_data_uri = 8;
+  google.protobuf.Timestamp expires_at = 9;
+  int64 version = 10;
+}

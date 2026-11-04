@@ -1,0 +1,779 @@
+{
+  "shard": "E14",
+  "issues": [
+    {
+      "sourceId": "VS-E14",
+      "jiraKey": "SCRUM-305",
+      "issueType": "Epic",
+      "summary": "[VS-E14] Channel Manager Integration",
+      "manageDescription": true,
+      "actor": "Channel integration operator",
+      "outcome": "Channel Manager Integration is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
+      "context": "This epic is part of the ViStay VS-E14 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "inScope": [
+        "Implement and verify: Channel Manager Integration.",
+        "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
+        "Provide repository-specific automated tests and Postman/Newman evidence for callable APIs."
+      ],
+      "outOfScope": [
+        "Unlisted provider credentials and production policy values.",
+        "Direct cross-service database reads or duplicated ownership.",
+        "Unreviewed workflow transitions, historical rewrites, or destructive migration shortcuts."
+      ],
+      "businessRules": [
+        "Pilot mapping is one exact ViStay unit to one Channex Property and one Room Type with inventory one; pilot supports SHORT stays only.",
+        "Require current Channex HMAC verification in production; shared-secret fallback is sandbox-only.",
+        "Webhook is a trigger: pull Booking Revision Feed, durably apply in order, then acknowledge.",
+        "Out-of-order revisions, HTTP 429, and ARI warnings are handled; conflicts enter NEEDS_MANUAL_RESOLUTION and are never auto-cancelled or overwritten.",
+        "Do not ingest card or CVV data."
+      ],
+      "repositories": [
+        "service_booking",
+        "platform_contracts",
+        "platform_infrastructure"
+      ],
+      "interfaces": [
+        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
+        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
+        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+      ],
+      "dataOwnership": [
+        "Booking owns the Channex mapping, durable webhook inbox, revision cursor, ARI publication state, and manual exception."
+      ],
+      "stateMachine": [
+        "Model legal states and transitions for Channel Manager Integration; reject illegal transitions with stable error codes.",
+        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
+        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+      ],
+      "authorization": {
+        "actions": [
+          "vs-e14:view",
+          "vs-e14:manage"
+        ],
+        "dataPartitions": [
+          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+        ]
+      },
+      "failureSemantics": [
+        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
+        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
+        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+      ],
+      "idempotencyConcurrency": [
+        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
+        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
+        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized actor with a valid partition and a complete request for Channel Manager Integration",
+          "when": "the command or query is executed",
+          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+        },
+        {
+          "id": "AC02",
+          "given": "a caller missing the action, partition, or requested field-group grant",
+          "when": "the same operation is attempted",
+          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+        },
+        {
+          "id": "AC03",
+          "given": "the same mutation is replayed or two requests use the same expected revision",
+          "when": "processing overlaps or retries occur",
+          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+        }
+      ],
+      "tests": [
+        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
+        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
+        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+      ],
+      "observability": [
+        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
+        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
+        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+      ],
+      "definitionOfDone": [
+        "Catalog validation and all affected repository CI checks pass.",
+        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
+        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
+        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+      ],
+      "evidence": [
+        "Pull request and commit links per repository.",
+        "Automated test and Newman report with fixture version.",
+        "Migration/rollback or compatibility evidence where data/contracts change.",
+        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "owner-service-booking",
+        "roadmap-v1-3",
+        "source-vs-e14"
+      ],
+      "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
+      "specStatus": "needs-refinement",
+      "workKind": "contract",
+      "dispatchable": false,
+      "testCases": [],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E14-S01",
+      "jiraKey": "SCRUM-407",
+      "issueType": "Story",
+      "summary": "[VS-E14-S01] Map property/unit/rate to selected Channel Manager",
+      "parentSourceId": "VS-E14",
+      "manageDescription": true,
+      "actor": "Channel integration operator",
+      "outcome": "Map property/unit/rate to selected Channel Manager is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
+      "context": "This story is part of the ViStay VS-E14 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "inScope": [
+        "Implement and verify: Map property/unit/rate to selected Channel Manager.",
+        "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
+        "Provide repository-specific automated tests and Postman/Newman evidence for callable APIs."
+      ],
+      "outOfScope": [
+        "Unlisted provider credentials and production policy values.",
+        "Direct cross-service database reads or duplicated ownership.",
+        "Unreviewed workflow transitions, historical rewrites, or destructive migration shortcuts."
+      ],
+      "businessRules": [
+        "Pilot mapping is one exact ViStay unit to one Channex Property and one Room Type with inventory one; pilot supports SHORT stays only.",
+        "Require current Channex HMAC verification in production; shared-secret fallback is sandbox-only.",
+        "Webhook is a trigger: pull Booking Revision Feed, durably apply in order, then acknowledge.",
+        "Out-of-order revisions, HTTP 429, and ARI warnings are handled; conflicts enter NEEDS_MANUAL_RESOLUTION and are never auto-cancelled or overwritten.",
+        "Do not ingest card or CVV data."
+      ],
+      "repositories": [
+        "service_booking",
+        "platform_contracts",
+        "platform_infrastructure"
+      ],
+      "interfaces": [
+        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
+        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
+        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+      ],
+      "dataOwnership": [
+        "Booking owns the Channex mapping, durable webhook inbox, revision cursor, ARI publication state, and manual exception."
+      ],
+      "stateMachine": [
+        "Model legal states and transitions for Map property/unit/rate to selected Channel Manager; reject illegal transitions with stable error codes.",
+        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
+        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+      ],
+      "authorization": {
+        "actions": [
+          "vs-e14-s01:view",
+          "vs-e14-s01:manage"
+        ],
+        "dataPartitions": [
+          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+        ]
+      },
+      "failureSemantics": [
+        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
+        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
+        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+      ],
+      "idempotencyConcurrency": [
+        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
+        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
+        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E00-S05",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized actor with a valid partition and a complete request for Map property/unit/rate to selected Channel Manager",
+          "when": "the command or query is executed",
+          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+        },
+        {
+          "id": "AC02",
+          "given": "a caller missing the action, partition, or requested field-group grant",
+          "when": "the same operation is attempted",
+          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+        },
+        {
+          "id": "AC03",
+          "given": "the same mutation is replayed or two requests use the same expected revision",
+          "when": "processing overlaps or retries occur",
+          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+        }
+      ],
+      "tests": [
+        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
+        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
+        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+      ],
+      "observability": [
+        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
+        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
+        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+      ],
+      "definitionOfDone": [
+        "Catalog validation and all affected repository CI checks pass.",
+        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
+        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
+        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+      ],
+      "evidence": [
+        "Pull request and commit links per repository.",
+        "Automated test and Newman report with fixture version.",
+        "Migration/rollback or compatibility evidence where data/contracts change.",
+        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "owner-service-booking",
+        "roadmap-v1-3",
+        "source-vs-e14-s01"
+      ],
+      "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
+      "specStatus": "needs-refinement",
+      "workKind": "contract",
+      "dispatchable": false,
+      "testCases": [],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E14-S02",
+      "jiraKey": "SCRUM-408",
+      "issueType": "Story",
+      "summary": "[VS-E14-S02] Publish availability/rate with retry and reconciliation",
+      "parentSourceId": "VS-E14",
+      "manageDescription": true,
+      "actor": "Channel integration operator",
+      "outcome": "Publish availability/rate with retry and reconciliation is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
+      "context": "This story is part of the ViStay VS-E14 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "inScope": [
+        "Implement and verify: Publish availability/rate with retry and reconciliation.",
+        "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
+        "Provide repository-specific automated tests and Postman/Newman evidence for callable APIs."
+      ],
+      "outOfScope": [
+        "Unlisted provider credentials and production policy values.",
+        "Direct cross-service database reads or duplicated ownership.",
+        "Unreviewed workflow transitions, historical rewrites, or destructive migration shortcuts."
+      ],
+      "businessRules": [
+        "Pilot mapping is one exact ViStay unit to one Channex Property and one Room Type with inventory one; pilot supports SHORT stays only.",
+        "Require current Channex HMAC verification in production; shared-secret fallback is sandbox-only.",
+        "Webhook is a trigger: pull Booking Revision Feed, durably apply in order, then acknowledge.",
+        "Out-of-order revisions, HTTP 429, and ARI warnings are handled; conflicts enter NEEDS_MANUAL_RESOLUTION and are never auto-cancelled or overwritten.",
+        "Do not ingest card or CVV data."
+      ],
+      "repositories": [
+        "service_booking",
+        "platform_contracts",
+        "platform_infrastructure"
+      ],
+      "interfaces": [
+        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
+        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
+        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+      ],
+      "dataOwnership": [
+        "Booking owns the Channex mapping, durable webhook inbox, revision cursor, ARI publication state, and manual exception."
+      ],
+      "stateMachine": [
+        "Model legal states and transitions for Publish availability/rate with retry and reconciliation; reject illegal transitions with stable error codes.",
+        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
+        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+      ],
+      "authorization": {
+        "actions": [
+          "vs-e14-s02:view",
+          "vs-e14-s02:manage"
+        ],
+        "dataPartitions": [
+          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+        ]
+      },
+      "failureSemantics": [
+        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
+        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
+        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+      ],
+      "idempotencyConcurrency": [
+        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
+        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
+        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E00-S05",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized actor with a valid partition and a complete request for Publish availability/rate with retry and reconciliation",
+          "when": "the command or query is executed",
+          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+        },
+        {
+          "id": "AC02",
+          "given": "a caller missing the action, partition, or requested field-group grant",
+          "when": "the same operation is attempted",
+          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+        },
+        {
+          "id": "AC03",
+          "given": "the same mutation is replayed or two requests use the same expected revision",
+          "when": "processing overlaps or retries occur",
+          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+        }
+      ],
+      "tests": [
+        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
+        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
+        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+      ],
+      "observability": [
+        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
+        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
+        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+      ],
+      "definitionOfDone": [
+        "Catalog validation and all affected repository CI checks pass.",
+        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
+        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
+        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+      ],
+      "evidence": [
+        "Pull request and commit links per repository.",
+        "Automated test and Newman report with fixture version.",
+        "Migration/rollback or compatibility evidence where data/contracts change.",
+        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "owner-service-booking",
+        "roadmap-v1-3",
+        "source-vs-e14-s02"
+      ],
+      "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
+      "specStatus": "needs-refinement",
+      "workKind": "contract",
+      "dispatchable": false,
+      "testCases": [],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E14-S03",
+      "jiraKey": "SCRUM-409",
+      "issueType": "Story",
+      "summary": "[VS-E14-S03] Receive signed booking/cancel webhook idempotently",
+      "parentSourceId": "VS-E14",
+      "manageDescription": true,
+      "actor": "Channel integration operator",
+      "outcome": "Receive signed booking/cancel webhook idempotently is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
+      "context": "This story is part of the ViStay VS-E14 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "inScope": [
+        "Implement and verify: Receive signed booking/cancel webhook idempotently.",
+        "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
+        "Provide repository-specific automated tests and Postman/Newman evidence for callable APIs."
+      ],
+      "outOfScope": [
+        "Unlisted provider credentials and production policy values.",
+        "Direct cross-service database reads or duplicated ownership.",
+        "Unreviewed workflow transitions, historical rewrites, or destructive migration shortcuts."
+      ],
+      "businessRules": [
+        "Pilot mapping is one exact ViStay unit to one Channex Property and one Room Type with inventory one; pilot supports SHORT stays only.",
+        "Require current Channex HMAC verification in production; shared-secret fallback is sandbox-only.",
+        "Webhook is a trigger: pull Booking Revision Feed, durably apply in order, then acknowledge.",
+        "Out-of-order revisions, HTTP 429, and ARI warnings are handled; conflicts enter NEEDS_MANUAL_RESOLUTION and are never auto-cancelled or overwritten.",
+        "Do not ingest card or CVV data."
+      ],
+      "repositories": [
+        "service_booking",
+        "platform_contracts",
+        "platform_infrastructure"
+      ],
+      "interfaces": [
+        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
+        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
+        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+      ],
+      "dataOwnership": [
+        "Booking owns the Channex mapping, durable webhook inbox, revision cursor, ARI publication state, and manual exception."
+      ],
+      "stateMachine": [
+        "Model legal states and transitions for Receive signed booking/cancel webhook idempotently; reject illegal transitions with stable error codes.",
+        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
+        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+      ],
+      "authorization": {
+        "actions": [
+          "vs-e14-s03:view",
+          "vs-e14-s03:manage"
+        ],
+        "dataPartitions": [
+          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+        ]
+      },
+      "failureSemantics": [
+        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
+        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
+        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+      ],
+      "idempotencyConcurrency": [
+        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
+        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
+        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E00-S05",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized actor with a valid partition and a complete request for Receive signed booking/cancel webhook idempotently",
+          "when": "the command or query is executed",
+          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+        },
+        {
+          "id": "AC02",
+          "given": "a caller missing the action, partition, or requested field-group grant",
+          "when": "the same operation is attempted",
+          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+        },
+        {
+          "id": "AC03",
+          "given": "the same mutation is replayed or two requests use the same expected revision",
+          "when": "processing overlaps or retries occur",
+          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+        }
+      ],
+      "tests": [
+        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
+        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
+        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+      ],
+      "observability": [
+        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
+        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
+        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+      ],
+      "definitionOfDone": [
+        "Catalog validation and all affected repository CI checks pass.",
+        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
+        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
+        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+      ],
+      "evidence": [
+        "Pull request and commit links per repository.",
+        "Automated test and Newman report with fixture version.",
+        "Migration/rollback or compatibility evidence where data/contracts change.",
+        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "owner-service-booking",
+        "roadmap-v1-3",
+        "source-vs-e14-s03"
+      ],
+      "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
+      "specStatus": "needs-refinement",
+      "workKind": "contract",
+      "dispatchable": false,
+      "testCases": [],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E14-S04",
+      "jiraKey": "SCRUM-410",
+      "issueType": "Story",
+      "summary": "[VS-E14-S04] Reconcile external reservation/status/mapping exceptions",
+      "parentSourceId": "VS-E14",
+      "manageDescription": true,
+      "actor": "Channel integration operator",
+      "outcome": "Reconcile external reservation/status/mapping exceptions is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
+      "context": "This story is part of the ViStay VS-E14 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "inScope": [
+        "Implement and verify: Reconcile external reservation/status/mapping exceptions.",
+        "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
+        "Provide repository-specific automated tests and Postman/Newman evidence for callable APIs."
+      ],
+      "outOfScope": [
+        "Unlisted provider credentials and production policy values.",
+        "Direct cross-service database reads or duplicated ownership.",
+        "Unreviewed workflow transitions, historical rewrites, or destructive migration shortcuts."
+      ],
+      "businessRules": [
+        "Pilot mapping is one exact ViStay unit to one Channex Property and one Room Type with inventory one; pilot supports SHORT stays only.",
+        "Require current Channex HMAC verification in production; shared-secret fallback is sandbox-only.",
+        "Webhook is a trigger: pull Booking Revision Feed, durably apply in order, then acknowledge.",
+        "Out-of-order revisions, HTTP 429, and ARI warnings are handled; conflicts enter NEEDS_MANUAL_RESOLUTION and are never auto-cancelled or overwritten.",
+        "Do not ingest card or CVV data."
+      ],
+      "repositories": [
+        "service_booking",
+        "platform_contracts",
+        "platform_infrastructure"
+      ],
+      "interfaces": [
+        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
+        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
+        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+      ],
+      "dataOwnership": [
+        "Booking owns the Channex mapping, durable webhook inbox, revision cursor, ARI publication state, and manual exception."
+      ],
+      "stateMachine": [
+        "Model legal states and transitions for Reconcile external reservation/status/mapping exceptions; reject illegal transitions with stable error codes.",
+        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
+        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+      ],
+      "authorization": {
+        "actions": [
+          "vs-e14-s04:view",
+          "vs-e14-s04:manage"
+        ],
+        "dataPartitions": [
+          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+        ]
+      },
+      "failureSemantics": [
+        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
+        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
+        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+      ],
+      "idempotencyConcurrency": [
+        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
+        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
+        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E00-S05",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized actor with a valid partition and a complete request for Reconcile external reservation/status/mapping exceptions",
+          "when": "the command or query is executed",
+          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+        },
+        {
+          "id": "AC02",
+          "given": "a caller missing the action, partition, or requested field-group grant",
+          "when": "the same operation is attempted",
+          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+        },
+        {
+          "id": "AC03",
+          "given": "the same mutation is replayed or two requests use the same expected revision",
+          "when": "processing overlaps or retries occur",
+          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+        }
+      ],
+      "tests": [
+        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
+        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
+        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+      ],
+      "observability": [
+        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
+        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
+        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+      ],
+      "definitionOfDone": [
+        "Catalog validation and all affected repository CI checks pass.",
+        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
+        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
+        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+      ],
+      "evidence": [
+        "Pull request and commit links per repository.",
+        "Automated test and Newman report with fixture version.",
+        "Migration/rollback or compatibility evidence where data/contracts change.",
+        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "owner-service-booking",
+        "roadmap-v1-3",
+        "source-vs-e14-s04"
+      ],
+      "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
+      "specStatus": "needs-refinement",
+      "workKind": "contract",
+      "dispatchable": false,
+      "testCases": [],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E14-S05",
+      "jiraKey": "SCRUM-411",
+      "issueType": "Story",
+      "summary": "[VS-E14-S05] Operate sandbox/outage/dead-letter/manual repair runbook",
+      "parentSourceId": "VS-E14",
+      "manageDescription": true,
+      "actor": "Channel integration operator",
+      "outcome": "Operate sandbox/outage/dead-letter/manual repair runbook is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
+      "context": "This story is part of the ViStay VS-E14 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "inScope": [
+        "Implement and verify: Operate sandbox/outage/dead-letter/manual repair runbook.",
+        "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
+        "Provide repository-specific automated tests and Postman/Newman evidence for callable APIs."
+      ],
+      "outOfScope": [
+        "Unlisted provider credentials and production policy values.",
+        "Direct cross-service database reads or duplicated ownership.",
+        "Unreviewed workflow transitions, historical rewrites, or destructive migration shortcuts."
+      ],
+      "businessRules": [
+        "Pilot mapping is one exact ViStay unit to one Channex Property and one Room Type with inventory one; pilot supports SHORT stays only.",
+        "Require current Channex HMAC verification in production; shared-secret fallback is sandbox-only.",
+        "Webhook is a trigger: pull Booking Revision Feed, durably apply in order, then acknowledge.",
+        "Out-of-order revisions, HTTP 429, and ARI warnings are handled; conflicts enter NEEDS_MANUAL_RESOLUTION and are never auto-cancelled or overwritten.",
+        "Do not ingest card or CVV data."
+      ],
+      "repositories": [
+        "service_booking",
+        "platform_contracts",
+        "platform_infrastructure"
+      ],
+      "interfaces": [
+        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
+        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
+        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+      ],
+      "dataOwnership": [
+        "Booking owns the Channex mapping, durable webhook inbox, revision cursor, ARI publication state, and manual exception."
+      ],
+      "stateMachine": [
+        "Model legal states and transitions for Operate sandbox/outage/dead-letter/manual repair runbook; reject illegal transitions with stable error codes.",
+        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
+        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+      ],
+      "authorization": {
+        "actions": [
+          "vs-e14-s05:view",
+          "vs-e14-s05:manage"
+        ],
+        "dataPartitions": [
+          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+        ]
+      },
+      "failureSemantics": [
+        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
+        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
+        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+      ],
+      "idempotencyConcurrency": [
+        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
+        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
+        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E00-S05",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized actor with a valid partition and a complete request for Operate sandbox/outage/dead-letter/manual repair runbook",
+          "when": "the command or query is executed",
+          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+        },
+        {
+          "id": "AC02",
+          "given": "a caller missing the action, partition, or requested field-group grant",
+          "when": "the same operation is attempted",
+          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+        },
+        {
+          "id": "AC03",
+          "given": "the same mutation is replayed or two requests use the same expected revision",
+          "when": "processing overlaps or retries occur",
+          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+        }
+      ],
+      "tests": [
+        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
+        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
+        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+      ],
+      "observability": [
+        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
+        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
+        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+      ],
+      "definitionOfDone": [
+        "Catalog validation and all affected repository CI checks pass.",
+        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
+        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
+        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+      ],
+      "evidence": [
+        "Pull request and commit links per repository.",
+        "Automated test and Newman report with fixture version.",
+        "Migration/rollback or compatibility evidence where data/contracts change.",
+        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "owner-service-booking",
+        "roadmap-v1-3",
+        "source-vs-e14-s05"
+      ],
+      "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
+      "specStatus": "needs-refinement",
+      "workKind": "contract",
+      "dispatchable": false,
+      "testCases": [],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": []
+    }
+  ]
+}

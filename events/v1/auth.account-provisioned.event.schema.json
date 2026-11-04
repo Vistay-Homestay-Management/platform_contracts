@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/events/v1/auth.account-provisioned.event.schema.json",
+  "title": "Authentication account provisioned event v1",
+  "allOf": [
+    { "$ref": "https://contracts.vistay.vn/events/v1/common-event-envelope.schema.json" },
+    {
+      "type": "object",
+      "properties": {
+        "type": { "const": "vistay.auth.account-provisioned" },
+        "version": { "const": 1 },
+        "data": {
+          "$ref": "https://contracts.vistay.vn/events/v1/auth.account-provisioned.payload.schema.json"
+        }
+      }
+    }
+  ]
+}

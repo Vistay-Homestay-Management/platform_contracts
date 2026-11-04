@@ -1,0 +1,173 @@
+{
+  "refinements": [
+    {
+      "sourceId": "VS-E06",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "Completed inventory service, contract, Postman, and Admin Web work remain historical; the remaining Admin Mobile parity Task is the only dispatchable leaf.",
+      "context": "The Epic coordinates historical evidence plus the open mobile consumer without rewriting Done descriptions."
+    },
+    {
+      "sourceId": "VS-E06-T04",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Admin Mobile lets an authorized booking agent inspect exact-unit availability and create or release operator-owned blocks using the same revisions, partitions, and stable failures as Admin Web.",
+      "context": "Inventory APIs and Web workspace are complete. Reuse the shared client and existing mobile shell; do not recompute availability or expose booking/guest/commercial fields.",
+      "inScope": [
+        "Add Inventory navigation and a touch-first property/date filter for a 1..31 local-calendar-day half-open window.",
+        "Show revision-consistent availability, authoritative branch/membership version, active/history blocks, and block detail.",
+        "Create MAINTENANCE/CLEANING/OWNER_USE/MANUAL blocks with 10..1000 character reason, correlation ID, idempotency key, and latest revision; release only TENTATIVE/ACTIVE operator-owned blocks.",
+        "Refresh after resume/network recovery and on conflict; cover loading, empty, forbidden, dependency, stale revision, conflict, success, and read-only source states."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "frontend_admin"
+      ],
+      "primaryRepository": "frontend_admin",
+      "repositorySlices": [
+        {
+          "repository": "frontend_admin",
+          "paths": [
+            "packages/api-client/src/index.ts",
+            "packages/api-client/src/index.test.ts",
+            "apps/mobile/src/InventoryWorkspace.tsx",
+            "apps/mobile/src/InventoryWorkspace.test.tsx",
+            "apps/mobile/App.tsx"
+          ],
+          "artifacts": [
+            "Admin Mobile inventory navigation",
+            "availability/block mobile flow",
+            "authorization/conflict/recovery component tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "inventory:read",
+          "inventory:block"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized agent with current branch membership selects a valid unit/date range",
+          "when": "availability loads and an allowed create/release completes",
+          "then": "the workspace shows the new authoritative revision and correct half-open occupancy without guest/commercial data"
+        },
+        {
+          "id": "AC02",
+          "given": "BOOKING/CHANNEL/history source, missing grant, stale membership, offline/resumed app, or dependency failure",
+          "when": "a mutation is considered",
+          "then": "the action is absent/disabled or fails closed and refresh is required before retry"
+        },
+        {
+          "id": "AC03",
+          "given": "STALE_INVENTORY_REVISION, INVENTORY_BLOCK_CONFLICT, or idempotent replay",
+          "when": "the response arrives",
+          "then": "the app shows sanitized actionable feedback, refreshes authoritative data, and never silently submits a second mutation"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm run test:mobile",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "InventoryWorkspace mobile Vitest report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "npm run typecheck",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "mobile/shared-client typecheck log"
+        },
+        {
+          "id": "TEST-03",
+          "level": "manual",
+          "command": "manual: run Android debug build against local full Compose and execute the checked-in inventory fixture flow",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Android device screenshots/video plus fixture IDs and API correlation IDs"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-frontend-admin",
+        "roadmap-v1-3",
+        "source-vs-e06-t04"
+      ],
+      "decisionNoteVi": "Leaf VS-E06-T04 chỉ sở hữu artifact của frontend_admin; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "mobile",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    }
+  ]
+}

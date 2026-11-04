@@ -1,0 +1,63 @@
+# Pricing v1 policy
+
+Decision source: SCRUM-314 / SCRUM-354  
+Decision date: 2026-10-29  
+Change policy: versioned; never reinterpret an existing quote or booking snapshot.
+
+## Ownership
+
+Booking is the system of record for commercial unit pricing. In the current Property model, one `properties.id` is one exact physical apartment/unit, so a rate profile is keyed only by that authoritative `property_id`; a second `unit_id` must not be invented. Property remains the owner of unit identity and physical attributes; Booking may keep only the explicitly versioned attributes needed to evaluate pricing. The legacy `properties.base_price_per_night` column is not an authoritative pricing input and must be retired by a forward migration when the Property API is implemented.
+
+Booking owns the bookable check-in, check-out, and turnover policy because those values define the inventory interval. Finance owns receivables, installments, collections, employee commission earnings, and collection-accountability reporting. Neither service reads the other's database.
+
+## Stay products
+
+| Product | Duration | Daily price basis | Customer due schedule |
+| --- | --- | --- | --- |
+| `SHORT` | 1–29 days | 100% base daily rate before applicable short-stay rules | checkout |
+| `MEDIUM` | 30 days through the day before the check-in anniversary one year later | 70% base daily rate | monthly; residual days use the same adjusted daily rate |
+| `LONG` | checkout on or after the check-in anniversary one year later | 55% base daily rate | monthly; residual days use the same adjusted daily rate |
+
+There is no hourly product. Duration is the count of charge dates in the half-open stay interval `[checkInDate, checkOutDate)`. The one-year boundary is the calendar anniversary computed from the check-in date; a leap-day anniversary follows the platform date library's `plusYears(1)` result. Promotional, seasonal, weekday, holiday, channel, guest-count, and minimum-stay adjustments apply only to `SHORT` in v1. The MEDIUM and LONG percentages are versioned rate-profile factors, not promotions.
+
+## Versioned defaults
+
+- Currency is VND and authored monetary values are whole đồng; floating-point arithmetic is forbidden.
+- Default check-in is 14:00, checkout is 12:00, and turnover is 120 minutes.
+- Default quote lifetime is 15 minutes.
+- A staff-created booking may include a separately identified commission markup. The default is 5% and the maximum is 20% of the room charge before commission.
+- Published rules and profiles are immutable. A change creates a new effective-dated version; historical quote and booking snapshots are never recalculated.
+
+These are product defaults rather than source-code assumptions: every value is stored in a version and can be changed prospectively by an authorized future version.
+
+## Authoring and authorization
+
+- Reading requires `pricing:read`; authoring a version requires `pricing:update`; publication later requires `pricing:approve`.
+- `ALL` grants access globally. A `PARTITION(BRANCH, id)` grant is accepted only when Property's authoritative resolver maps the profile's property to the same branch.
+- Missing/mismatched topology is denied. An unavailable topology dependency fails closed and is not treated as global access.
+- Every authoring command uses an idempotency key, immutable actor identity, reason, and correlation/audit evidence.
+
+## Dated rule semantics
+
+Rules use inclusive start and exclusive end dates. Empty weekday/channel conditions mean all values. Supported v1 actions are fixed daily price, percentage/fixed discount, and percentage/fixed surcharge. Percentage values use basis points.
+
+The authoring boundary rejects invalid ranges, a discount over 100%, duplicate rule codes, and ambiguous same-priority fixed-price rules whose conditions can overlap. Detailed calculation/explanation, manual override, and publication belong to SCRUM-355, SCRUM-356, and SCRUM-357 respectively.
+
+The normative SCRUM-355 calculation and explanation contract is
+[`pricing-v1-quote-calculation.md`](pricing-v1-quote-calculation.md). It calculates a deterministic preview against one explicitly selected immutable profile version. It does not select an active version, publish a version, persist a quote, apply a manual override, or create a booking snapshot.
+
+The normative SCRUM-356 manual-override contract is
+[`pricing-v1-manual-override.md`](pricing-v1-manual-override.md). It records an authorized, expiring, immutable whole-stay lodging reduction against one exact SCRUM-355 result. It does not publish pricing or persist/consume a quote or booking.
+
+The normative SCRUM-357 publication and snapshot contract is
+[`pricing-v1-publication-and-snapshots.md`](pricing-v1-publication-and-snapshots.md).
+It defines publication preview and compare-and-set approval, full-stay active-version
+selection, pricing-backed immutable `booking_quotes` evidence, and exact one-lineage
+manual-override consumption. The related outbox fact is defined by
+[`pricing-v1-rate-profile-published-event.md`](pricing-v1-rate-profile-published-event.md).
+SCRUM-366 builds the customer/inventory/operator journey on this primitive and must
+not duplicate or reinterpret pricing lifecycle logic.
+
+## Receivable and employee accountability
+
+An unpaid customer amount remains a customer receivable. Booking snapshots the creator and collection owner; Finance records the customer receivable and a separate employee collection-accountability entry. Employee personal liability is created only by an explicit, authorized recovery decision and never replaces or hides the original customer receivable.

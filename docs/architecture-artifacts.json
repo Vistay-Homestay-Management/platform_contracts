@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "artifacts": [
+    {
+      "id": "ADR-001",
+      "type": "adr",
+      "version": "1.0.0",
+      "status": "Accepted",
+      "path": "docs/adr-001-edge-identity-and-portal-federation.md",
+      "related": ["TM-001"]
+    },
+    {
+      "id": "ADR-002",
+      "type": "adr",
+      "version": "1.0.0",
+      "status": "Accepted",
+      "path": "docs/adr-002-service-communication-and-data-boundaries.md",
+      "related": ["TM-002"]
+    },
+    {
+      "id": "ADR-003",
+      "type": "adr",
+      "version": "1.0.0",
+      "status": "Accepted",
+      "path": "docs/adr-003-property-branch-partition-topology.md",
+      "related": ["TM-003"]
+    },
+    {
+      "id": "TM-001",
+      "type": "threat-model",
+      "version": "1.0.0",
+      "status": "Accepted",
+      "path": "docs/threat-model-001-edge-identity-and-federation.md",
+      "related": ["ADR-001"]
+    },
+    {
+      "id": "TM-002",
+      "type": "threat-model",
+      "version": "1.0.0",
+      "status": "Accepted",
+      "path": "docs/threat-model-002-service-communication-and-data-boundaries.md",
+      "related": ["ADR-002"]
+    },
+    {
+      "id": "TM-003",
+      "type": "threat-model",
+      "version": "1.0.0",
+      "status": "Accepted",
+      "path": "docs/threat-model-003-property-branch-partition-topology.md",
+      "related": ["ADR-003"]
+    }
+  ]
+}

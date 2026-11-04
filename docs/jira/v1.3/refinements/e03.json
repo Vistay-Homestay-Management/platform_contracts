@@ -1,0 +1,1258 @@
+{
+  "refinements": [
+    {
+      "sourceId": "VS-E03",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "Secure media delivery is decomposed into five service workflows plus versioned contract and local evidence tasks.",
+      "context": "Only executable Task/Subtask leaves may be assigned; the Epic coordinates Media ownership, security policy, and evidence."
+    },
+    {
+      "sourceId": "VS-E03-S01",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "S01 is implemented by its service_media child with an explicit contract prerequisite.",
+      "context": "The Story remains a non-dispatchable outcome boundary; use its executable child for implementation."
+    },
+    {
+      "sourceId": "VS-E03-S02",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "S02 is implemented by its service_media child with an explicit contract prerequisite.",
+      "context": "The Story remains a non-dispatchable outcome boundary; use its executable child for implementation."
+    },
+    {
+      "sourceId": "VS-E03-S03",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "S03 is implemented by its service_media child with an explicit contract prerequisite.",
+      "context": "The Story remains a non-dispatchable outcome boundary; use its executable child for implementation."
+    },
+    {
+      "sourceId": "VS-E03-S04",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "S04 is implemented by its service_media child with an explicit contract prerequisite.",
+      "context": "The Story remains a non-dispatchable outcome boundary; use its executable child for implementation."
+    },
+    {
+      "sourceId": "VS-E03-S05",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "S05 is implemented by its service_media child with an explicit contract prerequisite.",
+      "context": "The Story remains a non-dispatchable outcome boundary; use its executable child for implementation."
+    }
+  ],
+  "additions": [
+    {
+      "templateSourceId": "VS-E03-S01",
+      "sourceId": "VS-E03-S01-ST01",
+      "jiraKey": "SCRUM-692",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E03-S01",
+      "summary": "[VS-E03-S01-ST01] Implement authorized presigned upload sessions",
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Media Service creates a bounded upload session and returns private, short-lived presigned upload instructions only after action, partition, file-count, type, and size authorization succeeds.",
+      "context": "The baseline migration already contains upload_sessions and media_assets. Implement the missing domain/application/persistence/object-store adapters and GraphQL mutation without moving binary content into PostgreSQL.",
+      "inScope": [
+        "Add authorizeMediaUpload GraphQL input/payload and stable error mapping.",
+        "Validate 1..20 files, per-file JPEG/PNG/WebP <=15 MiB or PDF <=25 MiB, total <=100 MiB, sanitized filenames, and session expiry.",
+        "Persist PENDING upload session/assets and generate private object keys and presigned PUT URLs with content-type and checksum constraints.",
+        "Write audit and outbox rows in the creation transaction."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "repositories": [
+        "service_media"
+      ],
+      "primaryRepository": "service_media",
+      "repositorySlices": [
+        {
+          "repository": "service_media",
+          "paths": [
+            "src/main/resources/graphql/schema.graphqls",
+            "src/main/java/com/vistay/media/domain/upload/**",
+            "src/main/java/com/vistay/media/application/AuthorizeUploadService.java",
+            "src/main/java/com/vistay/media/adapter/in/graphql/MediaUploadController.java",
+            "src/main/java/com/vistay/media/adapter/out/persistence/**",
+            "src/main/java/com/vistay/media/adapter/out/objectstorage/**",
+            "src/test/java/com/vistay/media/application/AuthorizeUploadServiceTest.java",
+            "src/test/java/com/vistay/media/adapter/in/graphql/MediaUploadControllerIntegrationTest.java"
+          ],
+          "artifacts": [
+            "authorizeMediaUpload GraphQL mutation",
+            "upload-session persistence adapter",
+            "S3-compatible presigned PUT adapter",
+            "authorization and boundary test suite"
+          ]
+        }
+      ],
+      "contracts": [
+        {
+          "kind": "GraphQL",
+          "owner": "service_media",
+          "name": "authorizeMediaUpload",
+          "location": "src/main/resources/graphql/schema.graphqls",
+          "compatibility": "Inputs may add optional fields in v1; limit or state semantic changes require a new contract version."
+        }
+      ],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "Media owns upload sessions, object metadata, checksum, scan state, retention state, access audit, and domain references; object bytes stay in private object storage."
+      ],
+      "stateMachine": [
+        "Upload session begins PENDING and may issue URLs only until expiresAt.",
+        "The first accepted object transfer advances the session to UPLOADING; authorization alone does not mark content uploaded.",
+        "Expired or cancelled sessions cannot issue another URL; retries with the same idempotency key return the original session."
+      ],
+      "authorization": {
+        "actions": [
+          "media:upload:create",
+          "media:upload:presign"
+        ],
+        "dataPartitions": [
+          "ADMIN organization plus SITE/BRANCH membership for the target property; SYSTEM is limited to authenticated internal repair or projection calls."
+        ],
+        "fieldGroups": [
+          "SUMMARY is baseline; DOCUMENT and INTERNAL_AUDIT require explicit field-group grants."
+        ]
+      },
+      "failureSemantics": [
+        "Reject malformed or unauthorized calls before mutating state and do not reveal whether a restricted aggregate exists.",
+        "Map stale expectedVersion to CONFLICT_STALE_REVISION and unavailable required dependencies to DEPENDENCY_UNAVAILABLE.",
+        "Retry only object-store, scanner, or event-publication failures classified as transient; retain the failed job for bounded repair."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E03-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized actor requests two allowed files within all limits",
+          "when": "authorizeMediaUpload is called with a new idempotency key",
+          "then": "one PENDING session, two private asset records, audit/outbox rows, and two expiring constrained PUT instructions are returned"
+        },
+        {
+          "id": "AC02",
+          "given": "a missing action/partition grant or a disallowed type, count, size, checksum, or filename",
+          "when": "the mutation is called",
+          "then": "the request fails with the documented stable code and creates no session, asset, audit success, or object key"
+        },
+        {
+          "id": "AC03",
+          "given": "the accepted request is replayed or two calls use the same expected aggregate identity",
+          "when": "processing overlaps",
+          "then": "exactly one session is created and replay returns the durable original result without new URLs beyond policy"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*AuthorizeUpload*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *AuthorizeUpload*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*AuthorizeUpload*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *AuthorizeUpload*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "labels": [
+        "repo-service-media",
+        "roadmap-v1-3",
+        "source-vs-e03-s01-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E03-S01-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E03-S02",
+      "sourceId": "VS-E03-S02-ST01",
+      "jiraKey": "SCRUM-693",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E03-S02",
+      "summary": "[VS-E03-S02-ST01] Finalize upload and enforce validation and scan state",
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Media Service verifies uploaded bytes by object metadata, magic bytes, declared type, size, and SHA-256, then drives malware and metadata processing to AVAILABLE or a visible terminal failure.",
+      "context": "Finalize is a command over an existing non-expired upload session. Object-store HEAD/read-range and malware scanning are dependency ports; scan failure must never publish the asset as available.",
+      "inScope": [
+        "Add finalizeMediaUpload with expectedVersion and idempotency key.",
+        "Verify object presence, ETag where available, SHA-256, size, MIME magic bytes, and the allowed-type policy.",
+        "Create replay-safe VERIFY_UPLOAD, MALWARE_SCAN, STRIP_METADATA, and thumbnail jobs; strip image EXIF.",
+        "Advance PENDING_UPLOAD -> UPLOADED -> PROCESSING -> AVAILABLE, QUARANTINED, or FAILED with audit/outbox evidence."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "repositories": [
+        "service_media"
+      ],
+      "primaryRepository": "service_media",
+      "repositorySlices": [
+        {
+          "repository": "service_media",
+          "paths": [
+            "src/main/resources/graphql/schema.graphqls",
+            "src/main/java/com/vistay/media/domain/asset/**",
+            "src/main/java/com/vistay/media/application/FinalizeUploadService.java",
+            "src/main/java/com/vistay/media/application/MediaProcessingService.java",
+            "src/main/java/com/vistay/media/adapter/out/objectstorage/**",
+            "src/main/java/com/vistay/media/adapter/out/malware/**",
+            "src/main/java/com/vistay/media/adapter/out/persistence/**",
+            "src/test/java/com/vistay/media/application/FinalizeUploadServiceTest.java",
+            "src/test/java/com/vistay/media/application/MediaProcessingServiceIntegrationTest.java"
+          ],
+          "artifacts": [
+            "finalizeMediaUpload mutation",
+            "verification and malware dependency ports",
+            "durable processing-job runner",
+            "EXIF stripping and terminal-state tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "Media owns upload sessions, object metadata, checksum, scan state, retention state, access audit, and domain references; object bytes stay in private object storage."
+      ],
+      "stateMachine": [
+        "Only PENDING_UPLOAD may finalize; object verification moves it to UPLOADED and queued processing moves it to PROCESSING.",
+        "Clean scan plus successful metadata stripping produces AVAILABLE; infected content produces QUARANTINED.",
+        "Dependency exhaustion produces FAILED with repair metadata; a repair retry cannot skip a required successful scan."
+      ],
+      "authorization": {
+        "actions": [
+          "media:upload:finalize",
+          "media:asset:process"
+        ],
+        "dataPartitions": [
+          "ADMIN organization plus SITE/BRANCH membership for the target property; SYSTEM is limited to authenticated internal repair or projection calls."
+        ],
+        "fieldGroups": [
+          "SUMMARY is baseline; DOCUMENT and INTERNAL_AUDIT require explicit field-group grants."
+        ]
+      },
+      "failureSemantics": [
+        "Reject malformed or unauthorized calls before mutating state and do not reveal whether a restricted aggregate exists.",
+        "Map stale expectedVersion to CONFLICT_STALE_REVISION and unavailable required dependencies to DEPENDENCY_UNAVAILABLE.",
+        "Retry only object-store, scanner, or event-publication failures classified as transient; retain the failed job for bounded repair."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E03-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E03-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "all objects match declared checksum, size, and allowed magic bytes and the scanner returns CLEAN",
+          "when": "finalization and processing complete",
+          "then": "assets become AVAILABLE once, EXIF is removed, the session becomes COMPLETED, and events contain no presigned URL"
+        },
+        {
+          "id": "AC02",
+          "given": "checksum/type/size mismatch or INFECTED scan result",
+          "when": "finalization or scanning runs",
+          "then": "the asset is rejected or QUARANTINED with a stable code and no download eligibility"
+        },
+        {
+          "id": "AC03",
+          "given": "the finalize command or processing event is replayed after a transient dependency failure",
+          "when": "the retry succeeds",
+          "then": "jobs and state effects are deduplicated and the recorded attempt history remains inspectable"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*MediaProcessing*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *MediaProcessing*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*MediaProcessing*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *MediaProcessing*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "labels": [
+        "repo-service-media",
+        "roadmap-v1-3",
+        "source-vs-e03-s02-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E03-S02-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E03-S03",
+      "sourceId": "VS-E03-S03-ST01",
+      "jiraKey": "SCRUM-694",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E03-S03",
+      "summary": "[VS-E03-S03-ST01] Authorize purpose-bound presigned downloads",
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Media Service returns a short-lived private download URL only for an AVAILABLE asset whose domain reference, actor partition, purpose, and requested field group are authorized.",
+      "context": "The caller supplies mediaId, owner service/reference, purpose, and desired variant. The service must fail closed if the authoritative reference or authorization snapshot is unavailable.",
+      "inScope": [
+        "Add authorizeMediaDownload query/mutation and stable response envelope.",
+        "Resolve asset and variant, require AVAILABLE/CLEAN, validate owner-service reference and purpose.",
+        "Apply action, partition, and DOCUMENT field-group authorization before presigning.",
+        "Audit every allow and denial without storing the URL or leaking asset existence."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "repositories": [
+        "service_media"
+      ],
+      "primaryRepository": "service_media",
+      "repositorySlices": [
+        {
+          "repository": "service_media",
+          "paths": [
+            "src/main/resources/graphql/schema.graphqls",
+            "src/main/java/com/vistay/media/application/AuthorizeDownloadService.java",
+            "src/main/java/com/vistay/media/adapter/in/graphql/MediaDownloadController.java",
+            "src/main/java/com/vistay/media/adapter/out/objectstorage/**",
+            "src/main/java/com/vistay/media/adapter/out/persistence/**",
+            "src/test/java/com/vistay/media/application/AuthorizeDownloadServiceTest.java",
+            "src/test/java/com/vistay/media/adapter/in/graphql/MediaDownloadControllerIntegrationTest.java"
+          ],
+          "artifacts": [
+            "authorizeMediaDownload operation",
+            "purpose/reference authorization policy",
+            "private presigned GET adapter",
+            "allow/deny access audit tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "Media owns upload sessions, object metadata, checksum, scan state, retention state, access audit, and domain references; object bytes stay in private object storage."
+      ],
+      "stateMachine": [
+        "Only AVAILABLE plus CLEAN assets may issue a download URL.",
+        "QUARANTINED, FAILED, DELETION_PENDING, and DELETED assets are never downloadable.",
+        "Authorization does not change asset state; it appends an immutable PRESIGN audit event."
+      ],
+      "authorization": {
+        "actions": [
+          "media:download:presign",
+          "media:document:view"
+        ],
+        "dataPartitions": [
+          "ADMIN organization plus SITE/BRANCH membership for the target property; SYSTEM is limited to authenticated internal repair or projection calls."
+        ],
+        "fieldGroups": [
+          "SUMMARY is baseline; DOCUMENT and INTERNAL_AUDIT require explicit field-group grants."
+        ]
+      },
+      "failureSemantics": [
+        "Reject malformed or unauthorized calls before mutating state and do not reveal whether a restricted aggregate exists.",
+        "Map stale expectedVersion to CONFLICT_STALE_REVISION and unavailable required dependencies to DEPENDENCY_UNAVAILABLE.",
+        "Retry only object-store, scanner, or event-publication failures classified as transient; retain the failed job for bounded repair."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E03-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E03-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an AVAILABLE clean asset, matching domain reference, allowed purpose, and complete grant",
+          "when": "authorizeMediaDownload is called",
+          "then": "a private short-lived GET URL for the requested variant and an immutable PRESIGN audit row are produced"
+        },
+        {
+          "id": "AC02",
+          "given": "a mismatched reference/purpose, missing DOCUMENT grant, or non-downloadable asset state",
+          "when": "the same operation is attempted",
+          "then": "the caller receives a non-enumerating forbidden/not-found result and no URL or restricted metadata"
+        },
+        {
+          "id": "AC03",
+          "given": "the object store or authorization dependency is unavailable",
+          "when": "authorization runs",
+          "then": "the call fails closed with DEPENDENCY_UNAVAILABLE and the failure is measurable and auditable without persisting a URL"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*AuthorizeDownload*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *AuthorizeDownload*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*AuthorizeDownload*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *AuthorizeDownload*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "labels": [
+        "repo-service-media",
+        "roadmap-v1-3",
+        "source-vs-e03-s03-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E03-S03-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E03-S04",
+      "sourceId": "VS-E03-S04-ST01",
+      "jiraKey": "SCRUM-695",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E03-S04",
+      "summary": "[VS-E03-S04-ST01] Enforce quarantine retention expiry and deletion lifecycle",
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Media Service expires abandoned sessions and processes authorized deletion only after retention and live-reference checks, while quarantined content stays private and repairable.",
+      "context": "The baseline includes media_deletion_requests and processing jobs. This task implements scheduled expiry, reference-check boundary, approval, object deletion, and tombstoning without cascade-deleting audit history.",
+      "inScope": [
+        "Expire sessions past expiresAt and clean uncommitted objects through a replay-safe job.",
+        "Add requestMediaDeletion and internal reference-check/approval processing.",
+        "Enforce retentionUntil and block deletion while a live domain reference exists.",
+        "Delete variants/original bytes, tombstone metadata as DELETED, and retain immutable audit/outbox history."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "repositories": [
+        "service_media"
+      ],
+      "primaryRepository": "service_media",
+      "repositorySlices": [
+        {
+          "repository": "service_media",
+          "paths": [
+            "src/main/resources/graphql/schema.graphqls",
+            "src/main/java/com/vistay/media/domain/retention/**",
+            "src/main/java/com/vistay/media/application/MediaLifecycleService.java",
+            "src/main/java/com/vistay/media/adapter/out/objectstorage/**",
+            "src/main/java/com/vistay/media/adapter/out/reference/**",
+            "src/main/java/com/vistay/media/adapter/out/persistence/**",
+            "src/test/java/com/vistay/media/application/MediaLifecycleServiceTest.java",
+            "src/test/java/com/vistay/media/application/MediaLifecycleIntegrationTest.java"
+          ],
+          "artifacts": [
+            "session expiry worker",
+            "requestMediaDeletion mutation",
+            "retention/reference decision service",
+            "replay-safe object deletion and tombstone tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "Media owns upload sessions, object metadata, checksum, scan state, retention state, access audit, and domain references; object bytes stay in private object storage."
+      ],
+      "stateMachine": [
+        "Deletion request moves REQUESTED -> REFERENCE_CHECK -> APPROVED -> COMPLETED or REJECTED/CANCELLED.",
+        "An approved asset moves AVAILABLE/QUARANTINED/FAILED -> DELETION_PENDING -> DELETED only after notBefore and retentionUntil.",
+        "Object deletion retry is idempotent; missing object is treated as already deleted only after metadata identity is verified."
+      ],
+      "authorization": {
+        "actions": [
+          "media:asset:delete-request",
+          "media:asset:delete-approve",
+          "media:asset:repair"
+        ],
+        "dataPartitions": [
+          "ADMIN organization plus SITE/BRANCH membership for the target property; SYSTEM is limited to authenticated internal repair or projection calls."
+        ],
+        "fieldGroups": [
+          "SUMMARY is baseline; DOCUMENT and INTERNAL_AUDIT require explicit field-group grants."
+        ]
+      },
+      "failureSemantics": [
+        "Reject malformed or unauthorized calls before mutating state and do not reveal whether a restricted aggregate exists.",
+        "Map stale expectedVersion to CONFLICT_STALE_REVISION and unavailable required dependencies to DEPENDENCY_UNAVAILABLE.",
+        "Retry only object-store, scanner, or event-publication failures classified as transient; retain the failed job for bounded repair."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E03-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E03-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized request after retention with no live reference",
+          "when": "the lifecycle worker processes it",
+          "then": "original and variants are removed idempotently, metadata is tombstoned DELETED, and audit/outbox evidence remains"
+        },
+        {
+          "id": "AC02",
+          "given": "retention is active, a live reference exists, or the actor lacks approval permission",
+          "when": "deletion is requested or approved",
+          "then": "deletion is blocked with the precise stable reason and object bytes remain private"
+        },
+        {
+          "id": "AC03",
+          "given": "object deletion partially fails and the worker retries",
+          "when": "remaining objects are removed",
+          "then": "the request reaches COMPLETED once without duplicate audit effects or loss of the failure history"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*MediaLifecycle*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *MediaLifecycle*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*MediaLifecycle*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *MediaLifecycle*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "labels": [
+        "repo-service-media",
+        "roadmap-v1-3",
+        "source-vs-e03-s04-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E03-S04-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E03-S05",
+      "sourceId": "VS-E03-S05-ST01",
+      "jiraKey": "SCRUM-696",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E03-S05",
+      "summary": "[VS-E03-S05-ST01] Audit sensitive media access and lifecycle changes",
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Authorized auditors can query a redacted, partition-filtered, immutable media timeline while every upload, presign, view, download, quarantine, repair, and delete transition is recorded consistently.",
+      "context": "media_access_audit exists but has no application/query boundary. This task centralizes audit append semantics and exposes a bounded GraphQL connection that never returns URLs, object keys, or document content.",
+      "inScope": [
+        "Create one audit writer used by media commands and workers.",
+        "Add mediaAuditTimeline with cursor pagination, time range, action, actor, and media filters.",
+        "Enforce INTERNAL_AUDIT plus target partition and redact IP/actor detail unless PII is granted.",
+        "Define retention/export behavior and reject attempts to update or delete audit rows through application code."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "repositories": [
+        "service_media"
+      ],
+      "primaryRepository": "service_media",
+      "repositorySlices": [
+        {
+          "repository": "service_media",
+          "paths": [
+            "src/main/resources/graphql/schema.graphqls",
+            "src/main/java/com/vistay/media/application/MediaAuditService.java",
+            "src/main/java/com/vistay/media/adapter/in/graphql/MediaAuditController.java",
+            "src/main/java/com/vistay/media/adapter/out/persistence/**",
+            "src/main/resources/db/migration/V3__media_audit_hardening.sql",
+            "src/test/java/com/vistay/media/application/MediaAuditServiceTest.java",
+            "src/test/java/com/vistay/media/adapter/in/graphql/MediaAuditControllerIntegrationTest.java"
+          ],
+          "artifacts": [
+            "central media audit writer",
+            "mediaAuditTimeline GraphQL connection",
+            "append-only migration constraints",
+            "partition and field-redaction tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "Media owns upload sessions, object metadata, checksum, scan state, retention state, access audit, and domain references; object bytes stay in private object storage."
+      ],
+      "stateMachine": [
+        "Audit entries are append-only and have no update/delete application transition.",
+        "Cursor pagination orders by occurredAt then id to remain stable across concurrent inserts.",
+        "Export is a separately authorized read and records its own audit event."
+      ],
+      "authorization": {
+        "actions": [
+          "media:audit:view",
+          "media:audit:export"
+        ],
+        "dataPartitions": [
+          "ADMIN organization plus SITE/BRANCH membership for the target property; SYSTEM is limited to authenticated internal repair or projection calls."
+        ],
+        "fieldGroups": [
+          "SUMMARY is baseline; DOCUMENT and INTERNAL_AUDIT require explicit field-group grants."
+        ]
+      },
+      "failureSemantics": [
+        "Reject malformed or unauthorized calls before mutating state and do not reveal whether a restricted aggregate exists.",
+        "Map stale expectedVersion to CONFLICT_STALE_REVISION and unavailable required dependencies to DEPENDENCY_UNAVAILABLE.",
+        "Retry only object-store, scanner, or event-publication failures classified as transient; retain the failed job for bounded repair."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E03-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an auditor with target partition and INTERNAL_AUDIT grant",
+          "when": "the timeline is queried",
+          "then": "stable cursor-ordered events for that partition are returned with restricted actor/IP fields redacted unless PII is also granted"
+        },
+        {
+          "id": "AC02",
+          "given": "a caller lacks audit action, partition, or requested field group",
+          "when": "the query or export is attempted",
+          "then": "access is denied without media existence leakage and the denial is recorded through safe security telemetry"
+        },
+        {
+          "id": "AC03",
+          "given": "media commands and workers execute or replay",
+          "when": "their audit effects are inspected",
+          "then": "each material business transition has one correlation-linked immutable record and no presigned URL/object key is stored"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*MediaAudit*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *MediaAudit*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*MediaAudit*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *MediaAudit*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "labels": [
+        "repo-service-media",
+        "roadmap-v1-3",
+        "source-vs-e03-s05-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E03-S05-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E03",
+      "sourceId": "VS-E03-T01",
+      "jiraKey": "SCRUM-697",
+      "issueType": "Task",
+      "parentSourceId": "VS-E03",
+      "summary": "[VS-E03-T01] Publish versioned media contracts",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Platform Contracts publishes composable Media GraphQL operations and versioned asset-state events before service or gateway consumers implement them.",
+      "context": "No Media subgraph/event contract exists in platform_contracts. Define only transport schemas and compatibility fixtures; service_media remains the behavior and data owner.",
+      "inScope": [
+        "Add Media subgraph types for upload authorization/finalization, download authorization, deletion request, and audit timeline.",
+        "Add backoffice operation documents for each callable flow.",
+        "Add media.asset-state-changed v1 CloudEvent schema, payload schema, and valid example.",
+        "Extend existing GraphQL and event validators so incompatible or invalid fixtures fail CI."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "platform_contracts"
+      ],
+      "primaryRepository": "platform_contracts",
+      "repositorySlices": [
+        {
+          "repository": "platform_contracts",
+          "paths": [
+            "graphql/backoffice/subgraphs/media.graphql",
+            "graphql/backoffice/operations/media.graphql",
+            "events/v1/media.asset-state-changed.event.schema.json",
+            "events/v1/media.asset-state-changed.payload.schema.json",
+            "events/v1/examples/media.asset-state-changed.event.example.json",
+            "scripts/validate-graphql.mjs",
+            "scripts/validate-schemas.mjs"
+          ],
+          "artifacts": [
+            "Media GraphQL subgraph contract",
+            "backoffice Media operations",
+            "media.asset-state-changed v1 event contract",
+            "contract validation fixtures"
+          ]
+        }
+      ],
+      "contracts": [
+        {
+          "kind": "GraphQL",
+          "owner": "service_media",
+          "name": "Media backoffice v1",
+          "location": "graphql/backoffice/subgraphs/media.graphql",
+          "compatibility": "Add optional fields only within v1; required inputs, state meaning, or authorization semantics require a new version."
+        },
+        {
+          "kind": "Kafka",
+          "owner": "service_media",
+          "name": "media.asset-state-changed.v1",
+          "location": "events/v1/media.asset-state-changed.event.schema.json",
+          "compatibility": "Consumers ignore additive optional fields; existing enum meaning and required identity fields are immutable in v1."
+        }
+      ],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "media:contract:view",
+          "media:contract:publish"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "the new Media schemas and examples",
+          "when": "platform contract validation runs",
+          "then": "composition and JSON Schema validation pass and every operation/event has an explicit owner and version"
+        },
+        {
+          "id": "AC02",
+          "given": "an incompatible required field, invalid state, URL-bearing event payload, or malformed CloudEvent",
+          "when": "the negative fixture is validated",
+          "then": "CI fails with a stable path-specific diagnostic"
+        },
+        {
+          "id": "AC03",
+          "given": "identical canonical contract input",
+          "when": "validation is repeated",
+          "then": "the same schema content and operation names are produced without environment-specific values"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "contract",
+          "command": "npm run validate:graphql",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "GraphQL composition log including Media subgraph and operations"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "npm run validate:events",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "event-schema validation log including Media valid and negative fixtures"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-platform-contracts",
+        "roadmap-v1-3",
+        "source-vs-e03-t01"
+      ],
+      "decisionNoteVi": "Leaf VS-E03-T01 chỉ sở hữu artifact của platform_contracts; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "contract",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E03",
+      "sourceId": "VS-E03-T02",
+      "jiraKey": "SCRUM-698",
+      "issueType": "Task",
+      "parentSourceId": "VS-E03",
+      "summary": "[VS-E03-T02] Provision local object storage and Media Postman evidence",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Local compose provides private S3-compatible storage and deterministic Media API evidence without exposing production credentials or making the object bucket public.",
+      "context": "This task wires the validated Media contract to local routing, object storage, health checks, fixtures, and Postman/Newman coverage after service endpoints are implemented.",
+      "inScope": [
+        "Add a private local object-store service, named volume, bucket bootstrap, health check, and non-production credentials from .env.",
+        "Register Media subgraph routing and service environment variables.",
+        "Add a Media Postman collection covering upload, finalize, download, quarantine/deletion, audit, authorization denial, validation, replay, and cleanup.",
+        "Add a PowerShell runner that seeds deterministic fixtures, waits for readiness, runs Newman-compatible assertions, and cleans safely."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "platform_infrastructure"
+      ],
+      "primaryRepository": "platform_infrastructure",
+      "repositorySlices": [
+        {
+          "repository": "platform_infrastructure",
+          "paths": [
+            "compose.yaml",
+            "compose.full.yaml",
+            ".env.example",
+            "router/backoffice/supergraph-config.yaml",
+            "router/backoffice/subgraphs/media.graphql",
+            "postman/ViStay-Media.postman_collection.json",
+            "postman/ViStay-Local.postman_environment.json",
+            "postman/fixtures/media-e2e.sql",
+            "scripts/Test-PostmanMedia.ps1"
+          ],
+          "artifacts": [
+            "private local S3-compatible object store",
+            "Media router registration",
+            "Media Postman collection",
+            "repeatable PowerShell E2E runner"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "media:upload:create",
+          "media:upload:finalize",
+          "media:download:presign",
+          "media:asset:delete-request",
+          "media:audit:view"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E03-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E03-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E03-S03-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E03-S04-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E03-S05-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "clean local volumes and the documented environment",
+          "when": "compose starts and the Media runner executes",
+          "then": "the private bucket is initialized, the subgraph is ready, and all happy-path assertions pass"
+        },
+        {
+          "id": "AC02",
+          "given": "unauthorized, oversized, disallowed, checksum-mismatched, quarantined, or retained input",
+          "when": "the corresponding request runs",
+          "then": "the expected stable error/state is asserted and no public object or secret appears in output"
+        },
+        {
+          "id": "AC03",
+          "given": "the collection is repeated with the same fixture identities and idempotency keys",
+          "when": "cleanup and rerun complete",
+          "then": "there is no duplicated business effect and the named volume contains only expected private objects"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "operational",
+          "command": "docker compose -f compose.yaml config",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "compose configuration output with secrets redacted"
+        },
+        {
+          "id": "TEST-02",
+          "level": "e2e",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-PostmanMedia.ps1",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Media Newman-compatible JSON/JUnit report and cleanup summary"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-platform-infrastructure",
+        "roadmap-v1-3",
+        "source-vs-e03-t02"
+      ],
+      "decisionNoteVi": "Leaf VS-E03-T02 chỉ sở hữu artifact của platform_infrastructure; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "infrastructure",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [
+        "Production S3 endpoint, bucket, access policy, KMS key, and malware scanner credentials are required only for non-local activation."
+      ],
+      "externalBlockers": []
+    }
+  ]
+}

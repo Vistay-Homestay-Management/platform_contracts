@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package vistay.property.v1;
+
+option java_multiple_files = true;
+option java_package = "com.vistay.contracts.property.v1";
+option java_outer_classname = "PropertyPartitionProto";
+
+service PropertyPartitionService {
+  rpc GetPropertyPartitionRecord(GetPropertyPartitionRecordRequest)
+      returns (GetPropertyPartitionRecordResponse);
+}
+
+message GetPropertyPartitionRecordRequest {
+  string property_id = 1;
+}
+
+enum PropertyPartitionResolutionStatus {
+  PROPERTY_PARTITION_RESOLUTION_STATUS_UNSPECIFIED = 0;
+  PROPERTY_PARTITION_RESOLUTION_STATUS_MAPPED = 1;
+  PROPERTY_PARTITION_RESOLUTION_STATUS_MISSING = 2;
+}
+
+message GetPropertyPartitionRecordResponse {
+  string property_id = 1;
+  PropertyPartitionResolutionStatus resolution_status = 2;
+  optional string branch_id = 3;
+  int64 membership_version = 4;
+}
