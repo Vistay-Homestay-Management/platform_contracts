@@ -1,0 +1,1465 @@
+{
+  "refinements": [
+    {
+      "sourceId": "VS-E17",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "Host Property, Contract and Finance is decomposed into owner-scoped Property reads, contract/document reads, E10 settlement route integration, E10/E13 finance activity and alerts, cross-host negative evidence and one composition contract.",
+      "context": "E17 does not duplicate E04 command models, E10 calculations/payout projections, E13 inbox semantics or E16 identity/edge. The current Host frontend remains demo-only and Property exposes no Host GraphQL reads."
+    },
+    {
+      "sourceId": "VS-E17-S01",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "S01 separates the server-side primary-signatory property/asset projection from the responsive Host consumer.",
+      "context": "Assign only the executable children; Operations condition history and Booking pricing remain outside this story."
+    },
+    {
+      "sourceId": "VS-E17-S02",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "S02 separates versioned Host contract/term/document queries from the secure Host Web document experience.",
+      "context": "Assign only the executable children; Property keeps metadata/references and Media keeps private bytes/presigned access."
+    },
+    {
+      "sourceId": "VS-E17-S03",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "S03 is a narrow integration leaf that wires already-owned E10 Host settlement components into the authenticated portal shell.",
+      "context": "No new settlement API, calculation, statement component or Finance state is created in E17."
+    },
+    {
+      "sourceId": "VS-E17-S04",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "S04 separates Host payout/notification composition from two-Host Postman access-negative evidence.",
+      "context": "Payment history means E10 host payout movements, not guest payment-provider transactions; alerts reuse E13 recipient-self inbox/cursor semantics."
+    }
+  ],
+  "additions": [
+    {
+      "templateSourceId": "VS-E17-S01",
+      "sourceId": "VS-E17-S01-ST01",
+      "jiraKey": "SCRUM-817",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E17-S01",
+      "summary": "[VS-E17-S01-ST01] Implement host-scoped property and asset read model",
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Property exposes cursor-paginated Host queries that return only properties and host-visible asset summaries covered by the authenticated subjects current effective primary-signatory partition.",
+      "context": "Property currently exposes only serviceInfo and branch-partition gRPC. Baseline tables contain properties, media, amenities, property parties and unit assets; E04/E12 implement their command models, while this leaf adds a read-only Host projection without duplicating identity or operations data.",
+      "inScope": [
+        "Add myHostProperties and hostProperty GraphQL queries with cursor, status and as-of filters; resolve HOST profile ID through the trusted User authorization boundary, never from client input.",
+        "Join only current effective primary-signatory property-party bindings in repository predicates before pagination; return not-found-equivalent behavior for another Host property.",
+        "Return host-safe property/location/amenity/media summary and asset category/name/ownership/quantity/lifecycle summary; omit base-rate legacy fields, serial numbers, acquisition details, internal notes and Operations condition history.",
+        "Record bounded access audit and correlation metadata for detail and restricted-field attempts without logging returned PII or asset identifiers as metric labels."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "repositories": [
+        "service_property"
+      ],
+      "primaryRepository": "service_property",
+      "repositorySlices": [
+        {
+          "repository": "service_property",
+          "paths": [
+            "src/main/resources/graphql/schema.graphqls",
+            "src/main/java/com/vistay/property/application/HostPropertyQueryService.java",
+            "src/main/java/com/vistay/property/adapter/in/graphql/HostPropertyQueryController.java",
+            "src/main/java/com/vistay/property/adapter/out/persistence/JdbcHostPropertyProjection.java",
+            "src/main/java/com/vistay/property/adapter/out/user/UserAuthorizationClient.java",
+            "src/test/java/com/vistay/property/application/HostPropertyQueryServiceIntegrationTest.java"
+          ],
+          "artifacts": [
+            "host-scoped property connection",
+            "host-safe property and asset projection",
+            "primary-signatory repository filtering",
+            "cross-host/redaction query tests"
+          ]
+        }
+      ],
+      "contracts": [
+        {
+          "kind": "GraphQL",
+          "owner": "service_property",
+          "name": "Host property and asset view v1",
+          "location": "src/main/resources/graphql/schema.graphqls",
+          "compatibility": "Optional summary fields may be added; partition, cursor or redaction semantic changes require a new contract version."
+        }
+      ],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "Property owns property, effective party, amenity, media-reference and authoritative asset catalogue rows. User owns the HOST profile/authorization subject; Operations owns asset condition/repair facts; Booking owns commercial rate snapshots."
+      ],
+      "stateMachine": [
+        "Read eligibility is evaluated at requested asOf against immutable effective party history; expired or future bindings do not grant current access.",
+        "Property and asset command states remain owned by E04/E12; this read model never changes lifecycle state.",
+        "Cursor identity binds host subject, filters and asOf; a cursor replay under another subject or changed filter is rejected."
+      ],
+      "authorization": {
+        "actions": [
+          "property:read",
+          "asset:read"
+        ],
+        "dataPartitions": [
+          "HOST OWN partition resolved from the current effective primary-signatory property-party binding; SYSTEM only for authenticated repair."
+        ],
+        "fieldGroups": [
+          "PROPERTY_SUMMARY and ASSET_SUMMARY are host-visible; PRICING, ASSET_SERIAL, INTERNAL_NOTES and INTERNAL_AUDIT are excluded."
+        ]
+      },
+      "failureSemantics": [
+        "Fail closed when HOST authorization/profile resolution or effective party projection is unavailable.",
+        "Return stable forbidden, not-found-equivalent, invalid-cursor and dependency-unavailable codes without revealing another Host property or restricted asset fields.",
+        "Do not post-filter an unbounded property list and do not read User, Operations or Booking databases."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E17-T01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E04-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E04-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E04-S03-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E12-S01-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an ACTIVE HOST with two current primary-signatory properties",
+          "when": "the list and detail queries run",
+          "then": "only those properties and host-safe asset fields are returned with stable pagination and access audit"
+        },
+        {
+          "id": "AC02",
+          "given": "another Host property, expired/future binding, missing grant, altered cursor or restricted field request",
+          "when": "the query runs",
+          "then": "access fails without existence or field leakage and no cross-host row is fetched into the response layer"
+        },
+        {
+          "id": "AC03",
+          "given": "party history changes between pages or the same cursor repeats",
+          "when": "the client continues",
+          "then": "the bound asOf/filter snapshot remains deterministic or returns an explicit stale-cursor result"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*HostPropertyQuery*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *HostPropertyQuery*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*HostPropertyQuery*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *HostPropertyQuery*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "labels": [
+        "repo-service-property",
+        "roadmap-v1-3",
+        "source-vs-e17-s01-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E17-S01-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E17-S01",
+      "sourceId": "VS-E17-S01-ST02",
+      "jiraKey": "SCRUM-818",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E17-S01",
+      "summary": "[VS-E17-S01-ST02] Build Host property and asset workspace",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Host Web replaces demo homes with authenticated, responsive property and asset list/detail views that preserve server-side HOST OWN filtering and field redaction.",
+      "context": "The current Host dashboard hard-codes two sample homes, occupancy and issue text. No real property client, routing, pagination, authorization state or asset workspace exists.",
+      "inScope": [
+        "Add typed Host GraphQL client/hooks and routes for property list/detail and asset summaries; remove hard-coded homes and metrics that lack an authoritative API.",
+        "Build responsive cards/table/detail states for location, operating model, capacity, amenities, media and allowed asset fields with cursor/status filters.",
+        "Render only fields returned by the API; do not infer hidden financial, serial, repair or unrelated party values and do not filter cross-host data in the browser.",
+        "Cover loading, empty, forbidden, stale cursor, dependency unavailable, session refresh and mobile/keyboard/screen-reader behavior with deterministic fixtures."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "frontend_host"
+      ],
+      "primaryRepository": "frontend_host",
+      "repositorySlices": [
+        {
+          "repository": "frontend_host",
+          "paths": [
+            "src/lib/propertyClient.ts",
+            "src/pages/PropertiesPage.tsx",
+            "src/pages/PropertyDetailPage.tsx",
+            "src/pages/PropertyDetailPage.test.tsx",
+            "src/App.tsx",
+            "src/App.css",
+            "vite.config.ts"
+          ],
+          "artifacts": [
+            "real Host property routes",
+            "asset summary workspace",
+            "server-filtered pagination UX",
+            "responsive redaction/error tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "property:read",
+          "asset:read"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E17-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E16-S02-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E16-T03",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authenticated Host with current properties",
+          "when": "the property workspace loads and filters",
+          "then": "only API-returned OWN-partition properties/assets render and selected detail remains stable across responsive layouts"
+        },
+        {
+          "id": "AC02",
+          "given": "empty scope, forbidden property, restricted field, stale cursor, expired session or dependency outage",
+          "when": "the route loads",
+          "then": "an accurate actionable state is shown without demo fallback, cross-host value or hidden-field placeholder"
+        },
+        {
+          "id": "AC03",
+          "given": "pagination or retry repeats",
+          "when": "responses arrive out of order",
+          "then": "the active filter/cursor wins deterministically and duplicate cards/assets are not introduced"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm test -- --run",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Vitest Host property/asset workspace report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "e2e",
+          "command": "npm run test:e2e -- --project=chromium host-properties",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Host property responsive/access browser report"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-frontend-host",
+        "roadmap-v1-3",
+        "source-vs-e17-s01-st02"
+      ],
+      "decisionNoteVi": "Leaf VS-E17-S01-ST02 chỉ sở hữu artifact của frontend_host; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E17-S02",
+      "sourceId": "VS-E17-S02-ST01",
+      "jiraKey": "SCRUM-819",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E17-S02",
+      "summary": "[VS-E17-S02-ST01] Implement host-scoped contract term and document views",
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Property exposes versioned Host contract, own allocation and effective supply-term views plus purpose-bound document references only for the authenticated effective primary signatory.",
+      "context": "Baseline owner_contracts, parties and contract_property_terms exist, but Property has no Host query API. E04 owns contract commands and version history; Media owns private document bytes and presigned access.",
+      "inScope": [
+        "Add myHostContracts and hostContract queries with status/date/property filters, cursor and immutable version/supersession references.",
+        "Filter by current or explicitly requested historical primary-signatory binding before reading contract detail; show the authenticated Host allocation and approved host-visible terms only.",
+        "Separate CONTRACT_SUMMARY from CONTRACT_FINANCIAL and DOCUMENT fields; hide other-party PII/shares, internal notes, exception approvals and draft content not released to the Host.",
+        "Return Media reference plus exact document purpose/version metadata for authorized presigning; never proxy bytes, store URLs or expose an unavailable/unscanned document."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "repositories": [
+        "service_property"
+      ],
+      "primaryRepository": "service_property",
+      "repositorySlices": [
+        {
+          "repository": "service_property",
+          "paths": [
+            "src/main/resources/graphql/schema.graphqls",
+            "src/main/java/com/vistay/property/application/HostContractQueryService.java",
+            "src/main/java/com/vistay/property/adapter/in/graphql/HostContractQueryController.java",
+            "src/main/java/com/vistay/property/adapter/out/persistence/JdbcHostContractProjection.java",
+            "src/test/java/com/vistay/property/application/HostContractQueryServiceIntegrationTest.java"
+          ],
+          "artifacts": [
+            "host contract connection/detail",
+            "own-allocation and term projection",
+            "document authorization metadata",
+            "history/redaction/cross-host tests"
+          ]
+        }
+      ],
+      "contracts": [
+        {
+          "kind": "GraphQL",
+          "owner": "service_property",
+          "name": "Host contract term and document view v1",
+          "location": "src/main/resources/graphql/schema.graphqls",
+          "compatibility": "Released version identities and redaction semantics are stable; incompatible allocation/document changes require a new version."
+        }
+      ],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "Property owns contract parties, versioned supply terms and document references. User owns Host identity, Media owns document bytes/access, and Finance owns settlements derived from approved term versions."
+      ],
+      "stateMachine": [
+        "Host-visible contract versions follow DRAFT -> ACTIVE -> EXPIRING/RENEWING -> TERMINATED/EXPIRED/CANCELLED from E04; hidden draft/internal review data is not self-service visible.",
+        "Corrections create a new linked version; the Host can inspect prior released versions but no query mutates or rewrites them.",
+        "Document availability is independent and must be AVAILABLE plus purpose-authorized before download can be requested from Media."
+      ],
+      "authorization": {
+        "actions": [
+          "contract:read",
+          "property:supply-term:view",
+          "media:document:view"
+        ],
+        "dataPartitions": [
+          "HOST OWN partition from the effective primary-signatory contract/property binding; historical access is bounded to periods in which the subject was the released party."
+        ],
+        "fieldGroups": [
+          "CONTRACT_SUMMARY baseline; CONTRACT_FINANCIAL and DOCUMENT require explicit grants; OTHER_PARTY_PII and INTERNAL_AUDIT are excluded."
+        ]
+      },
+      "failureSemantics": [
+        "Fail closed on missing current/historical party binding, field-group grant, contract version or Media availability.",
+        "Use non-enumerating forbidden/not-found behavior for another Host contract and path-specific invalid-filter/cursor diagnostics.",
+        "Do not read Media or User databases and do not recompute settlement values in Property."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E17-T01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E04-S03-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E04-S04-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E04-S05-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E03-S03-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized primary-signatory Host and released contract versions",
+          "when": "list/detail/document metadata queries run",
+          "then": "only that Hosts contract, own allocation, granted terms and immutable version/document references are returned"
+        },
+        {
+          "id": "AC02",
+          "given": "another Host contract, unreleased draft, ungranted financial/document field or unavailable Media reference",
+          "when": "the query runs",
+          "then": "the response denies or redacts deterministically without leaking the contract, other party or document URL"
+        },
+        {
+          "id": "AC03",
+          "given": "a term is superseded or history is queried repeatedly",
+          "when": "the same asOf/version input is used",
+          "then": "the same immutable released version and allocation are returned without recalculation"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*HostContractQuery*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *HostContractQuery*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*HostContractQuery*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *HostContractQuery*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "labels": [
+        "repo-service-property",
+        "roadmap-v1-3",
+        "source-vs-e17-s02-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E17-S02-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E17-S02",
+      "sourceId": "VS-E17-S02-ST02",
+      "jiraKey": "SCRUM-820",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E17-S02",
+      "summary": "[VS-E17-S02-ST02] Build Host contract term and document workspace",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Host Web presents the authenticated Hosts released contracts, own allocation, effective term history and secure document download without exposing other parties or internal review data.",
+      "context": "Host Web has no contract route. Document download must use Media purpose-bound presigning and must not persist a URL or request a raw public object path.",
+      "inScope": [
+        "Add typed contract list/detail/version client and routes with status, property and date filters.",
+        "Show contract number/status/period/model, own allocation, granted financial terms, supersession timeline and clear effective/as-of labels.",
+        "Implement document availability/download through Media authorization, expiry/retry and revocation handling; never cache a presigned URL beyond its response lifetime.",
+        "Add read-only/redacted/forbidden/expired-document/corrected-version/session-refresh and responsive accessibility tests."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "frontend_host"
+      ],
+      "primaryRepository": "frontend_host",
+      "repositorySlices": [
+        {
+          "repository": "frontend_host",
+          "paths": [
+            "src/lib/contractClient.ts",
+            "src/pages/ContractsPage.tsx",
+            "src/pages/ContractDetailPage.tsx",
+            "src/pages/ContractDetailPage.test.tsx",
+            "src/components/SecureDocumentLink.tsx",
+            "src/App.tsx",
+            "src/App.css"
+          ],
+          "artifacts": [
+            "Host contract routes",
+            "term/version timeline",
+            "secure document flow",
+            "redaction and expiry tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "contract:read",
+          "property:supply-term:view",
+          "media:document:view"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E17-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E16-S02-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E16-T03",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E03-S03-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authenticated Host with released contract and DOCUMENT grant",
+          "when": "the workspace opens a version and downloads its document",
+          "then": "only the Hosts granted allocation/terms render and one short-lived purpose-bound download is initiated"
+        },
+        {
+          "id": "AC02",
+          "given": "another Host, unreleased version, missing financial/document grant, unavailable file or expired URL",
+          "when": "the route/action runs",
+          "then": "data/action is absent or safely recoverable with no party/document leakage"
+        },
+        {
+          "id": "AC03",
+          "given": "a corrected version or download retry arrives",
+          "when": "the view refreshes",
+          "then": "version lineage stays explicit and no stale presigned URL or duplicate download authorization is retained"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm test -- --run",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Vitest Host contract/document workspace report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "e2e",
+          "command": "npm run test:e2e -- --project=chromium host-contracts",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Host contract redaction/document browser report"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-frontend-host",
+        "roadmap-v1-3",
+        "source-vs-e17-s02-st02"
+      ],
+      "decisionNoteVi": "Leaf VS-E17-S02-ST02 chỉ sở hữu artifact của frontend_host; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E17-S03",
+      "sourceId": "VS-E17-S03-ST01",
+      "jiraKey": "SCRUM-821",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E17-S03",
+      "summary": "[VS-E17-S03-ST01] Integrate settlement statements into the Host portal shell",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "The authenticated Host shell links property and contract context to the E10 settlement statement/payout routes without reimplementing Finance calculations, APIs or statement components.",
+      "context": "E10 already owns the partitioned Finance projection and Host settlement pages. This leaf is intentionally limited to route/navigation/context integration after those artifacts exist.",
+      "inScope": [
+        "Register E10 settlement list/detail/basis routes in the authenticated Host navigation and remove any static revenue/payout metrics.",
+        "Link a property/contract to filtered settlement views using opaque IDs returned by approved APIs; never derive money in the browser.",
+        "Show source/as-of/version and correction indicators from E10 components and preserve back-navigation/filter state across property, contract and statement pages.",
+        "Add composition tests proving the shell reuses E10 clients/components and does not introduce duplicate settlement fetch/calculation or hidden financial fields."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "frontend_host"
+      ],
+      "primaryRepository": "frontend_host",
+      "repositorySlices": [
+        {
+          "repository": "frontend_host",
+          "paths": [
+            "src/App.tsx",
+            "src/navigation/hostRoutes.ts",
+            "src/pages/HostOverviewPage.tsx",
+            "src/pages/HostOverviewPage.test.tsx",
+            "src/App.css"
+          ],
+          "artifacts": [
+            "authenticated settlement navigation",
+            "property-contract-statement context links",
+            "authoritative finance summary cards",
+            "composition/no-duplicate tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "settlement:statement:view"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E10-S05-ST03",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E10-T01-ST04",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E16-S02-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E16-T03",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E17-S01-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E17-S02-ST02",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "E10 Host settlement routes and an authenticated Host property/contract context",
+          "when": "the user follows settlement navigation",
+          "then": "the shell opens the authoritative E10 view with preserved filters, version/asOf and no client-side money calculation"
+        },
+        {
+          "id": "AC02",
+          "given": "missing settlement permission, redacted line, corrected version or unavailable Finance API",
+          "when": "the integrated route loads",
+          "then": "the E10 safe state is preserved and the shell does not replace it with static/demo figures"
+        },
+        {
+          "id": "AC03",
+          "given": "navigation repeats between related pages",
+          "when": "requests overlap",
+          "then": "one route/filter state wins and duplicate settlement effects or calculations are impossible"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm test -- --run",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Host portal settlement composition test report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "e2e",
+          "command": "npm run test:e2e -- --project=chromium host-settlement-navigation",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "Host cross-page settlement navigation report"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-frontend-host",
+        "roadmap-v1-3",
+        "source-vs-e17-s03-st01"
+      ],
+      "decisionNoteVi": "Leaf VS-E17-S03-ST01 chỉ sở hữu artifact của frontend_host; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E17-S04",
+      "sourceId": "VS-E17-S04-ST01",
+      "jiraKey": "SCRUM-822",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E17-S04",
+      "summary": "[VS-E17-S04-ST01] Build Host payout activity and finance alert center",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Host Web combines the E10 self-scoped payout timeline with E13 recipient-self notifications to show payment activity and finance alerts without exposing guest payments, credentials or another Hosts data.",
+      "context": "E10 owns payout history and E13 owns durable notifications/SSE. This leaf owns only their Host-facing composition, unread/read behavior and navigation to authoritative statements.",
+      "inScope": [
+        "Add Finance activity route using E10 statement/payable/payout projections with property/status/date filters and partial/final/overdue states.",
+        "Add Host notification inbox/unread/SSE client using E13 cursor semantics; filter presentation by allowed finance types without discarding non-finance durable cursor progress.",
+        "Render masked references, amount/currency/status/occurredAt and source statement links; exclude guest payment transactions, customer PII, bank credentials, employee compensation and internal reconciliation notes.",
+        "Handle duplicate/out-of-order SSE, cursor expiry/list reconciliation, read idempotency, offline reconnect, forbidden fields, session refresh and responsive accessibility."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "frontend_host"
+      ],
+      "primaryRepository": "frontend_host",
+      "repositorySlices": [
+        {
+          "repository": "frontend_host",
+          "paths": [
+            "src/lib/financeActivityClient.ts",
+            "src/lib/hostNotificationClient.ts",
+            "src/pages/FinanceActivityPage.tsx",
+            "src/components/HostNotificationCenter.tsx",
+            "src/pages/FinanceActivityPage.test.tsx",
+            "src/App.tsx",
+            "src/App.css"
+          ],
+          "artifacts": [
+            "Host payout activity timeline",
+            "recipient-self finance alert center",
+            "SSE cursor/read reconciliation",
+            "redaction/reconnect/access tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "settlement:statement:view",
+          "notification:inbox:view",
+          "notification:inbox:mark-read"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E10-S05-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E10-S05-ST03",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E13-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E13-S04-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E16-T03",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E17-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authenticated Host with payout history and finance notifications",
+          "when": "activity/inbox loads and SSE reconnects",
+          "then": "only self-scoped payout movements and recipient notifications render with stable cursor/read state and authoritative statement links"
+        },
+        {
+          "id": "AC02",
+          "given": "another Host data, guest payment, restricted field, cursor expiry, duplicate frame or unavailable dependency",
+          "when": "the view processes it",
+          "then": "no forbidden value renders and the documented reconcile/retry state preserves durable progress"
+        },
+        {
+          "id": "AC03",
+          "given": "duplicate/out-of-order events or mark-read retries",
+          "when": "the client converges",
+          "then": "one notification revision/read effect and one payout row remain without double-counting money"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm test -- --run",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Host finance activity/notification Vitest report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "e2e",
+          "command": "npm run test:e2e -- --project=chromium host-finance-activity",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Host payout/SSE reconnect browser report"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-frontend-host",
+        "roadmap-v1-3",
+        "source-vs-e17-s04-st01"
+      ],
+      "decisionNoteVi": "Leaf VS-E17-S04-ST01 chỉ sở hữu artifact của frontend_host; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E17-S04",
+      "sourceId": "VS-E17-S04-ST02",
+      "jiraKey": "SCRUM-823",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E17-S04",
+      "summary": "[VS-E17-S04-ST02] Prove cross-host access denial and redaction",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "A deterministic Host portal Postman/Newman suite proves positive property/contract/settlement/activity flows and rejects cross-host, wrong-realm and restricted-field access at API boundaries.",
+      "context": "E16 creates Host identity and edge evidence; E17 needs two isolated Hosts with disjoint primary-signatory partitions plus one expired historical binding to verify domain scoping and field redaction.",
+      "inScope": [
+        "Create secret-free local fixtures for Host A, Host B, disjoint properties/contracts/settlements/payouts/notifications and one expired binding using owner APIs rather than direct database writes.",
+        "Exercise Host A list/detail/document/statement/payout/inbox happy paths and assert exact allowed fields, cursor/asOf/version and source lineage.",
+        "Attempt Host B IDs/cursors/document references, wrong issuer/audience, expired binding, hidden financial/party/asset/internal fields and guest-payment enumeration; assert non-leaking denial/redaction.",
+        "Replay pagination, document authorization, SSE/list reconciliation and read mutations; produce redacted Newman JSON/JUnit and cleanup-safe fixture evidence."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "platform_infrastructure"
+      ],
+      "primaryRepository": "platform_infrastructure",
+      "repositorySlices": [
+        {
+          "repository": "platform_infrastructure",
+          "paths": [
+            "postman/ViStay-Host-Portal-v1.postman_collection.json",
+            "postman/ViStay-Host-Portal-local.postman_environment.example.json",
+            "scripts/Test-PostmanHostPortal.ps1",
+            "postman/README.md"
+          ],
+          "artifacts": [
+            "two-Host partition fixtures",
+            "Host portal happy/negative collection",
+            "field/cursor/document/SSE replay assertions",
+            "redacted Newman evidence"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "host-portal:test"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E17-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E17-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E10-S05-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E13-S04-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E16-T03",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E17-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "two disjoint Host fixtures and all required local services",
+          "when": "the Newman suite runs as Host A",
+          "then": "all allowed self-scoped property/contract/settlement/payout/notification assertions pass with correlated source/version evidence"
+        },
+        {
+          "id": "AC02",
+          "given": "Host B identifiers/cursors/documents, wrong token, expired binding or restricted field selection",
+          "when": "Host A attempts access",
+          "then": "every request is denied/redacted without existence, value or timing-derived enumeration in the test contract"
+        },
+        {
+          "id": "AC03",
+          "given": "the collection or replay cases repeat",
+          "when": "cleanup/reconciliation completes",
+          "then": "fixtures and read effects remain deterministic with no duplicate identity, notification or financial movement"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "contract",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-PostmanHostPortal.ps1 -StaticOnly",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "Host portal collection/environment/redaction validation report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "e2e",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-PostmanHostPortal.ps1",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "redacted Host portal Newman JSON/JUnit report"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-platform-infrastructure",
+        "roadmap-v1-3",
+        "source-vs-e17-s04-st02"
+      ],
+      "decisionNoteVi": "Leaf VS-E17-S04-ST02 chỉ sở hữu artifact của platform_infrastructure; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "integration",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E17",
+      "sourceId": "VS-E17-T01",
+      "jiraKey": "SCRUM-824",
+      "issueType": "Task",
+      "parentSourceId": "VS-E17",
+      "summary": "[VS-E17-T01] Publish Host property contract and finance view contracts",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Platform Contracts publishes the Host portal read contract covering primary-signatory partitions, property/asset and contract fields, E10 settlement/payout reuse, E13 notification reuse and cross-host denial.",
+      "context": "E04, E10, E13 and E16 own underlying domain and identity contracts. E17 must compose them without creating a second settlement, notification or authorization model.",
+      "inScope": [
+        "Define Host portal query shapes, cursors, asOf/version semantics, stable codes and exact owner service for property, asset, contract, document, settlement, payout and notification references.",
+        "Publish an action-partition-field matrix whose partition is the authenticated current effective primary-signatory binding and whose field groups explicitly exclude customer PII, employee compensation, payment credentials and unrelated party shares.",
+        "Document E10/E13 contract reuse and forbid client-side money calculation, unbounded post-filtering, direct database joins and public document URLs.",
+        "Add valid and invalid fixtures for cross-host IDs/cursors, expired binding, wrong realm/audience, restricted field, superseded version, duplicate SSE/read and dependency failure."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "platform_contracts"
+      ],
+      "primaryRepository": "platform_contracts",
+      "repositorySlices": [
+        {
+          "repository": "platform_contracts",
+          "paths": [
+            "docs/host-portal-views-v1.md",
+            "schemas/host-portal/**",
+            "fixtures/host-portal/**",
+            "scripts/validate-schemas.mjs"
+          ],
+          "artifacts": [
+            "Host portal read contract",
+            "owner and field matrix",
+            "cross-epic reuse rules",
+            "positive/negative partition fixtures"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "host-portal-contract:publish"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "all Host portal resources and reused E04/E10/E13/E16 contracts",
+          "when": "contract validation runs",
+          "then": "owner, action, partition, field group, cursor/version and failure semantics are machine-verifiable"
+        },
+        {
+          "id": "AC02",
+          "given": "duplicate finance/notification model, client money calculation, direct DB join, cross-host field or public document URL",
+          "when": "negative fixtures validate",
+          "then": "CI fails with an exact path-specific diagnostic"
+        },
+        {
+          "id": "AC03",
+          "given": "the same canonical fixture set",
+          "when": "validation repeats",
+          "then": "the same fingerprint is produced and prior published versions are not rewritten"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "contract",
+          "command": "npm run validate:schemas",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Host portal schema/fixture validation report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "unit",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "platform_contracts full validation report"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-platform-contracts",
+        "roadmap-v1-3",
+        "source-vs-e17-t01"
+      ],
+      "decisionNoteVi": "Leaf VS-E17-T01 chỉ sở hữu artifact của platform_contracts; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "contract",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    }
+  ]
+}
