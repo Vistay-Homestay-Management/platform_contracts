@@ -71234,8 +71234,8 @@
       "summary": "[VS-E21] External Employee System Integration",
       "manageDescription": true,
       "actor": "Operations dispatcher and external employee system",
-      "outcome": "External Employee System Integration is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This epic is part of the ViStay VS-E21 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "Operations owns ViStay work orders, vendor dispatch state, callback verification and source evidence; separate contract, dispatch, callback/ingress, reconciliation and authorization leaves make integration testable without guessing the vendor API.",
+      "context": "Operations V2 SQL already declares work_order_dispatches and external_callback_events; no production vendor connector or authoritative external API contract was found. The E12 cleanliness and E23 trust flows depend on authenticated, attributable source evidence.",
       "inScope": [
         "Implement and verify: External Employee System Integration.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -71341,7 +71341,7 @@
         "source-vs-e21"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "contract",
       "dispatchable": false,
       "testCases": [],
@@ -71357,8 +71357,8 @@
       "parentSourceId": "VS-E21",
       "manageDescription": true,
       "actor": "Operations dispatcher and external employee system",
-      "outcome": "verify vendor contract/sandbox is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E21 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "S01 establishes a vendor-neutral verified envelope and a recorded vendor-readiness decision before a real adapter is enabled.",
+      "context": "VS-E00-T02 still asks which external employee system is selected. The child contract/fixture work is dispatchable; this parent cannot claim live vendor verification without API documentation, sandbox and signing/allowlist configuration.",
       "inScope": [
         "Implement and verify: verify vendor contract/sandbox.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -71466,7 +71466,7 @@
         "source-vs-e21-s01"
       ],
       "decisionNoteVi": "Đặc tả đã đủ để triển khai phần nội bộ; chỉ giữ trạng thái blocked cho đầu vào bên ngoài: External employee/cleaning vendor documentation, sandbox credentials, signing keys, and callback allowlist are required.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "contract",
       "dispatchable": false,
       "testCases": [],
@@ -71477,6 +71477,165 @@
       ]
     },
     {
+      "sourceId": "VS-E21-S01-ST01",
+      "jiraKey": "SCRUM-858",
+      "issueType": "Subtask",
+      "summary": "[VS-E21-S01-ST01] Version vendor-neutral employee integration and sandbox readiness contract",
+      "parentSourceId": "VS-E21-S01",
+      "manageDescription": true,
+      "actor": "Authorized Operations operator or trusted integration worker",
+      "outcome": "Contracts defines a testable, versioned ViStay work-order/assessment envelope and a separate checklist for approving a real external employee vendor.",
+      "context": "E00-T02 still has no selected vendor contract. Document what ViStay owns and isolate the unrecognized vendor-specific transport/signing/response mapping behind an adapter, with no hardcoded production values.",
+      "inScope": [
+        "Publish ViStay-owned dispatch, acknowledgement, status, stayover/checkout cleaning checklist and source correction schemas with source IDs, booking/work-order/customer attribution, version, timestamp and evidence references; vendor never supplies final trust points.",
+        "Add an approval checklist for vendor API version, sandbox URL, auth/signature algorithm and key rotation, timestamp/retry window, allowed callbacks, rate limits and retention; record each field as unverified until authoritative docs/sandbox prove it.",
+        "Add deterministic mock fixtures for valid/invalid signature, duplicate/reordered callbacks, mismatched work order/branch, missing assessor and unsupported source version; version rejection and compatibility checks."
+      ],
+      "outOfScope": [
+        "Creating a vendor-specific host/path, credential, signature scheme or production retention default without provider evidence.",
+        "Declaring live sandbox tested from mock fixtures."
+      ],
+      "businessRules": [
+        "The vendor may submit checklist, severity, event/work-order, and evidence; it never submits final trust points.",
+        "Callbacks require signature, timestamp window, replay protection, schema validation, and durable deduplication.",
+        "Real adapter activation remains blocked until vendor documentation, sandbox credentials, and callback keys are supplied."
+      ],
+      "repositories": [
+        "platform_contracts"
+      ],
+      "interfaces": [
+        "Versioned dispatch/ack/callback and source-correction envelopes; real provider mapping is a separate unapproved adapter implementation until contract evidence exists."
+      ],
+      "dataOwnership": [
+        "Contracts pins ViStay-visible events; Operations owns work orders and raw verified care evidence, Finance owns customer trust points."
+      ],
+      "stateMachine": [
+        "DRAFT -> VALIDATED mock contract; VENDOR_VERIFIED only after exact docs, keys, signing test and sandbox correlation pass."
+      ],
+      "authorization": {
+        "actions": [
+          "external-employee:contract:publish"
+        ],
+        "dataPartitions": [
+          "ADMIN must have target SITE/BRANCH and work-order relationship; SYSTEM only authenticated integration purpose; vendor callback may address only its mapped external_system/work-order identity."
+        ],
+        "fieldGroups": [
+          "SUMMARY IDs/status only; DOCUMENT evidence and INTERNAL_AUDIT assessor details classified explicitly."
+        ]
+      },
+      "failureSemantics": [
+        "Reject missing credentials, unsupported vendor contract version, stale timestamp and unverified signature before mutating Operations work orders.",
+        "Classify transient dependency failure separately from permanent invalid vendor data; quarantine failed messages and never complete a work order as fallback.",
+        "Return stable non-enumerating forbidden/not-found, conflict, dependency-unavailable and rate-limit codes without raw payload, callback secret or customer PII."
+      ],
+      "idempotencyConcurrency": [
+        "Outbound retry uses a stable idempotency key bound to workOrderId, vendor and canonical payload hash; changed payload with the same key conflicts.",
+        "Inbox deduplicates signed callback by external_system and external_event_id and checks external_work_order_id maps to the same ViStay order.",
+        "Use source version/expectedRevision to keep late or reordered callbacks from rolling back status or creating a second assessment."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E00-T02",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "a vendor-neutral order and stayover/checkout assessment example",
+          "when": "schema/fixture validation runs",
+          "then": "required source IDs, signatures, correction references and distinction between raw severity and final trust score are explicit"
+        },
+        {
+          "id": "AC02",
+          "given": "unsigned/mismatched customer, duplicate event or assessor claiming final score",
+          "when": "negative fixtures run",
+          "then": "contract rejects with stable diagnostic and does not call the result vendor-verified"
+        },
+        {
+          "id": "AC03",
+          "given": "actual vendor contract or sandbox remains unavailable",
+          "when": "readiness checklist is evaluated",
+          "then": "adapter activation stays blocked while mock fixtures remain usable for internal implementation"
+        }
+      ],
+      "tests": [
+        "Run exact testCases and provide positive, authorization-negative, duplicate/reordered and dependency-failure evidence.",
+        "Mock-vendor tests do not count as proof of live vendor integration; real-adapter activation remains externally gated."
+      ],
+      "observability": [
+        "Propagate correlation, vendor event ID and internal work-order ID to bounded metric/audit labels; never log private raw evidence or signing keys.",
+        "Expose pending age, retry count, quarantined events and next authorized repair action by branch."
+      ],
+      "definitionOfDone": [
+        "Named artifacts and focused tests land in the owning repo; authorization, replay, stale-status and recovery evidence is attached.",
+        "Contract and migration compatibility are verified; external callback activation waits for vendor-gate approval.",
+        "Jira links PR/CI/fixture report and marks whether validation is mock-only or actually ran against approved sandbox."
+      ],
+      "evidence": [
+        "Repository PR and CI URL.",
+        "Redacted negative-auth/replay integration report and recovery note.",
+        "Vendor contract/sandbox approval only when supplied; mock fixture is labeled as mock."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-platform-contracts",
+        "roadmap-v1-3",
+        "source-vs-e21-s01-st01",
+        "vendor-contract-required",
+        "business-review-needed"
+      ],
+      "decisionNoteVi": "platform_contracts owns only this slice; no actual vendor endpoint, secret, signing algorithm or reward points are assumed.",
+      "specStatus": "executable",
+      "workKind": "contract",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm run validate:schemas",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E21-S01-ST01: fixture version, redacted CI report, denial and replay proof"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E21-S01-ST01: fixture version, redacted CI report, denial and replay proof"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [
+        "Production vendor adapter remains disabled until the ProductOwner approves the actual vendor API, sandbox credentials, callback authentication/signing algorithm, key rotation, allowlist, retry semantics and retention policy under VS-E00-T02."
+      ],
+      "primaryRepository": "platform_contracts",
+      "repositorySlices": [
+        {
+          "repository": "platform_contracts",
+          "paths": [
+            "schemas/external-employee/**",
+            "fixtures/external-employee/**",
+            "docs/external-employee-integration-v1.md",
+            "scripts/validate-schemas.mjs"
+          ],
+          "artifacts": [
+            "vendor-neutral envelope and approval checklist",
+            "signed mock callback/correction fixture matrix",
+            "schema validation and secret scan"
+          ]
+        }
+      ]
+    },
+    {
       "sourceId": "VS-E21-S02",
       "jiraKey": "SCRUM-442",
       "issueType": "Story",
@@ -71484,8 +71643,8 @@
       "parentSourceId": "VS-E21",
       "manageDescription": true,
       "actor": "Operations dispatcher and external employee system",
-      "outcome": "map/dispatch job is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E21 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "S02 sends ViStay-owned work-order intent through a replay-safe Operations adapter and maps external IDs after a verified acknowledgement.",
+      "context": "Operations V2 already has work_order_dispatches and a unique (external_system, external_work_order_id); a fabricated vendor response cannot be called a real dispatch.",
       "inScope": [
         "Implement and verify: map/dispatch job.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -71591,13 +71750,170 @@
         "source-vs-e21-s02"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "contract",
       "dispatchable": false,
       "testCases": [],
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E21-S02-ST01",
+      "jiraKey": "SCRUM-859",
+      "issueType": "Subtask",
+      "summary": "[VS-E21-S02-ST01] Dispatch replay-safe ViStay work orders through vendor adapter port",
+      "parentSourceId": "VS-E21-S02",
+      "manageDescription": true,
+      "actor": "Authorized Operations operator or trusted integration worker",
+      "outcome": "Operations sends authorized work orders through a bounded, pluggable external adapter with durable IDs, retry-safe acknowledgement and no fake completion.",
+      "context": "V2 work_order_dispatches stores PENDING/SENDING/DISPATCHED and unique vendor external IDs. The vendor transport is not known, so only a mock adapter can run until S01 verification.",
+      "inScope": [
+        "Map authoritative work_order_id, branch, task kind, due window and source revision to versioned dispatch intent without leaking unrelated customer data.",
+        "Persist idempotency_key, payload fingerprint, attempt_count, external_system, verified acknowledgement ID and next_retry_at; use bounded transient retry and record every state transition.",
+        "Implement outbound port plus mock contract adapter and verify cancellation/reschedule race cannot dispatch obsolete versions."
+      ],
+      "outOfScope": [
+        "Treating a 2xx transport response as completed cleaning or inventing a vendor REST endpoint."
+      ],
+      "businessRules": [
+        "The vendor may submit checklist, severity, event/work-order, and evidence; it never submits final trust points.",
+        "Callbacks require signature, timestamp window, replay protection, schema validation, and durable deduplication.",
+        "Real adapter activation remains blocked until vendor documentation, sandbox credentials, and callback keys are supplied."
+      ],
+      "repositories": [
+        "service_operations"
+      ],
+      "interfaces": [
+        "Consume approved ViStay work-order command; adapter sends versioned dispatch and accepts ack with one external ID and response version."
+      ],
+      "dataOwnership": [
+        "Operations owns work_orders and work_order_dispatches; external vendor owns execution and supplied external_work_order_id."
+      ],
+      "stateMachine": [
+        "PENDING -> SENDING -> DISPATCHED or FAILED; only signed/validated later callback advances ACCEPTED/IN_PROGRESS/COMPLETED.",
+        "CANCELLED must not revive from late acknowledgement."
+      ],
+      "authorization": {
+        "actions": [
+          "operations:work-order:dispatch"
+        ],
+        "dataPartitions": [
+          "ADMIN must have target SITE/BRANCH and work-order relationship; SYSTEM only authenticated integration purpose; vendor callback may address only its mapped external_system/work-order identity."
+        ],
+        "fieldGroups": [
+          "SUMMARY work-order/dispatch status; DOCUMENT and INTERNAL_AUDIT restricted task details."
+        ]
+      },
+      "failureSemantics": [
+        "Reject missing credentials, unsupported vendor contract version, stale timestamp and unverified signature before mutating Operations work orders.",
+        "Classify transient dependency failure separately from permanent invalid vendor data; quarantine failed messages and never complete a work order as fallback.",
+        "Return stable non-enumerating forbidden/not-found, conflict, dependency-unavailable and rate-limit codes without raw payload, callback secret or customer PII."
+      ],
+      "idempotencyConcurrency": [
+        "Outbound retry uses a stable idempotency key bound to workOrderId, vendor and canonical payload hash; changed payload with the same key conflicts.",
+        "Inbox deduplicates signed callback by external_system and external_event_id and checks external_work_order_id maps to the same ViStay order.",
+        "Use source version/expectedRevision to keep late or reordered callbacks from rolling back status or creating a second assessment."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E21-S01-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "authorized work order at one branch and a mock vendor acknowledgement",
+          "when": "dispatch worker runs",
+          "then": "one dispatch row and one external ID mapping persist with version/audit"
+        },
+        {
+          "id": "AC02",
+          "given": "forbidden branch, stale work-order revision or missing vendor adapter",
+          "when": "dispatch is requested",
+          "then": "no outbound order is sent and stable forbidden/conflict/unavailable status is recorded"
+        },
+        {
+          "id": "AC03",
+          "given": "the same request retries or cancellation races with ack",
+          "when": "worker replays",
+          "then": "single durable external mapping remains and CANCELLED cannot become active again"
+        }
+      ],
+      "tests": [
+        "Run exact testCases and provide positive, authorization-negative, duplicate/reordered and dependency-failure evidence.",
+        "Mock-vendor tests do not count as proof of live vendor integration; real-adapter activation remains externally gated."
+      ],
+      "observability": [
+        "Propagate correlation, vendor event ID and internal work-order ID to bounded metric/audit labels; never log private raw evidence or signing keys.",
+        "Expose pending age, retry count, quarantined events and next authorized repair action by branch."
+      ],
+      "definitionOfDone": [
+        "Named artifacts and focused tests land in the owning repo; authorization, replay, stale-status and recovery evidence is attached.",
+        "Contract and migration compatibility are verified; external callback activation waits for vendor-gate approval.",
+        "Jira links PR/CI/fixture report and marks whether validation is mock-only or actually ran against approved sandbox."
+      ],
+      "evidence": [
+        "Repository PR and CI URL.",
+        "Redacted negative-auth/replay integration report and recovery note.",
+        "Vendor contract/sandbox approval only when supplied; mock fixture is labeled as mock."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-operations",
+        "roadmap-v1-3",
+        "source-vs-e21-s02-st01",
+        "vendor-contract-required"
+      ],
+      "decisionNoteVi": "service_operations owns only this slice; no actual vendor endpoint, secret, signing algorithm or reward points are assumed.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*ExternalEmployee*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E21-S02-ST01: fixture version, redacted CI report, denial and replay proof"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E21-S02-ST01: fixture version, redacted CI report, denial and replay proof"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [
+        "Production vendor adapter remains disabled until the ProductOwner approves the actual vendor API, sandbox credentials, callback authentication/signing algorithm, key rotation, allowlist, retry semantics and retention policy under VS-E00-T02."
+      ],
+      "primaryRepository": "service_operations",
+      "repositorySlices": [
+        {
+          "repository": "service_operations",
+          "paths": [
+            "src/main/java/**",
+            "src/main/resources/db/migration/**",
+            "src/test/java/**"
+          ],
+          "artifacts": [
+            "work-order dispatch worker and outbound adapter port",
+            "verified vendor-ID mapping",
+            "mock acknowledgement/duplicate/cancel tests"
+          ]
+        }
+      ]
     },
     {
       "sourceId": "VS-E21-S03",
@@ -71607,8 +71923,8 @@
       "parentSourceId": "VS-E21",
       "manageDescription": true,
       "actor": "Operations dispatcher and external employee system",
-      "outcome": "receive signed status/evidence callback is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E21 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "S03 separates Operations signature-first callback processing from infrastructure ingress/secret provisioning; neither trusts a vendor-provided trust score.",
+      "context": "V2 external_callback_events has unique external_system+external_event_id and processing statuses; callback authorization must precede payload persistence/use.",
       "inScope": [
         "Implement and verify: receive signed status/evidence callback.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -71714,13 +72030,337 @@
         "source-vs-e21-s03"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "contract",
       "dispatchable": false,
       "testCases": [],
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E21-S03-ST01",
+      "jiraKey": "SCRUM-860",
+      "issueType": "Subtask",
+      "summary": "[VS-E21-S03-ST01] Validate signed vendor callbacks and quarantine untrusted evidence",
+      "parentSourceId": "VS-E21-S03",
+      "manageDescription": true,
+      "actor": "Authorized Operations operator or trusted integration worker",
+      "outcome": "Operations authenticates, attributes and deduplicates vendor status and cleaning evidence before advancing a ViStay order or publishing E12 source evidence.",
+      "context": "V2 external_callback_events uniquely indexes external_system/external_event_id. Actual signing algorithm/window is vendor-specific and must be approved before production ingress.",
+      "inScope": [
+        "Verify vendor identity, approved key revision/signature, clock window, payload size/schema and distinct external event/work-order ID before accepting any state or evidence.",
+        "Map external ID to one work order/site/branch and legal status transition; separate stayover vs checkout checklist and assessor/evidence source from vendor-provided severity; reject direct trust-point fields.",
+        "Persist accepted callback inbox, status/audit/outbox atomically; quarantine unrecognized ID, stale/out-of-order revision and conflicted signature with safe replay/repair metadata."
+      ],
+      "outOfScope": [
+        "Accepting unauthenticated callback, publishing fake Finance trust score or storing raw sensitive evidence in open logs."
+      ],
+      "businessRules": [
+        "The vendor may submit checklist, severity, event/work-order, and evidence; it never submits final trust points.",
+        "Callbacks require signature, timestamp window, replay protection, schema validation, and durable deduplication.",
+        "Real adapter activation remains blocked until vendor documentation, sandbox credentials, and callback keys are supplied."
+      ],
+      "repositories": [
+        "service_operations"
+      ],
+      "interfaces": [
+        "Version callback endpoint and verifier port; concrete provider-specific algorithm/key IDs activated only after approved S01 contract."
+      ],
+      "dataOwnership": [
+        "Operations owns verified source evidence and callback inbox; vendor supplies raw assessment, Finance owns trust points."
+      ],
+      "stateMachine": [
+        "RECEIVED -> PROCESSED/IGNORED/QUARANTINED/FAILED; never transition an order backwards on a late callback."
+      ],
+      "authorization": {
+        "actions": [
+          "operations:external-callback:ingest"
+        ],
+        "dataPartitions": [
+          "ADMIN must have target SITE/BRANCH and work-order relationship; SYSTEM only authenticated integration purpose; vendor callback may address only its mapped external_system/work-order identity."
+        ],
+        "fieldGroups": [
+          "SUMMARY event status; DOCUMENT and TRUST_DETAIL raw care evidence, INTERNAL_AUDIT signature/assessor metadata restricted."
+        ]
+      },
+      "failureSemantics": [
+        "Reject missing credentials, unsupported vendor contract version, stale timestamp and unverified signature before mutating Operations work orders.",
+        "Classify transient dependency failure separately from permanent invalid vendor data; quarantine failed messages and never complete a work order as fallback.",
+        "Return stable non-enumerating forbidden/not-found, conflict, dependency-unavailable and rate-limit codes without raw payload, callback secret or customer PII."
+      ],
+      "idempotencyConcurrency": [
+        "Outbound retry uses a stable idempotency key bound to workOrderId, vendor and canonical payload hash; changed payload with the same key conflicts.",
+        "Inbox deduplicates signed callback by external_system and external_event_id and checks external_work_order_id maps to the same ViStay order.",
+        "Use source version/expectedRevision to keep late or reordered callbacks from rolling back status or creating a second assessment."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E21-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E21-S02-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "valid signed callback referencing exactly one dispatched work order",
+          "when": "Operations processes the payload",
+          "then": "legal order transition and distinct signed stayover/checkout evidence persist once with audit/outbox"
+        },
+        {
+          "id": "AC02",
+          "given": "bad signature, stale timestamp, foreign vendor work ID or unsupported version",
+          "when": "callback arrives",
+          "then": "request is denied or quarantined and no order/evidence/trust event changes"
+        },
+        {
+          "id": "AC03",
+          "given": "duplicate or reordered signed event is delivered",
+          "when": "inbox replays",
+          "then": "unique source event produces at most one transition and late older revision does not roll back current status"
+        }
+      ],
+      "tests": [
+        "Run exact testCases and provide positive, authorization-negative, duplicate/reordered and dependency-failure evidence.",
+        "Mock-vendor tests do not count as proof of live vendor integration; real-adapter activation remains externally gated."
+      ],
+      "observability": [
+        "Propagate correlation, vendor event ID and internal work-order ID to bounded metric/audit labels; never log private raw evidence or signing keys.",
+        "Expose pending age, retry count, quarantined events and next authorized repair action by branch."
+      ],
+      "definitionOfDone": [
+        "Named artifacts and focused tests land in the owning repo; authorization, replay, stale-status and recovery evidence is attached.",
+        "Contract and migration compatibility are verified; external callback activation waits for vendor-gate approval.",
+        "Jira links PR/CI/fixture report and marks whether validation is mock-only or actually ran against approved sandbox."
+      ],
+      "evidence": [
+        "Repository PR and CI URL.",
+        "Redacted negative-auth/replay integration report and recovery note.",
+        "Vendor contract/sandbox approval only when supplied; mock fixture is labeled as mock."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-operations",
+        "roadmap-v1-3",
+        "source-vs-e21-s03-st01",
+        "vendor-contract-required"
+      ],
+      "decisionNoteVi": "service_operations owns only this slice; no actual vendor endpoint, secret, signing algorithm or reward points are assumed.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*ExternalEmployee*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E21-S03-ST01: fixture version, redacted CI report, denial and replay proof"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E21-S03-ST01: fixture version, redacted CI report, denial and replay proof"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [
+        "Production vendor adapter remains disabled until the ProductOwner approves the actual vendor API, sandbox credentials, callback authentication/signing algorithm, key rotation, allowlist, retry semantics and retention policy under VS-E00-T02."
+      ],
+      "primaryRepository": "service_operations",
+      "repositorySlices": [
+        {
+          "repository": "service_operations",
+          "paths": [
+            "src/main/java/**",
+            "src/main/resources/db/migration/**",
+            "src/test/java/**"
+          ],
+          "artifacts": [
+            "signature-first callback ingress adapter",
+            "external_callback_events inbox mapping",
+            "valid/invalid/replay/care-kind integration tests"
+          ]
+        }
+      ]
+    },
+    {
+      "sourceId": "VS-E21-S03-ST02",
+      "jiraKey": "SCRUM-861",
+      "issueType": "Subtask",
+      "summary": "[VS-E21-S03-ST02] Provision restricted vendor callback ingress and secret references",
+      "parentSourceId": "VS-E21-S03",
+      "manageDescription": true,
+      "actor": "Authorized Operations operator or trusted integration worker",
+      "outcome": "Infrastructure exposes a narrowly scoped TLS callback route and versioned secret references only after vendor contract, callback identity and trust boundary are approved.",
+      "context": "compose.full.yaml and local edge exist for development; they are not proof of a production ingress or verified vendor IP allowlist.",
+      "inScope": [
+        "Describe callback route, TLS termination, request body/rate limits, source allowlist if vendor supports it, and forwarding of authenticated identity/correlation to Operations verifier without storing raw payload in access logs.",
+        "Provide environment/secret-reference examples and rotation procedure without embedding actual callback keys; keep disabled-by-default production route until vendor approval.",
+        "Add static configuration validator and opt-in local signed mock/unsigned denial test that fails explicitly when runtime/key material is absent."
+      ],
+      "outOfScope": [
+        "Publishing a production callback route or real vendor credentials into Compose or Git.",
+        "Assuming IP allowlist alone authenticates a callback."
+      ],
+      "businessRules": [
+        "The vendor may submit checklist, severity, event/work-order, and evidence; it never submits final trust points.",
+        "Callbacks require signature, timestamp window, replay protection, schema validation, and durable deduplication.",
+        "Real adapter activation remains blocked until vendor documentation, sandbox credentials, and callback keys are supplied."
+      ],
+      "repositories": [
+        "platform_infrastructure"
+      ],
+      "interfaces": [
+        "Forward bounded callback requests to Operations through TLS with declared path/version and trace headers; never trust HTTP headers as vendor identity."
+      ],
+      "dataOwnership": [
+        "Infrastructure owns ingress/secret references; Operations alone verifies signature and mutates work orders."
+      ],
+      "stateMachine": [
+        "DISABLED -> STAGED -> ENABLED only after owner approves key/allowlist/contract; failed rotation returns to previous valid key reference without exposing values."
+      ],
+      "authorization": {
+        "actions": [
+          "external-employee:ingress:configure"
+        ],
+        "dataPartitions": [
+          "ADMIN must have target SITE/BRANCH and work-order relationship; SYSTEM only authenticated integration purpose; vendor callback may address only its mapped external_system/work-order identity."
+        ],
+        "fieldGroups": [
+          "SUMMARY health/denial status; INTERNAL_AUDIT secret reference/rotation restricted; no callback payload in edge logs."
+        ]
+      },
+      "failureSemantics": [
+        "Reject missing credentials, unsupported vendor contract version, stale timestamp and unverified signature before mutating Operations work orders.",
+        "Classify transient dependency failure separately from permanent invalid vendor data; quarantine failed messages and never complete a work order as fallback.",
+        "Return stable non-enumerating forbidden/not-found, conflict, dependency-unavailable and rate-limit codes without raw payload, callback secret or customer PII."
+      ],
+      "idempotencyConcurrency": [
+        "Outbound retry uses a stable idempotency key bound to workOrderId, vendor and canonical payload hash; changed payload with the same key conflicts.",
+        "Inbox deduplicates signed callback by external_system and external_event_id and checks external_work_order_id maps to the same ViStay order.",
+        "Use source version/expectedRevision to keep late or reordered callbacks from rolling back status or creating a second assessment."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E21-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E21-S03-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "approved mock fixture and disabled-by-default route template",
+          "when": "static validator runs",
+          "then": "route shape, TLS boundary, size/rate limits and secret references are checked without real credential"
+        },
+        {
+          "id": "AC02",
+          "given": "unsigned/oversized request or absent approved vendor key",
+          "when": "opt-in test calls ingress",
+          "then": "Operations rejects without state change and no secret or payload appears in logs"
+        },
+        {
+          "id": "AC03",
+          "given": "secret rotates with an in-flight callback",
+          "when": "approved rollout/drill runs",
+          "then": "old/new key grace is policy-controlled and replay stays deduplicated without widening route to unrelated sites"
+        }
+      ],
+      "tests": [
+        "Run exact testCases and provide positive, authorization-negative, duplicate/reordered and dependency-failure evidence.",
+        "Mock-vendor tests do not count as proof of live vendor integration; real-adapter activation remains externally gated."
+      ],
+      "observability": [
+        "Propagate correlation, vendor event ID and internal work-order ID to bounded metric/audit labels; never log private raw evidence or signing keys.",
+        "Expose pending age, retry count, quarantined events and next authorized repair action by branch."
+      ],
+      "definitionOfDone": [
+        "Named artifacts and focused tests land in the owning repo; authorization, replay, stale-status and recovery evidence is attached.",
+        "Contract and migration compatibility are verified; external callback activation waits for vendor-gate approval.",
+        "Jira links PR/CI/fixture report and marks whether validation is mock-only or actually ran against approved sandbox."
+      ],
+      "evidence": [
+        "Repository PR and CI URL.",
+        "Redacted negative-auth/replay integration report and recovery note.",
+        "Vendor contract/sandbox approval only when supplied; mock fixture is labeled as mock."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-platform-infrastructure",
+        "roadmap-v1-3",
+        "source-vs-e21-s03-st02",
+        "vendor-contract-required"
+      ],
+      "decisionNoteVi": "platform_infrastructure owns only this slice; no actual vendor endpoint, secret, signing algorithm or reward points are assumed.",
+      "specStatus": "executable",
+      "workKind": "infrastructure",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-ExternalEmployeeIngress.ps1 -StaticOnly",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E21-S03-ST02: fixture version, redacted CI report, denial and replay proof"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-ExternalEmployeeIngress.ps1 -Live",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E21-S03-ST02: fixture version, redacted CI report, denial and replay proof"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [
+        "Production vendor adapter remains disabled until the ProductOwner approves the actual vendor API, sandbox credentials, callback authentication/signing algorithm, key rotation, allowlist, retry semantics and retention policy under VS-E00-T02.",
+        "Production TLS hostname and network ingress require approved E22 rollout plan; local Compose route is not production HA."
+      ],
+      "primaryRepository": "platform_infrastructure",
+      "repositorySlices": [
+        {
+          "repository": "platform_infrastructure",
+          "paths": [
+            "caddy/**",
+            "nginx/**",
+            "compose.full.yaml",
+            "scripts/Test-ExternalEmployeeIngress.ps1",
+            "docs/runbooks/**"
+          ],
+          "artifacts": [
+            "restricted callback route template",
+            "secret rotation and deployment note",
+            "static and opt-in live request validation"
+          ]
+        }
+      ]
     },
     {
       "sourceId": "VS-E21-S04",
@@ -71730,8 +72370,8 @@
       "parentSourceId": "VS-E21",
       "manageDescription": true,
       "actor": "Operations dispatcher and external employee system",
-      "outcome": "retry/dead-letter/reconciliation/manual repair is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E21 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "S04 exposes bounded retry, dead-letter reconciliation and authorized manual repair without silently converting missing vendor updates into completed work.",
+      "context": "The existing dispatch status/attempt columns are persistence scaffolding; exact vendor retry response and rate limits remain activation gates.",
       "inScope": [
         "Implement and verify: retry/dead-letter/reconciliation/manual repair.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -71837,13 +72477,174 @@
         "source-vs-e21-s04"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "contract",
       "dispatchable": false,
       "testCases": [],
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E21-S04-ST01",
+      "jiraKey": "SCRUM-862",
+      "issueType": "Subtask",
+      "summary": "[VS-E21-S04-ST01] Reconcile vendor delivery with retry dead-letter and safe repair",
+      "parentSourceId": "VS-E21-S04",
+      "manageDescription": true,
+      "actor": "Authorized Operations operator or trusted integration worker",
+      "outcome": "Operations makes failed dispatch/callback states visible and repairable by an authorized operator without duplicating work, evidence or Finance points.",
+      "context": "V2 dispatch attempts/next_retry_at and callback FAILED/QUARANTINED states are schema scaffolding; worker, alert and source reconciliation still need implementation.",
+      "inScope": [
+        "Classify transient timeout/rate-limit separately from permanent schema/signature/ownership errors; schedule bounded exponential retries and durable dead-letter after exhaustion.",
+        "Reconcile local dispatch status to authenticated vendor event/lookup only when vendor contract supports it; unresolved/missing vendor update remains visibly STALE, never completed.",
+        "Add action+branch-scoped manual requeue with reason, expectedVersion and audit; preserve original attempt/error and link correction or compensation event rather than overwrite."
+      ],
+      "outOfScope": [
+        "Polling an undocumented vendor endpoint or automatically re-sending a cancelled work order."
+      ],
+      "businessRules": [
+        "The vendor may submit checklist, severity, event/work-order, and evidence; it never submits final trust points.",
+        "Callbacks require signature, timestamp window, replay protection, schema validation, and durable deduplication.",
+        "Real adapter activation remains blocked until vendor documentation, sandbox credentials, and callback keys are supplied."
+      ],
+      "repositories": [
+        "service_operations"
+      ],
+      "interfaces": [
+        "Version internal repair/reconciliation commands and optional vendor status lookup port; actual provider endpoint remains vendor-gated."
+      ],
+      "dataOwnership": [
+        "Operations owns retries and source reconciliation; vendor owns execution/ack; Finance only consumes verified care facts."
+      ],
+      "stateMachine": [
+        "FAILED_TRANSIENT -> RETRY_SCHEDULED -> DISPATCHED or DEAD_LETTER; invalid signature -> QUARANTINED, never auto-retry to trusted status."
+      ],
+      "authorization": {
+        "actions": [
+          "operations:external-dispatch:repair"
+        ],
+        "dataPartitions": [
+          "ADMIN must have target SITE/BRANCH and work-order relationship; SYSTEM only authenticated integration purpose; vendor callback may address only its mapped external_system/work-order identity."
+        ],
+        "fieldGroups": [
+          "SUMMARY status/age; INTERNAL_AUDIT raw attempt and payload hash restricted."
+        ]
+      },
+      "failureSemantics": [
+        "Reject missing credentials, unsupported vendor contract version, stale timestamp and unverified signature before mutating Operations work orders.",
+        "Classify transient dependency failure separately from permanent invalid vendor data; quarantine failed messages and never complete a work order as fallback.",
+        "Return stable non-enumerating forbidden/not-found, conflict, dependency-unavailable and rate-limit codes without raw payload, callback secret or customer PII."
+      ],
+      "idempotencyConcurrency": [
+        "Outbound retry uses a stable idempotency key bound to workOrderId, vendor and canonical payload hash; changed payload with the same key conflicts.",
+        "Inbox deduplicates signed callback by external_system and external_event_id and checks external_work_order_id maps to the same ViStay order.",
+        "Use source version/expectedRevision to keep late or reordered callbacks from rolling back status or creating a second assessment."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E21-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E21-S03-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "temporary vendor timeout and bounded retry policy",
+          "when": "worker retries",
+          "then": "single vendor dispatch ID is recovered or dead-lettered visibly with attempt history"
+        },
+        {
+          "id": "AC02",
+          "given": "invalid signature, foreign branch or cancelled work order",
+          "when": "repair is attempted",
+          "then": "no unauthorized or duplicate dispatch/evidence occurs"
+        },
+        {
+          "id": "AC03",
+          "given": "same retry job executes twice or vendor feed is offline",
+          "when": "reconciliation runs",
+          "then": "one business effect persists, with STALE/unavailable rather than fabricated completion"
+        }
+      ],
+      "tests": [
+        "Run exact testCases and provide positive, authorization-negative, duplicate/reordered and dependency-failure evidence.",
+        "Mock-vendor tests do not count as proof of live vendor integration; real-adapter activation remains externally gated."
+      ],
+      "observability": [
+        "Propagate correlation, vendor event ID and internal work-order ID to bounded metric/audit labels; never log private raw evidence or signing keys.",
+        "Expose pending age, retry count, quarantined events and next authorized repair action by branch."
+      ],
+      "definitionOfDone": [
+        "Named artifacts and focused tests land in the owning repo; authorization, replay, stale-status and recovery evidence is attached.",
+        "Contract and migration compatibility are verified; external callback activation waits for vendor-gate approval.",
+        "Jira links PR/CI/fixture report and marks whether validation is mock-only or actually ran against approved sandbox."
+      ],
+      "evidence": [
+        "Repository PR and CI URL.",
+        "Redacted negative-auth/replay integration report and recovery note.",
+        "Vendor contract/sandbox approval only when supplied; mock fixture is labeled as mock."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-operations",
+        "roadmap-v1-3",
+        "source-vs-e21-s04-st01",
+        "vendor-contract-required",
+        "policy-configurable"
+      ],
+      "decisionNoteVi": "service_operations owns only this slice; no actual vendor endpoint, secret, signing algorithm or reward points are assumed.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*ExternalEmployee*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E21-S04-ST01: fixture version, redacted CI report, denial and replay proof"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E21-S04-ST01: fixture version, redacted CI report, denial and replay proof"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [
+        "Production vendor adapter remains disabled until the ProductOwner approves the actual vendor API, sandbox credentials, callback authentication/signing algorithm, key rotation, allowlist, retry semantics and retention policy under VS-E00-T02."
+      ],
+      "primaryRepository": "service_operations",
+      "repositorySlices": [
+        {
+          "repository": "service_operations",
+          "paths": [
+            "src/main/java/**",
+            "src/main/resources/db/migration/**",
+            "src/test/java/**"
+          ],
+          "artifacts": [
+            "durable retry/repair worker",
+            "dead-letter and discrepancy projection",
+            "duplicate and unavailable-vendor tests"
+          ]
+        }
+      ]
     },
     {
       "sourceId": "VS-E21-S05",
@@ -71853,8 +72654,8 @@
       "parentSourceId": "VS-E21",
       "manageDescription": true,
       "actor": "Operations dispatcher and external employee system",
-      "outcome": "audit external IDs and ownership is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E21 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "S05 audits the association between vendor IDs, ViStay work orders, authorized branch, signed assessment and later corrections.",
+      "context": "Operations holds authoritative work-order ownership. E12 separates stayover versus checkout care; E23 Finance alone interprets evidence into trust points.",
       "inScope": [
         "Implement and verify: audit external IDs and ownership.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -71960,13 +72761,179 @@
         "source-vs-e21-s05"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "contract",
       "dispatchable": false,
       "testCases": [],
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E21-S05-ST01",
+      "jiraKey": "SCRUM-863",
+      "issueType": "Subtask",
+      "summary": "[VS-E21-S05-ST01] Audit vendor IDs and partitioned work-order evidence ownership",
+      "parentSourceId": "VS-E21-S05",
+      "manageDescription": true,
+      "actor": "Authorized Operations operator or trusted integration worker",
+      "outcome": "Operations can trace one external ID through work order, signed callback, care assessment and correction while enforcing customer/site ownership and retention.",
+      "context": "V2 stores vendor ID mapping and callback digest but not a finished investigator experience; E12/E23 require source attribution for cleanliness evidence and appeal correction.",
+      "inScope": [
+        "Expose authorized lookup by ViStay work-order ID or vendor ID with source event/revision, assessor provenance, evidence reference, branch and delivery history; filter before list/count.",
+        "Reject cross-branch/external-system ID collisions, customer mismatch and unauthorized raw document dereference; audit every permitted sensitive inspection.",
+        "Publish versioned stayover/checkout source correction references for E12 and Finance E23; retain immutable original mapping and policy-approved retention/erasure marker."
+      ],
+      "outOfScope": [
+        "Creating a second Finance trust ledger, revealing a vendor signing key or treating raw cleaning notes as customer fault without verified attribution."
+      ],
+      "businessRules": [
+        "The vendor may submit checklist, severity, event/work-order, and evidence; it never submits final trust points.",
+        "Callbacks require signature, timestamp window, replay protection, schema validation, and durable deduplication.",
+        "Real adapter activation remains blocked until vendor documentation, sandbox credentials, and callback keys are supplied."
+      ],
+      "repositories": [
+        "service_operations"
+      ],
+      "interfaces": [
+        "Version purpose-bound Operations evidence lookup for E12/E23 with work order/external IDs, source revision and field-group projection."
+      ],
+      "dataOwnership": [
+        "Operations owns work-order and source evidence audit; E12 applies approved care facts; Finance owns trust-score and appeal decisions."
+      ],
+      "stateMachine": [
+        "ACCEPTED -> AMENDED_BY_LINKED_EVENT; retention expiration tombstones eligible private evidence only after approved retention and live-reference check."
+      ],
+      "authorization": {
+        "actions": [
+          "operations:external-evidence:view",
+          "operations:external-evidence:correct"
+        ],
+        "dataPartitions": [
+          "ADMIN must have target SITE/BRANCH and work-order relationship; SYSTEM only authenticated integration purpose; vendor callback may address only its mapped external_system/work-order identity."
+        ],
+        "fieldGroups": [
+          "SUMMARY status/source type; TRUST_DETAIL/DOCUMENT evidence and INTERNAL_AUDIT assessor/source IDs require explicit grants."
+        ]
+      },
+      "failureSemantics": [
+        "Reject missing credentials, unsupported vendor contract version, stale timestamp and unverified signature before mutating Operations work orders.",
+        "Classify transient dependency failure separately from permanent invalid vendor data; quarantine failed messages and never complete a work order as fallback.",
+        "Return stable non-enumerating forbidden/not-found, conflict, dependency-unavailable and rate-limit codes without raw payload, callback secret or customer PII."
+      ],
+      "idempotencyConcurrency": [
+        "Outbound retry uses a stable idempotency key bound to workOrderId, vendor and canonical payload hash; changed payload with the same key conflicts.",
+        "Inbox deduplicates signed callback by external_system and external_event_id and checks external_work_order_id maps to the same ViStay order.",
+        "Use source version/expectedRevision to keep late or reordered callbacks from rolling back status or creating a second assessment."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E21-S03-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E21-S04-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E12-S07",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "authorized same-branch investigator and verified checkout assessment",
+          "when": "source lookup runs",
+          "then": "one trace links vendor ID, work order, callback event, assessment revision and authorized correction"
+        },
+        {
+          "id": "AC02",
+          "given": "other branch, colliding vendor ID or missing DOCUMENT grant",
+          "when": "lookup/pagination executes",
+          "then": "no existence, total count, raw document or customer linkage leaks"
+        },
+        {
+          "id": "AC03",
+          "given": "assessment is corrected or retention job retries",
+          "when": "history replay runs",
+          "then": "original and correction remain auditable with no duplicate trust facts or unapproved deletion"
+        }
+      ],
+      "tests": [
+        "Run exact testCases and provide positive, authorization-negative, duplicate/reordered and dependency-failure evidence.",
+        "Mock-vendor tests do not count as proof of live vendor integration; real-adapter activation remains externally gated."
+      ],
+      "observability": [
+        "Propagate correlation, vendor event ID and internal work-order ID to bounded metric/audit labels; never log private raw evidence or signing keys.",
+        "Expose pending age, retry count, quarantined events and next authorized repair action by branch."
+      ],
+      "definitionOfDone": [
+        "Named artifacts and focused tests land in the owning repo; authorization, replay, stale-status and recovery evidence is attached.",
+        "Contract and migration compatibility are verified; external callback activation waits for vendor-gate approval.",
+        "Jira links PR/CI/fixture report and marks whether validation is mock-only or actually ran against approved sandbox."
+      ],
+      "evidence": [
+        "Repository PR and CI URL.",
+        "Redacted negative-auth/replay integration report and recovery note.",
+        "Vendor contract/sandbox approval only when supplied; mock fixture is labeled as mock."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-operations",
+        "roadmap-v1-3",
+        "source-vs-e21-s05-st01",
+        "vendor-contract-required",
+        "policy-configurable"
+      ],
+      "decisionNoteVi": "service_operations owns only this slice; no actual vendor endpoint, secret, signing algorithm or reward points are assumed.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*ExternalEmployee*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E21-S05-ST01: fixture version, redacted CI report, denial and replay proof"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E21-S05-ST01: fixture version, redacted CI report, denial and replay proof"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [
+        "Production vendor adapter remains disabled until the ProductOwner approves the actual vendor API, sandbox credentials, callback authentication/signing algorithm, key rotation, allowlist, retry semantics and retention policy under VS-E00-T02."
+      ],
+      "primaryRepository": "service_operations",
+      "repositorySlices": [
+        {
+          "repository": "service_operations",
+          "paths": [
+            "src/main/java/**",
+            "src/main/resources/db/migration/**",
+            "src/test/java/**"
+          ],
+          "artifacts": [
+            "branch-filtered vendor ID lookup and audit",
+            "source assessment/correction trace",
+            "foreign-customer and retention tests"
+          ]
+        }
+      ]
     },
     {
       "sourceId": "VS-E22",
