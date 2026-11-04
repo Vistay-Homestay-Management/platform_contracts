@@ -64538,8 +64538,8 @@
       "summary": "[VS-E19] Customer Search, Booking & Payment",
       "manageDescription": true,
       "actor": "Customer",
-      "outcome": "Customer Search, Booking & Payment is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This epic is part of the ViStay VS-E19 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "Customer Search, Booking and Payment composes Property public content, Booking price/availability/quote/hold/reservation, Finance/Payment obligations and E13 notifications through Customer Web and guarded Postman evidence.",
+      "context": "Current Customer Web is landing-only; Property GraphQL is serviceInfo-only and Booking availability is operator-oriented. E19 adds public-safe read projections and Customer presentation without duplicating E08, E09, E13 or E23 business owners.",
       "inScope": [
         "Implement and verify: Customer Search, Booking & Payment.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -64647,7 +64647,7 @@
         "source-vs-e19"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "web",
       "dispatchable": false,
       "testCases": [],
@@ -64663,8 +64663,8 @@
       "parentSourceId": "VS-E19",
       "manageDescription": true,
       "actor": "Customer",
-      "outcome": "discover/filter/listing is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E19 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "Discovery separates public eligible Property catalog, bounded Booking date/price composition and responsive Customer Web filtering.",
+      "context": "Neither search nor indicative price creates a hold; only E08 quote/hold can freeze inventory/price.",
       "inScope": [
         "Implement and verify: discover/filter/listing.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -64772,13 +64772,525 @@
         "source-vs-e19-s01"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "web",
       "dispatchable": false,
       "testCases": [],
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E19-S01-ST01",
+      "jiraKey": "SCRUM-837",
+      "issueType": "Subtask",
+      "summary": "[VS-E19-S01-ST01] Expose eligible public property search projection",
+      "parentSourceId": "VS-E19-S01",
+      "manageDescription": true,
+      "actor": "Public Customer browser for catalog-safe reads; authenticated Customer for SELF-only bookings; trusted internal service for composition.",
+      "outcome": "Property exposes bounded, cursor-paginated public exact-unit catalog candidates using only approved location, capacity, amenity and publishable media summaries.",
+      "context": "Property GraphQL currently exposes only propertyServiceInfo. E04 owns master and booking eligibility; do not move canonical price or inventory rows into Property.",
+      "inScope": [
+        "Build public search with location/geographic region, amenity, guest capacity, unit type and stable sort; cap page size, sanitize query and bind cursor to filter fingerprint.",
+        "Filter ACTIVE/PUBLISHED and current authoritative E04 booking eligibility in repository predicates before pagination; hide draft, suspended or deleted units and private host/owner fields.",
+        "Include property/unit ID, public slug, redacted location, capacity, amenities, safe media references, eligibility revision and observedAt; no exact owner address, access code, staff notes or rates."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "businessRules": [
+        "Customer cancellation uses a short-lived server quote and explicit confirmation.",
+        "Customer sees trust tier and safe reason codes, never the raw numeric trust score or anti-fraud evidence.",
+        "All ownership-negative tests prove one customer cannot access another customer booking or payment."
+      ],
+      "repositories": [
+        "service_property"
+      ],
+      "interfaces": [
+        "Expose only the versioned customer-safe GraphQL or internal query named in this leaf; do not reuse backoffice-only operations as public.",
+        "Include source revision and observedAt in availability/price envelopes and stable validation, not-found-equivalent and dependency-unavailable errors.",
+        "Read-only queries produce no domain outbox event; sensitive reads retain bounded access audit without PII in logs."
+      ],
+      "dataOwnership": [
+        "Property owns public listing content, amenities and eligibility revision; Booking owns availability and published Pricing read projection; Media owns private bytes."
+      ],
+      "stateMachine": [
+        "Only currently eligible, published and active exact units are DISCOVERABLE; state is derived from E04 authoritative revisions."
+      ],
+      "authorization": {
+        "actions": [
+          "public-property:search"
+        ],
+        "dataPartitions": [
+          "PUBLIC for published eligible exact units only; SYSTEM may read internal catalog solely through authenticated composition."
+        ],
+        "fieldGroups": [
+          "PUBLIC_SUMMARY and PUBLIC_MEDIA_REFERENCE only; OWNER, INTERNAL_NOTES, EXACT_ADDRESS and PRICING_INTERNAL never public"
+        ]
+      },
+      "failureSemantics": [
+        "Reject missing eligibility, private property, invalid ranges, unavailable required authority and stale revisions with stable non-enumerating codes.",
+        "Never return customer PII, internal price components, inventory block owner, private media URL or another customer booking.",
+        "Use bounded dependency timeouts and deny/fail closed when the authoritative eligibility or availability source cannot be verified."
+      ],
+      "idempotencyConcurrency": [
+        "Use deterministic keyset cursor bound to filters and catalog revision, with stable tie-breaker.",
+        "Public search and detail never create a hold; quote/hold remain E08-owned commands.",
+        "Retry dependency reads with bounded timeouts and preserve asOf/revision evidence instead of mixing snapshots across revisions."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E04-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E04-S07-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E19-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "eligible and ineligible exact units in two branches",
+          "when": "an anonymous visitor searches",
+          "then": "only publishable matches are sorted and paginated with a filter-bound cursor and eligibility revision"
+        },
+        {
+          "id": "AC02",
+          "given": "draft, suspended or private unit and forged cursor",
+          "when": "search runs",
+          "then": "no private fields, internal status, secret location or owner data is returned and cursor is rejected safely"
+        },
+        {
+          "id": "AC03",
+          "given": "eligibility changes during pagination",
+          "when": "next page runs",
+          "then": "a revision-aware restart or stable bounded result prevents hidden units being disclosed"
+        }
+      ],
+      "tests": [
+        "Run the named focused integration test and repository CI with eligible/ineligible and two-branch fixtures.",
+        "Prove public-safe projection, forged cursor/hidden-unit denial, bounded pagination and required-dependency outage.",
+        "Verify repeat reads do not mutate inventory, Finance or Property state and maintain deterministic cursor/revision semantics."
+      ],
+      "observability": [
+        "Report bounded count/latency/stale-result metrics by query class, not query text, property IDs or customer IDs.",
+        "Attach correlation ID, source revision and dependency state to safe audit; emit no raw PII or private media URL."
+      ],
+      "definitionOfDone": [
+        "Only the named owner-service query/adapters and tests are changed, with an additive migration only if new persistence is actually required.",
+        "Public/SELF contract agrees with E19-T01 and no other service database is queried.",
+        "CI, source revision, non-enumeration, dependency-failure and stable cursor evidence are attached to Jira."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-property",
+        "roadmap-v1-3",
+        "source-vs-e19-s01-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E19-S01-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*PublicPropertySearch*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *PublicPropertySearch*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*PublicPropertySearch*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *PublicPropertySearch*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "service_property",
+      "repositorySlices": [
+        {
+          "repository": "service_property",
+          "paths": [
+            "src/main/resources/graphql/schema.graphqls",
+            "src/main/java/com/vistay/property/application/PublicPropertySearchService.java",
+            "src/main/java/com/vistay/property/adapter/in/graphql/PublicPropertyController.java",
+            "src/main/java/com/vistay/property/adapter/out/persistence/JdbcPublicPropertyCatalog.java",
+            "src/test/java/com/vistay/property/application/PublicPropertySearchIntegrationTest.java"
+          ],
+          "artifacts": [
+            "public catalog query and cursor",
+            "eligibility repository predicate",
+            "private-field and pagination negative tests"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
+      "sourceId": "VS-E19-S01-ST02",
+      "jiraKey": "SCRUM-838",
+      "issueType": "Subtask",
+      "summary": "[VS-E19-S01-ST02] Compose date-aware public discovery with availability and price",
+      "parentSourceId": "VS-E19-S01",
+      "manageDescription": true,
+      "actor": "Public Customer browser for catalog-safe reads; authenticated Customer for SELF-only bookings; trusted internal service for composition.",
+      "outcome": "Booking composes bounded Property candidate pages, authoritative availability and current published price preview into a customer-safe date-aware listing without creating holds.",
+      "context": "Booking already owns pricing and inventory queries but current GraphQL exposes only branch-scoped propertyAvailability and backoffice pricing; E19 needs a distinct public-safe composition.",
+      "inScope": [
+        "Accept whole-day date range, guest count and optional price range; validate configured stay-product bounds and reject hourly dates, unbounded scans and unrecognized currency.",
+        "Read Property eligible candidate IDs through a versioned authenticated boundary, check each exact unit using E06 inventory and S02 public availability, and compute indicative amount using published E05 pricing only.",
+        "Apply date/price filters before emitting page cursor, with bounded batches and a deterministic stable sort; show price as indicative with quote expiry and revision, never promise a held unit.",
+        "Return dependency-unavailable/stale status explicitly instead of available=true or zero price when Property, Inventory or Pricing is unavailable."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "businessRules": [
+        "Customer cancellation uses a short-lived server quote and explicit confirmation.",
+        "Customer sees trust tier and safe reason codes, never the raw numeric trust score or anti-fraud evidence.",
+        "All ownership-negative tests prove one customer cannot access another customer booking or payment."
+      ],
+      "repositories": [
+        "service_booking"
+      ],
+      "interfaces": [
+        "Expose only the versioned customer-safe GraphQL or internal query named in this leaf; do not reuse backoffice-only operations as public.",
+        "Include source revision and observedAt in availability/price envelopes and stable validation, not-found-equivalent and dependency-unavailable errors.",
+        "Read-only queries produce no domain outbox event; sensitive reads retain bounded access audit without PII in logs."
+      ],
+      "dataOwnership": [
+        "Booking owns pricing calculation, inventory and discovery composition; Property owns candidate content and eligibility; Finance owns payment/waiver decisions."
+      ],
+      "stateMachine": [
+        "Search produces observed PUBLIC snapshot only; availability and price are not a reservation or hold."
+      ],
+      "authorization": {
+        "actions": [
+          "public-discovery:search"
+        ],
+        "dataPartitions": [
+          "PUBLIC only for eligible Property candidate IDs; no CUSTOMER_SELF or ADMIN private rows in results"
+        ],
+        "fieldGroups": [
+          "PUBLIC_SUMMARY, AVAILABILITY_BOOLEAN and INDICATIVE_PRICE only; exact inventory blocks, internal pricing and customer finance excluded"
+        ]
+      },
+      "failureSemantics": [
+        "Reject missing eligibility, private property, invalid ranges, unavailable required authority and stale revisions with stable non-enumerating codes.",
+        "Never return customer PII, internal price components, inventory block owner, private media URL or another customer booking.",
+        "Use bounded dependency timeouts and deny/fail closed when the authoritative eligibility or availability source cannot be verified."
+      ],
+      "idempotencyConcurrency": [
+        "Use deterministic keyset cursor bound to filters and catalog revision, with stable tie-breaker.",
+        "Public search and detail never create a hold; quote/hold remain E08-owned commands.",
+        "Retry dependency reads with bounded timeouts and preserve asOf/revision evidence instead of mixing snapshots across revisions."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E19-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E19-S02-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E05-T01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E19-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "published unit, valid dates and current inventory/price snapshots",
+          "when": "a date-aware search runs",
+          "then": "only available units in the requested price range are returned with observedAt and indicative server-calculated amount"
+        },
+        {
+          "id": "AC02",
+          "given": "hourly range, overlapping block, ineligible unit or forged cursor",
+          "when": "filters run",
+          "then": "the unit is excluded or a stable error is returned without leaking block owner or price rule internals"
+        },
+        {
+          "id": "AC03",
+          "given": "Property, inventory or Pricing dependency outage or concurrent revision change",
+          "when": "composition runs",
+          "then": "the response fails closed or signals a stale snapshot and never advertises a confirmed booking or zero price"
+        }
+      ],
+      "tests": [
+        "Run the named focused integration test and repository CI with eligible/ineligible and two-branch fixtures.",
+        "Prove public-safe projection, forged cursor/hidden-unit denial, bounded pagination and required-dependency outage.",
+        "Verify repeat reads do not mutate inventory, Finance or Property state and maintain deterministic cursor/revision semantics."
+      ],
+      "observability": [
+        "Report bounded count/latency/stale-result metrics by query class, not query text, property IDs or customer IDs.",
+        "Attach correlation ID, source revision and dependency state to safe audit; emit no raw PII or private media URL."
+      ],
+      "definitionOfDone": [
+        "Only the named owner-service query/adapters and tests are changed, with an additive migration only if new persistence is actually required.",
+        "Public/SELF contract agrees with E19-T01 and no other service database is queried.",
+        "CI, source revision, non-enumeration, dependency-failure and stable cursor evidence are attached to Jira."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-booking",
+        "roadmap-v1-3",
+        "source-vs-e19-s01-st02"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E19-S01-ST02 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*PublicDiscovery*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *PublicDiscovery*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*PublicDiscovery*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *PublicDiscovery*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "service_booking",
+      "repositorySlices": [
+        {
+          "repository": "service_booking",
+          "paths": [
+            "src/main/resources/graphql/schema.graphqls",
+            "src/main/java/com/vistay/booking/application/PublicDiscoveryService.java",
+            "src/main/java/com/vistay/booking/adapter/in/graphql/PublicDiscoveryController.java",
+            "src/main/java/com/vistay/booking/adapter/out/property/PropertyCatalogClient.java",
+            "src/test/java/com/vistay/booking/application/PublicDiscoveryIntegrationTest.java"
+          ],
+          "artifacts": [
+            "date-aware public discovery connection",
+            "published indicative price and inventory projection",
+            "bounded/filter/cursor failure tests"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
+      "sourceId": "VS-E19-S01-ST03",
+      "jiraKey": "SCRUM-839",
+      "issueType": "Subtask",
+      "summary": "[VS-E19-S01-ST03] Build Customer search and listing workspace",
+      "parentSourceId": "VS-E19-S01",
+      "manageDescription": true,
+      "actor": "Anonymous visitor for public discovery; verified CUSTOMER for SELF checkout and account views.",
+      "outcome": "Customer Web provides responsive public discovery with filterable listings and honest availability/indicative price states sourced from server projections.",
+      "context": "Current App.tsx landing page shows three hardcoded promotional stays from picsum and a static search form. No working Customer search exists.",
+      "inScope": [
+        "Replace static result cards with a paginated accessible responsive listing and filters for location, date range, guests, amenity and price when supported by server.",
+        "Distinguish no results, loading, expired/stale snapshot, retryable dependency failure and sold-out; preserve input filters and safe cursor across navigation.",
+        "Render server-provided indicative money/currency and link to Property detail; do not calculate price, availability or booking eligibility on the client."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "businessRules": [
+        "Customer cancellation uses a short-lived server quote and explicit confirmation.",
+        "Customer sees trust tier and safe reason codes, never the raw numeric trust score or anti-fraud evidence.",
+        "All ownership-negative tests prove one customer cannot access another customer booking or payment."
+      ],
+      "repositories": [
+        "frontend_customer"
+      ],
+      "interfaces": [
+        "Consume only E19/E08/E09/E13 versioned Customer-safe APIs; the browser never joins service databases or calls Keycloak Admin.",
+        "Preserve server revisions and errors; never calculate legal money, deposit waiver, refund or inventory eligibility in client code."
+      ],
+      "dataOwnership": [
+        "Customer Web owns presentation and ephemeral navigation state only; Property owns public content/eligibility, Booking owns inventory and reservations, Finance owns money/waivers, Payment owns VietQR, Notification owns inbox."
+      ],
+      "stateMachine": [
+        "Public discovery and detail remain readable without an account; any SELF action requires a verified E18 CUSTOMER session.",
+        "Pending, stale, expired and completed states are rendered from server responses; a UI-only transition cannot confirm booking, payment, waiver or refund."
+      ],
+      "authorization": {
+        "actions": [
+          "public-property:search",
+          "public-discovery:search"
+        ],
+        "dataPartitions": [
+          "PUBLIC for published eligible content; account/session data never required for basic search"
+        ],
+        "fieldGroups": [
+          "PUBLIC_SUMMARY, PUBLIC_MEDIA_REFERENCE and INDICATIVE_PRICE only"
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Keep stable command idempotency key through safe retry, and refresh server revision on stale conflicts.",
+        "Disable duplicate submit while a command is in flight and never mark success from optimistic UI alone.",
+        "Clear SELF query cache on logout/account switch; refuse to reuse an old CUSTOMER session for another subject."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E19-S01-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E19-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "published units and active date/guest filters",
+          "when": "visitor searches and pages",
+          "then": "matching accessible cards use only server price and remain consistent across pagination"
+        },
+        {
+          "id": "AC02",
+          "given": "stale cursor, no results or dependency outage",
+          "when": "listing renders",
+          "then": "specific retry/reset states appear without fabricating price or available inventory"
+        },
+        {
+          "id": "AC03",
+          "given": "private field injected in query or response fixture",
+          "when": "frontend tests run",
+          "then": "no host contact, internal note, exact address or restricted price component is requested or rendered"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-frontend-customer",
+        "roadmap-v1-3",
+        "source-vs-e19-s01-st03"
+      ],
+      "decisionNoteVi": "Leaf VS-E19-S01-ST03 chỉ sở hữu artifact của frontend_customer; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm run lint && npm run build",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "Customer Web lint/TypeScript build report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "e2e",
+          "command": "npm run test:e2e -- --project=chromium",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Customer Web Chromium E2E report; add test:e2e script and deterministic fixtures"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "frontend_customer",
+      "repositorySlices": [
+        {
+          "repository": "frontend_customer",
+          "paths": [
+            "src/App.tsx",
+            "src/pages/CustomerSearch.tsx",
+            "src/components/StayCard.tsx",
+            "src/lib/apollo.ts",
+            "e2e/customer-discovery.spec.ts"
+          ],
+          "artifacts": [
+            "responsive search and result workspace",
+            "cursor and filter state",
+            "accessible empty/stale/error states"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E19-S02",
@@ -64788,8 +65300,8 @@
       "parentSourceId": "VS-E19",
       "manageDescription": true,
       "actor": "Customer",
-      "outcome": "detail/media/availability is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E19 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "Detail separates Property publishable content/media, Booking boolean availability and Customer Web detail/picker.",
+      "context": "Existing operator propertyAvailability exposes branch and overlap metadata; never expose it as-is to anonymous users.",
       "inScope": [
         "Implement and verify: detail/media/availability.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -64897,13 +65409,513 @@
         "source-vs-e19-s02"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "web",
       "dispatchable": false,
       "testCases": [],
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E19-S02-ST01",
+      "jiraKey": "SCRUM-840",
+      "issueType": "Subtask",
+      "summary": "[VS-E19-S02-ST01] Expose eligible public property detail and media",
+      "parentSourceId": "VS-E19-S02",
+      "manageDescription": true,
+      "actor": "Public Customer browser for catalog-safe reads; authenticated Customer for SELF-only bookings; trusted internal service for composition.",
+      "outcome": "Property returns public detail for one current eligible exact unit with approved descriptions, amenities, approximate location, media references and content revision.",
+      "context": "E04 owns detailed Property and media references, E03 owns purpose-bound Media downloads. Property currently exposes no customer detail query.",
+      "inScope": [
+        "Add publicProperty(slug) detail with eligible/published predicate in the repository; return non-enumerating not-found for suspended/hidden/other-unit identifiers.",
+        "Expose only approved public photos and safe Media variants through E03 access rules, using short-lived URLs or verified public-safe CDN variants; never expose owner documents or unrestricted object keys.",
+        "Return capacity, policy-safe check-in/out display from published policy, amenities and redacted map location; omit contract economics, owner contacts, access instructions and notes."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "businessRules": [
+        "Customer cancellation uses a short-lived server quote and explicit confirmation.",
+        "Customer sees trust tier and safe reason codes, never the raw numeric trust score or anti-fraud evidence.",
+        "All ownership-negative tests prove one customer cannot access another customer booking or payment."
+      ],
+      "repositories": [
+        "service_property"
+      ],
+      "interfaces": [
+        "Expose only the versioned customer-safe GraphQL or internal query named in this leaf; do not reuse backoffice-only operations as public.",
+        "Include source revision and observedAt in availability/price envelopes and stable validation, not-found-equivalent and dependency-unavailable errors.",
+        "Read-only queries produce no domain outbox event; sensitive reads retain bounded access audit without PII in logs."
+      ],
+      "dataOwnership": [
+        "Property owns exact-unit content and public media references; Media owns bytes/presigning; Booking owns live availability and price."
+      ],
+      "stateMachine": [
+        "Published eligible detail is visible; unpublished or suspended detail has the same public not-found semantics as missing."
+      ],
+      "authorization": {
+        "actions": [
+          "public-property:detail"
+        ],
+        "dataPartitions": [
+          "PUBLIC only for currently published, eligible exact units"
+        ],
+        "fieldGroups": [
+          "PUBLIC_SUMMARY and PUBLIC_MEDIA only; owner contract, precise access instructions, DOCUMENT and INTERNAL_NOTES denied"
+        ]
+      },
+      "failureSemantics": [
+        "Reject missing eligibility, private property, invalid ranges, unavailable required authority and stale revisions with stable non-enumerating codes.",
+        "Never return customer PII, internal price components, inventory block owner, private media URL or another customer booking.",
+        "Use bounded dependency timeouts and deny/fail closed when the authoritative eligibility or availability source cannot be verified."
+      ],
+      "idempotencyConcurrency": [
+        "Use deterministic keyset cursor bound to filters and catalog revision, with stable tie-breaker.",
+        "Public search and detail never create a hold; quote/hold remain E08-owned commands.",
+        "Retry dependency reads with bounded timeouts and preserve asOf/revision evidence instead of mixing snapshots across revisions."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E19-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E03-S03-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E19-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "published eligible unit with approved public images",
+          "when": "visitor opens its slug",
+          "then": "only permitted detail/media variants and content revision are returned"
+        },
+        {
+          "id": "AC02",
+          "given": "hidden, suspended, missing or tampered media reference",
+          "when": "detail is read",
+          "then": "public response does not expose unit existence, owner document or private object URL"
+        },
+        {
+          "id": "AC03",
+          "given": "media dependency outage",
+          "when": "detail loads",
+          "then": "private bytes remain inaccessible and UI receives an explicit safe placeholder or dependency error"
+        }
+      ],
+      "tests": [
+        "Run the named focused integration test and repository CI with eligible/ineligible and two-branch fixtures.",
+        "Prove public-safe projection, forged cursor/hidden-unit denial, bounded pagination and required-dependency outage.",
+        "Verify repeat reads do not mutate inventory, Finance or Property state and maintain deterministic cursor/revision semantics."
+      ],
+      "observability": [
+        "Report bounded count/latency/stale-result metrics by query class, not query text, property IDs or customer IDs.",
+        "Attach correlation ID, source revision and dependency state to safe audit; emit no raw PII or private media URL."
+      ],
+      "definitionOfDone": [
+        "Only the named owner-service query/adapters and tests are changed, with an additive migration only if new persistence is actually required.",
+        "Public/SELF contract agrees with E19-T01 and no other service database is queried.",
+        "CI, source revision, non-enumeration, dependency-failure and stable cursor evidence are attached to Jira."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-property",
+        "roadmap-v1-3",
+        "source-vs-e19-s02-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E19-S02-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*PublicPropertyDetail*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *PublicPropertyDetail*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*PublicPropertyDetail*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *PublicPropertyDetail*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "service_property",
+      "repositorySlices": [
+        {
+          "repository": "service_property",
+          "paths": [
+            "src/main/resources/graphql/schema.graphqls",
+            "src/main/java/com/vistay/property/application/PublicPropertyDetailService.java",
+            "src/main/java/com/vistay/property/adapter/in/graphql/PublicPropertyController.java",
+            "src/test/java/com/vistay/property/application/PublicPropertyDetailIntegrationTest.java"
+          ],
+          "artifacts": [
+            "public exact-unit detail",
+            "purpose-bound public media references",
+            "hidden-unit and restricted-field tests"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
+      "sourceId": "VS-E19-S02-ST02",
+      "jiraKey": "SCRUM-841",
+      "issueType": "Subtask",
+      "summary": "[VS-E19-S02-ST02] Expose sanitized exact-unit public availability",
+      "parentSourceId": "VS-E19-S02",
+      "manageDescription": true,
+      "actor": "Public Customer browser for catalog-safe reads; authenticated Customer for SELF-only bookings; trusted internal service for composition.",
+      "outcome": "Booking answers public exact-unit date-window availability using E06 inventory and Property eligibility with a boolean and revision, without disclosing inventory block metadata.",
+      "context": "Existing propertyAvailability exposes branchId, membership version and overlap type/channel details; it is an operator API and must not become public unfiltered.",
+      "inScope": [
+        "Add publicUnitAvailability with finite date-window limit, whole-day check-in/out semantics and published eligible property validation via E04 boundary.",
+        "Use E06 exact-unit inventory overlap in an authenticated internal call; return available boolean, observedAt, inventory and eligibility revision only; hide block causes, other customers, provider/channel and staff metadata.",
+        "Recheck availability on E08 quote/hold; public read cannot create holds, guarantee inventory or infer another customer booking from error timing."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "businessRules": [
+        "Customer cancellation uses a short-lived server quote and explicit confirmation.",
+        "Customer sees trust tier and safe reason codes, never the raw numeric trust score or anti-fraud evidence.",
+        "All ownership-negative tests prove one customer cannot access another customer booking or payment."
+      ],
+      "repositories": [
+        "service_booking"
+      ],
+      "interfaces": [
+        "Expose only the versioned customer-safe GraphQL or internal query named in this leaf; do not reuse backoffice-only operations as public.",
+        "Include source revision and observedAt in availability/price envelopes and stable validation, not-found-equivalent and dependency-unavailable errors.",
+        "Read-only queries produce no domain outbox event; sensitive reads retain bounded access audit without PII in logs."
+      ],
+      "dataOwnership": [
+        "Booking owns authoritative inventory overlap; Property owns published eligibility; the public read does not own booking or payment state."
+      ],
+      "stateMachine": [
+        "Availability is a timestamped observation, not a hold; E08 must revalidate at quote/hold time."
+      ],
+      "authorization": {
+        "actions": [
+          "public-unit:availability"
+        ],
+        "dataPartitions": [
+          "PUBLIC for exact eligible unit only; other customer booking and inventory block partitions never public"
+        ],
+        "fieldGroups": [
+          "AVAILABILITY_BOOLEAN and revision only; OVERLAPS, BRANCH_MEMBERSHIP and CHANNEL_DETAIL denied"
+        ]
+      },
+      "failureSemantics": [
+        "Reject missing eligibility, private property, invalid ranges, unavailable required authority and stale revisions with stable non-enumerating codes.",
+        "Never return customer PII, internal price components, inventory block owner, private media URL or another customer booking.",
+        "Use bounded dependency timeouts and deny/fail closed when the authoritative eligibility or availability source cannot be verified."
+      ],
+      "idempotencyConcurrency": [
+        "Use deterministic keyset cursor bound to filters and catalog revision, with stable tie-breaker.",
+        "Public search and detail never create a hold; quote/hold remain E08-owned commands.",
+        "Retry dependency reads with bounded timeouts and preserve asOf/revision evidence instead of mixing snapshots across revisions."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E04-T01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E19-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "eligible unit and valid date window",
+          "when": "public availability runs",
+          "then": "only available boolean, observedAt and authoritative revisions are returned"
+        },
+        {
+          "id": "AC02",
+          "given": "blocked unit, hidden unit or arbitrary other booking ID",
+          "when": "public query runs",
+          "then": "no overlap type, occupancy identity, channel or branch-membership detail is observable"
+        },
+        {
+          "id": "AC03",
+          "given": "eligibility or Inventory unavailable",
+          "when": "query runs",
+          "then": "the result fails closed with a stable retry-safe error rather than available=true"
+        }
+      ],
+      "tests": [
+        "Run the named focused integration test and repository CI with eligible/ineligible and two-branch fixtures.",
+        "Prove public-safe projection, forged cursor/hidden-unit denial, bounded pagination and required-dependency outage.",
+        "Verify repeat reads do not mutate inventory, Finance or Property state and maintain deterministic cursor/revision semantics."
+      ],
+      "observability": [
+        "Report bounded count/latency/stale-result metrics by query class, not query text, property IDs or customer IDs.",
+        "Attach correlation ID, source revision and dependency state to safe audit; emit no raw PII or private media URL."
+      ],
+      "definitionOfDone": [
+        "Only the named owner-service query/adapters and tests are changed, with an additive migration only if new persistence is actually required.",
+        "Public/SELF contract agrees with E19-T01 and no other service database is queried.",
+        "CI, source revision, non-enumeration, dependency-failure and stable cursor evidence are attached to Jira."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-booking",
+        "roadmap-v1-3",
+        "source-vs-e19-s02-st02"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E19-S02-ST02 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*PublicUnitAvailability*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *PublicUnitAvailability*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*PublicUnitAvailability*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *PublicUnitAvailability*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "service_booking",
+      "repositorySlices": [
+        {
+          "repository": "service_booking",
+          "paths": [
+            "src/main/resources/graphql/schema.graphqls",
+            "src/main/java/com/vistay/booking/application/PublicUnitAvailabilityService.java",
+            "src/main/java/com/vistay/booking/adapter/in/graphql/PublicAvailabilityController.java",
+            "src/test/java/com/vistay/booking/application/PublicUnitAvailabilityIntegrationTest.java"
+          ],
+          "artifacts": [
+            "public availability boolean and revision",
+            "date-window and eligibility checks",
+            "non-enumeration and outage tests"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
+      "sourceId": "VS-E19-S02-ST03",
+      "jiraKey": "SCRUM-842",
+      "issueType": "Subtask",
+      "summary": "[VS-E19-S02-ST03] Build Customer property detail and availability workspace",
+      "parentSourceId": "VS-E19-S02",
+      "manageDescription": true,
+      "actor": "Anonymous visitor for public discovery; verified CUSTOMER for SELF checkout and account views.",
+      "outcome": "Customer Web displays one eligible property with approved media, amenities and availability observation, then routes to authenticated checkout without implying a hold.",
+      "context": "Landing-page stay images are remote placeholders today; E19 Property and Booking leaves deliver customer-safe detail and availability.",
+      "inScope": [
+        "Build responsive property detail with safe media variants, accessibility text, amenities and published check-in/out policy display from server.",
+        "Offer whole-day date/guest availability picker with explicit observedAt, revision and change warning; no inventory block/other guest detail.",
+        "Handle removed property, expired image URL, unavailable inventory, no dates, pending login and back navigation without stale availability assertion."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "businessRules": [
+        "Customer cancellation uses a short-lived server quote and explicit confirmation.",
+        "Customer sees trust tier and safe reason codes, never the raw numeric trust score or anti-fraud evidence.",
+        "All ownership-negative tests prove one customer cannot access another customer booking or payment."
+      ],
+      "repositories": [
+        "frontend_customer"
+      ],
+      "interfaces": [
+        "Consume only E19/E08/E09/E13 versioned Customer-safe APIs; the browser never joins service databases or calls Keycloak Admin.",
+        "Preserve server revisions and errors; never calculate legal money, deposit waiver, refund or inventory eligibility in client code."
+      ],
+      "dataOwnership": [
+        "Customer Web owns presentation and ephemeral navigation state only; Property owns public content/eligibility, Booking owns inventory and reservations, Finance owns money/waivers, Payment owns VietQR, Notification owns inbox."
+      ],
+      "stateMachine": [
+        "Public discovery and detail remain readable without an account; any SELF action requires a verified E18 CUSTOMER session.",
+        "Pending, stale, expired and completed states are rendered from server responses; a UI-only transition cannot confirm booking, payment, waiver or refund."
+      ],
+      "authorization": {
+        "actions": [
+          "public-property:detail",
+          "public-unit:availability"
+        ],
+        "dataPartitions": [
+          "PUBLIC only for eligible published unit; checkout requires CUSTOMER SELF"
+        ],
+        "fieldGroups": [
+          "PUBLIC_SUMMARY, PUBLIC_MEDIA and AVAILABILITY_BOOLEAN only"
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Keep stable command idempotency key through safe retry, and refresh server revision on stale conflicts.",
+        "Disable duplicate submit while a command is in flight and never mark success from optimistic UI alone.",
+        "Clear SELF query cache on logout/account switch; refuse to reuse an old CUSTOMER session for another subject."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E19-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E19-S02-ST02",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "eligible property and valid days",
+          "when": "visitor opens detail and checks dates",
+          "then": "approved media and a server-observed availability state are accessible on desktop and mobile"
+        },
+        {
+          "id": "AC02",
+          "given": "hidden unit, expired image URL or inventory outage",
+          "when": "detail is viewed",
+          "then": "safe fallback, error or not-found appears without exposing private media or a false available claim"
+        },
+        {
+          "id": "AC03",
+          "given": "visitor changes dates after observing availability",
+          "when": "checkout starts",
+          "then": "a new authoritative E08 quote/hold is required and prior observation is never treated as a reservation"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-frontend-customer",
+        "roadmap-v1-3",
+        "source-vs-e19-s02-st03"
+      ],
+      "decisionNoteVi": "Leaf VS-E19-S02-ST03 chỉ sở hữu artifact của frontend_customer; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm run lint && npm run build",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "Customer Web lint/TypeScript build report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "e2e",
+          "command": "npm run test:e2e -- --project=chromium",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Customer Web Chromium E2E report; add test:e2e script and deterministic fixtures"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "frontend_customer",
+      "repositorySlices": [
+        {
+          "repository": "frontend_customer",
+          "paths": [
+            "src/pages/CustomerPropertyDetail.tsx",
+            "src/components/AvailabilityPicker.tsx",
+            "src/lib/apollo.ts",
+            "e2e/customer-property-detail.spec.ts"
+          ],
+          "artifacts": [
+            "public property detail page",
+            "server-observed availability picker",
+            "media/hidden-unit/error e2e tests"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E19-S03",
@@ -64913,8 +65925,8 @@
       "parentSourceId": "VS-E19",
       "manageDescription": true,
       "actor": "Customer",
-      "outcome": "quote/hold is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E19 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "Customer quote/hold is a Web consumer of E08 Booking and E05 Pricing; only the server owns price and the exact-unit hold.",
+      "context": "An anonymous visitor can browse, but checkout requires verified E18 CUSTOMER identity and current E08 customer-safe contract.",
       "inScope": [
         "Implement and verify: quote/hold.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -65022,13 +66034,188 @@
         "source-vs-e19-s03"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "web",
       "dispatchable": false,
       "testCases": [],
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E19-S03-ST01",
+      "jiraKey": "SCRUM-843",
+      "issueType": "Subtask",
+      "summary": "[VS-E19-S03-ST01] Build Customer quote and hold checkout journey",
+      "parentSourceId": "VS-E19-S03",
+      "manageDescription": true,
+      "actor": "Anonymous visitor for public discovery; verified CUSTOMER for SELF checkout and account views.",
+      "outcome": "Verified Customers can view immutable E08 quote breakdown, then request one expiring exact-unit hold with revision-aware retry and policy-safe deposit display.",
+      "context": "E08 owns quote/hold and E05 owns published pricing. Booking currently has only operator pricing/inventory APIs; do not reuse them as unprotected customer endpoints.",
+      "inScope": [
+        "Require E18 CUSTOMER session for create quote/hold; send selected exact unit, whole-day dates/guest count and stable command idempotency key to E08 customer-safe contract.",
+        "Render server-computed stay-product, dated price components and expiry with no client-side percentage, tax, waiver or commission calculation.",
+        "Show pending, expired, overlapped, quote-stale and lost-session states; refresh authoritative quote and availability on any change; do not claim inventory is held before server confirmation."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "businessRules": [
+        "Customer cancellation uses a short-lived server quote and explicit confirmation.",
+        "Customer sees trust tier and safe reason codes, never the raw numeric trust score or anti-fraud evidence.",
+        "All ownership-negative tests prove one customer cannot access another customer booking or payment."
+      ],
+      "repositories": [
+        "frontend_customer"
+      ],
+      "interfaces": [
+        "Consume only E19/E08/E09/E13 versioned Customer-safe APIs; the browser never joins service databases or calls Keycloak Admin.",
+        "Preserve server revisions and errors; never calculate legal money, deposit waiver, refund or inventory eligibility in client code."
+      ],
+      "dataOwnership": [
+        "Customer Web owns presentation and ephemeral navigation state only; Property owns public content/eligibility, Booking owns inventory and reservations, Finance owns money/waivers, Payment owns VietQR, Notification owns inbox."
+      ],
+      "stateMachine": [
+        "Public discovery and detail remain readable without an account; any SELF action requires a verified E18 CUSTOMER session.",
+        "Pending, stale, expired and completed states are rendered from server responses; a UI-only transition cannot confirm booking, payment, waiver or refund."
+      ],
+      "authorization": {
+        "actions": [
+          "reservation:quote:create",
+          "reservation:hold:create",
+          "reservation:hold:view"
+        ],
+        "dataPartitions": [
+          "CUSTOMER SELF for quote and hold subject; no access to other customer checkout"
+        ],
+        "fieldGroups": [
+          "RESERVATION_SUMMARY and customer-allowed FINANCIAL only; INTERNAL_OVERRIDE, STAFF_MARKUP and TRUST_DETAIL denied"
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Keep stable command idempotency key through safe retry, and refresh server revision on stale conflicts.",
+        "Disable duplicate submit while a command is in flight and never mark success from optimistic UI alone.",
+        "Clear SELF query cache on logout/account switch; refuse to reuse an old CUSTOMER session for another subject."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E19-S02-ST03",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E08-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E08-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E18-S02-ST02",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "verified Customer, eligible exact unit, valid whole-day stay and published pricing",
+          "when": "quote and hold succeed",
+          "then": "UI displays the immutable server price and one exact-unit hold with authoritative expiry and revision"
+        },
+        {
+          "id": "AC02",
+          "given": "overlap, stale pricing or expired quote",
+          "when": "hold is requested",
+          "then": "UI shows precise safe error and offers a fresh quote without claiming a hold or retaining a stale price"
+        },
+        {
+          "id": "AC03",
+          "given": "another customer quote/hold identifier or repeated submit",
+          "when": "checkout retries",
+          "then": "no foreign financial detail renders and at most one hold is created per stable idempotency key"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-frontend-customer",
+        "roadmap-v1-3",
+        "source-vs-e19-s03-st01"
+      ],
+      "decisionNoteVi": "Leaf VS-E19-S03-ST01 chỉ sở hữu artifact của frontend_customer; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm run lint && npm run build",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "Customer Web lint/TypeScript build report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "e2e",
+          "command": "npm run test:e2e -- --project=chromium",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Customer Web Chromium E2E report; add test:e2e script and deterministic fixtures"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "frontend_customer",
+      "repositorySlices": [
+        {
+          "repository": "frontend_customer",
+          "paths": [
+            "src/pages/CustomerCheckout.tsx",
+            "src/components/QuoteBreakdown.tsx",
+            "src/lib/customer-checkout.ts",
+            "e2e/customer-quote-hold.spec.ts"
+          ],
+          "artifacts": [
+            "quote preview and breakdown",
+            "expiring hold UI",
+            "replay/overlap/expiry e2e cases"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E19-S04",
@@ -65038,8 +66225,8 @@
       "parentSourceId": "VS-E19",
       "manageDescription": true,
       "actor": "Customer",
-      "outcome": "confirm/manage/cancel booking is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E19 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "Customer booking confirmation and cancellation consume E08 Booking/Finance owned states, including a frozen versioned cancellation preview.",
+      "context": "Payment pending never means confirmed; cancellation and subsequent refund are separate authoritative states.",
       "inScope": [
         "Implement and verify: confirm/manage/cancel booking.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -65147,13 +66334,194 @@
         "source-vs-e19-s04"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "web",
       "dispatchable": false,
       "testCases": [],
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E19-S04-ST01",
+      "jiraKey": "SCRUM-844",
+      "issueType": "Subtask",
+      "summary": "[VS-E19-S04-ST01] Build Customer reservation and cancellation journey",
+      "parentSourceId": "VS-E19-S04",
+      "manageDescription": true,
+      "actor": "Anonymous visitor for public discovery; verified CUSTOMER for SELF checkout and account views.",
+      "outcome": "Customer Web confirms only a valid E08 hold with verified Finance deposit or final waiver and shows own reservations, amendment entry and frozen cancellation preview.",
+      "context": "E08 Booking and Finance own confirmation/cancellation, and E08-S06 owns cancellation policy math; customer UI composes these, not money or inventory state.",
+      "inScope": [
+        "Present hold and authoritative Finance deposit/waiver decision before confirm; if payment is pending, remain pending and do not claim reservation confirmed.",
+        "Render only own reservation timeline, quote/financial projection, amendment navigation and policy/version-aware cancellation preview with exact expiry, retained/refund amounts and explicit final confirmation.",
+        "Use expectedVersion and stable idempotency key on confirm/cancel; refresh after stale policy, expired hold, late payment or cancelled session; never edit original quote or infer refund completion."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "businessRules": [
+        "Customer cancellation uses a short-lived server quote and explicit confirmation.",
+        "Customer sees trust tier and safe reason codes, never the raw numeric trust score or anti-fraud evidence.",
+        "All ownership-negative tests prove one customer cannot access another customer booking or payment."
+      ],
+      "repositories": [
+        "frontend_customer"
+      ],
+      "interfaces": [
+        "Consume only E19/E08/E09/E13 versioned Customer-safe APIs; the browser never joins service databases or calls Keycloak Admin.",
+        "Preserve server revisions and errors; never calculate legal money, deposit waiver, refund or inventory eligibility in client code."
+      ],
+      "dataOwnership": [
+        "Customer Web owns presentation and ephemeral navigation state only; Property owns public content/eligibility, Booking owns inventory and reservations, Finance owns money/waivers, Payment owns VietQR, Notification owns inbox."
+      ],
+      "stateMachine": [
+        "Public discovery and detail remain readable without an account; any SELF action requires a verified E18 CUSTOMER session.",
+        "Pending, stale, expired and completed states are rendered from server responses; a UI-only transition cannot confirm booking, payment, waiver or refund."
+      ],
+      "authorization": {
+        "actions": [
+          "reservation:confirm",
+          "reservation:view",
+          "reservation:cancel:preview",
+          "reservation:cancel:execute"
+        ],
+        "dataPartitions": [
+          "CUSTOMER SELF proven by Booking subject link; no foreign booking ID or cursor is accepted"
+        ],
+        "fieldGroups": [
+          "RESERVATION_SUMMARY, own FINANCIAL and CANCELLATION_DETAIL only; employee attribution and internal audit excluded"
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Keep stable command idempotency key through safe retry, and refresh server revision on stale conflicts.",
+        "Disable duplicate submit while a command is in flight and never mark success from optimistic UI alone.",
+        "Clear SELF query cache on logout/account switch; refuse to reuse an old CUSTOMER session for another subject."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E19-S03-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E08-S03-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E08-S03-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E08-S06-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E08-S06-ST02",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "active hold and current verified paid or final waived Finance decision",
+          "when": "Customer confirms",
+          "then": "exactly one own reservation appears with new revision and immutable quote/deposit evidence"
+        },
+        {
+          "id": "AC02",
+          "given": "own cancellable reservation and fresh server cancellation preview",
+          "when": "Customer explicitly executes",
+          "then": "UI shows Booking cancellation and separately tracks refund obligation without promising refund success"
+        },
+        {
+          "id": "AC03",
+          "given": "stale preview, revoked session or another Customer booking ID",
+          "when": "confirm/cancel is attempted",
+          "then": "no unauthorized state or financial data is shown and no silent client-side reprice/cancellation happens"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-frontend-customer",
+        "roadmap-v1-3",
+        "source-vs-e19-s04-st01"
+      ],
+      "decisionNoteVi": "Leaf VS-E19-S04-ST01 chỉ sở hữu artifact của frontend_customer; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm run lint && npm run build",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "Customer Web lint/TypeScript build report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "e2e",
+          "command": "npm run test:e2e -- --project=chromium",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Customer Web Chromium E2E report; add test:e2e script and deterministic fixtures"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "frontend_customer",
+      "repositorySlices": [
+        {
+          "repository": "frontend_customer",
+          "paths": [
+            "src/pages/MyReservations.tsx",
+            "src/pages/ReservationDetail.tsx",
+            "src/pages/CancelReservation.tsx",
+            "src/lib/customer-checkout.ts",
+            "e2e/customer-reservation.spec.ts"
+          ],
+          "artifacts": [
+            "own reservation and confirm UI",
+            "frozen cancellation preview/confirmation",
+            "pending payment/stale quote/foreign booking tests"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E19-S05",
@@ -65163,8 +66531,8 @@
       "parentSourceId": "VS-E19",
       "manageDescription": true,
       "actor": "Customer",
-      "outcome": "create/display/track VietQR with manual fallback is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E19 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "Customer VietQR UI consumes E09 Finance instructions and Payment intent status, with safe manual fallback when the provider is disabled or unavailable.",
+      "context": "Only verified Finance allocation counts as collected; browser-displayed QR or customer-reported bank transfer cannot mark paid.",
       "inScope": [
         "Implement and verify: create/display/track VietQR with manual fallback.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -65281,13 +66649,192 @@
         "source-vs-e19-s05"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "web",
       "dispatchable": false,
       "testCases": [],
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E19-S05-ST01",
+      "jiraKey": "SCRUM-845",
+      "issueType": "Subtask",
+      "summary": "[VS-E19-S05-ST01] Build Customer VietQR intent status and manual fallback",
+      "parentSourceId": "VS-E19-S05",
+      "manageDescription": true,
+      "actor": "Anonymous visitor for public discovery; verified CUSTOMER for SELF checkout and account views.",
+      "outcome": "Customer Web presents a Finance-authorized E09 VietQR intent and status for the own booking, with a safe manual transfer/support fallback when automation is unavailable.",
+      "context": "E09 Payment owns intent/QR/callback; Finance owns instruction, allocation and manual evidence verification. The current Payment GraphQL accepts a Finance payment request ID and must be guarded for CUSTOMER SELF.",
+      "inScope": [
+        "Request an E09 intent only for an owned payable Finance instruction via authenticated customer-safe contract; show server amount, currency, masked destination, transfer content and expiry exactly.",
+        "Refresh status using bounded polling or supported event, distinguish QR_READY/PENDING/SUCCEEDED/FAILED/EXPIRED/CANCELLED and wait for Finance allocation before showing paid obligation.",
+        "When VietQR is disabled/expired, display Finance-provided manual instructions and support/evidence-submission route only if contract permits; never mark a self-reported transfer as verified."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "businessRules": [
+        "Customer cancellation uses a short-lived server quote and explicit confirmation.",
+        "Customer sees trust tier and safe reason codes, never the raw numeric trust score or anti-fraud evidence.",
+        "All ownership-negative tests prove one customer cannot access another customer booking or payment."
+      ],
+      "repositories": [
+        "frontend_customer"
+      ],
+      "interfaces": [
+        "Consume only E19/E08/E09/E13 versioned Customer-safe APIs; the browser never joins service databases or calls Keycloak Admin.",
+        "Preserve server revisions and errors; never calculate legal money, deposit waiver, refund or inventory eligibility in client code."
+      ],
+      "dataOwnership": [
+        "Customer Web owns presentation and ephemeral navigation state only; Property owns public content/eligibility, Booking owns inventory and reservations, Finance owns money/waivers, Payment owns VietQR, Notification owns inbox."
+      ],
+      "stateMachine": [
+        "Public discovery and detail remain readable without an account; any SELF action requires a verified E18 CUSTOMER session.",
+        "Pending, stale, expired and completed states are rendered from server responses; a UI-only transition cannot confirm booking, payment, waiver or refund."
+      ],
+      "authorization": {
+        "actions": [
+          "payment:intent:create",
+          "payment:intent:view",
+          "finance:projection:view"
+        ],
+        "dataPartitions": [
+          "CUSTOMER SELF to owned booking payable Finance instruction; SYSTEM callback stays server-to-server only"
+        ],
+        "fieldGroups": [
+          "PAYMENT_SUMMARY and own FINANCIAL only; provider credentials, raw callback, other booking and bank secret excluded"
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Keep stable command idempotency key through safe retry, and refresh server revision on stale conflicts.",
+        "Disable duplicate submit while a command is in flight and never mark success from optimistic UI alone.",
+        "Clear SELF query cache on logout/account switch; refuse to reuse an old CUSTOMER session for another subject."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E19-S04-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E09-S03-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E09-S04-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E09-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E09-S07-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "owned payable instruction and active E09 feature mode",
+          "when": "Customer creates and views intent",
+          "then": "one QR shows authoritative amount, currency, expiry and status with no browser-generated banking payload"
+        },
+        {
+          "id": "AC02",
+          "given": "disabled/expired QR or manual transfer",
+          "when": "payment page refreshes",
+          "then": "safe Finance instruction/support path appears and no claimed paid status precedes verified Finance allocation"
+        },
+        {
+          "id": "AC03",
+          "given": "another customer instruction, forged callback or duplicate click",
+          "when": "UI attempts intent creation",
+          "then": "no foreign payment/QR data is returned and one stable idempotency key yields one intent"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-frontend-customer",
+        "roadmap-v1-3",
+        "source-vs-e19-s05-st01"
+      ],
+      "decisionNoteVi": "Leaf VS-E19-S05-ST01 chỉ sở hữu artifact của frontend_customer; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm run lint && npm run build",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "Customer Web lint/TypeScript build report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "e2e",
+          "command": "npm run test:e2e -- --project=chromium",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Customer Web Chromium E2E report; add test:e2e script and deterministic fixtures"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "frontend_customer",
+      "repositorySlices": [
+        {
+          "repository": "frontend_customer",
+          "paths": [
+            "src/pages/CustomerPayment.tsx",
+            "src/components/VietQrStatus.tsx",
+            "src/lib/customer-payment.ts",
+            "e2e/customer-payment.spec.ts"
+          ],
+          "artifacts": [
+            "VietQR and intent status UI",
+            "manual payment fallback and support route",
+            "wrong instruction/retry/expired/late allocation e2e tests"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E19-S06",
@@ -65297,8 +66844,8 @@
       "parentSourceId": "VS-E19",
       "manageDescription": true,
       "actor": "Customer",
-      "outcome": "payment/cancel/refund notification and ownership-negative tests is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E19 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "Recipient-self Customer notifications reuse E13 inbox/read cursor and link only to E08/E09 owned booking/payment details.",
+      "context": "Delivery or read receipt does not create a payment, booking cancellation or refund.",
       "inScope": [
         "Implement and verify: payment/cancel/refund notification and ownership-negative tests.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -65406,7 +66953,7 @@
         "source-vs-e19-s06"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "web",
       "dispatchable": false,
       "testCases": [],
@@ -65415,14 +66962,188 @@
       "activationBlockers": []
     },
     {
+      "sourceId": "VS-E19-S06-ST01",
+      "jiraKey": "SCRUM-846",
+      "issueType": "Subtask",
+      "summary": "[VS-E19-S06-ST01] Build Customer payment and booking notification center",
+      "parentSourceId": "VS-E19-S06",
+      "manageDescription": true,
+      "actor": "Anonymous visitor for public discovery; verified CUSTOMER for SELF checkout and account views.",
+      "outcome": "Customer Web displays recipient-self E13 booking/payment/cancellation/refund notifications and lets the Customer navigate only to owned reservation/financial detail.",
+      "context": "E13 owns inbox and resumable cursor, E08/E09 own state. This leaf composes existing notification feeds and does not create a new event router or financial ledger.",
+      "inScope": [
+        "Read recipient-self inbox with stable cursor/read state and accessible unread indicator, allowing E13 SSE reconnect with last acknowledged cursor.",
+        "Map allow-listed booking confirmation, deposit pending/verified, cancellation and refund status events to own detail route; show generic masked copy if a linked resource is inaccessible.",
+        "On account switch/logout clear cached inbox; deny forged other-recipient cursor or notification ID and never infer completion from delivery status alone."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "businessRules": [
+        "Customer cancellation uses a short-lived server quote and explicit confirmation.",
+        "Customer sees trust tier and safe reason codes, never the raw numeric trust score or anti-fraud evidence.",
+        "All ownership-negative tests prove one customer cannot access another customer booking or payment."
+      ],
+      "repositories": [
+        "frontend_customer"
+      ],
+      "interfaces": [
+        "Consume only E19/E08/E09/E13 versioned Customer-safe APIs; the browser never joins service databases or calls Keycloak Admin.",
+        "Preserve server revisions and errors; never calculate legal money, deposit waiver, refund or inventory eligibility in client code."
+      ],
+      "dataOwnership": [
+        "Customer Web owns presentation and ephemeral navigation state only; Property owns public content/eligibility, Booking owns inventory and reservations, Finance owns money/waivers, Payment owns VietQR, Notification owns inbox."
+      ],
+      "stateMachine": [
+        "Public discovery and detail remain readable without an account; any SELF action requires a verified E18 CUSTOMER session.",
+        "Pending, stale, expired and completed states are rendered from server responses; a UI-only transition cannot confirm booking, payment, waiver or refund."
+      ],
+      "authorization": {
+        "actions": [
+          "notification:inbox:view",
+          "notification:inbox:read"
+        ],
+        "dataPartitions": [
+          "RECIPIENT SELF bound to E18 CUSTOMER subject; no cross-recipient cursor or ID"
+        ],
+        "fieldGroups": [
+          "NOTIFICATION_SUMMARY only; contact destination, provider payload and financial internal detail excluded"
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Keep stable command idempotency key through safe retry, and refresh server revision on stale conflicts.",
+        "Disable duplicate submit while a command is in flight and never mark success from optimistic UI alone.",
+        "Clear SELF query cache on logout/account switch; refuse to reuse an old CUSTOMER session for another subject."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E13-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E13-S04-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E19-S04-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E19-S05-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "recipient-self booking and Payment events",
+          "when": "Customer inbox reconnects",
+          "then": "each eligible notification renders once and links only to own reservation or Finance projection"
+        },
+        {
+          "id": "AC02",
+          "given": "refund still pending or delivery retry",
+          "when": "notification renders",
+          "then": "UI reports authoritative pending status and never treats notification delivery as paid/refunded"
+        },
+        {
+          "id": "AC03",
+          "given": "other Customer cursor, ID or expired login",
+          "when": "inbox reads",
+          "then": "no cross-recipient content is rendered and cached private data is cleared"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-frontend-customer",
+        "roadmap-v1-3",
+        "source-vs-e19-s06-st01"
+      ],
+      "decisionNoteVi": "Leaf VS-E19-S06-ST01 chỉ sở hữu artifact của frontend_customer; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm run lint && npm run build",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "Customer Web lint/TypeScript build report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "e2e",
+          "command": "npm run test:e2e -- --project=chromium",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Customer Web Chromium E2E report; add test:e2e script and deterministic fixtures"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "frontend_customer",
+      "repositorySlices": [
+        {
+          "repository": "frontend_customer",
+          "paths": [
+            "src/pages/CustomerNotifications.tsx",
+            "src/components/NotificationBadge.tsx",
+            "src/lib/customer-notifications.ts",
+            "e2e/customer-notifications.spec.ts"
+          ],
+          "artifacts": [
+            "Customer inbox and unread state",
+            "secure route navigation and cursor resume",
+            "two-customer foreign notification tests"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
       "sourceId": "VS-E19-S07",
       "issueType": "Story",
       "summary": "[VS-E19-S07] Request deposit waiver and appeal a customer trust decision",
       "parentSourceId": "VS-E19",
       "manageDescription": true,
       "actor": "Customer",
-      "outcome": "Request deposit waiver and appeal a customer trust decision is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E19 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "Five existing E19 subtasks are narrowed to checkout handoff, own-status projection, Finance obligation read, Payment intent gate and cross-epic contract; E23 owns waiver/appeal policy and full Customer forms.",
+      "context": "E23 is still needs-refinement. Its Customer UX, trust facts and decisions must be implemented there first; E19 integrates a final versioned decision without a second trust policy or duplicate waiver form.",
       "inScope": [
         "Implement and verify: Request deposit waiver and appeal a customer trust decision.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -65487,7 +67208,11 @@
       ],
       "dependencies": [
         {
-          "sourceId": "VS-E23-S04",
+          "sourceId": "VS-E23-S04-ST06",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E23-S05-ST06",
           "relation": "is-blocked-by"
         },
         {
@@ -65545,7 +67270,7 @@
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
       "jiraKey": "SCRUM-602",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "web",
       "dispatchable": false,
       "testCases": [],
@@ -65556,21 +67281,21 @@
     {
       "sourceId": "VS-E19-S07-ST01",
       "issueType": "Subtask",
-      "summary": "[VS-E19-S07-ST01] frontend_customer delivery slice for Request deposit waiver and appeal a customer trust decision",
+      "summary": "[VS-E19-S07-ST01] Link checkout to E23 waiver and appeal journeys",
       "parentSourceId": "VS-E19-S07",
       "manageDescription": true,
-      "actor": "Repository ServiceOwner and implementing engineer",
-      "outcome": "frontend_customer supplies its bounded contract, implementation, tests, and evidence for parent VS-E19-S07.",
-      "context": "This is the frontend_customer implementation slice of VS-E19-S07. It must not duplicate authority assigned to another repository.",
+      "actor": "Anonymous visitor for public discovery; verified CUSTOMER for SELF checkout and account views.",
+      "outcome": "Customer checkout links an eligible own booking to E23-owned request/appeal pages and reflects only the authoritative decision status; E23 owns forms, policy and result explanation.",
+      "context": "E23-S04-ST06 and E23-S05-ST06 are the canonical Customer waiver and appeal UI leaves. This pre-existing E19 subtask is limited to the E19 checkout route integration.",
       "inScope": [
-        "Change only frontend_customer plus generated artifacts explicitly owned by it.",
-        "Implement the frontend_customer responsibilities and interfaces stated in parent VS-E19-S07.",
-        "Attach focused unit/integration evidence and compatibility or rollback notes."
+        "Add a guarded own-reservation checkout entry point to the E23 waiver request/appeal route only when the E23 feature and eligibility contract are active.",
+        "Pass an opaque own booking/quote reference and return destination; never send trust score, another Customer ID or amount as authority in URL/state.",
+        "On return refresh E08/E09 Finance decision, show REQUESTED/PENDING/APPROVED/REJECTED or unsupported state; only FINAL approved waiver can display zero deposit."
       ],
       "outOfScope": [
-        "Implementing another repository ownership slice.",
-        "Cross-service database access or copying an authoritative aggregate.",
-        "Closing the parent without end-to-end and Postman/Newman evidence."
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
       ],
       "businessRules": [
         "Customer cancellation uses a short-lived server quote and explicit confirmation.",
@@ -65581,82 +67306,91 @@
         "frontend_customer"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Consume only E19/E08/E09/E13 versioned Customer-safe APIs; the browser never joins service databases or calls Keycloak Admin.",
+        "Preserve server revisions and errors; never calculate legal money, deposit waiver, refund or inventory eligibility in client code."
       ],
       "dataOwnership": [
-        "Customer UI reads Booking availability/reservation and Finance/Payment projections; it never joins service databases."
+        "Customer Web owns presentation and ephemeral navigation state only; Property owns public content/eligibility, Booking owns inventory and reservations, Finance owns money/waivers, Payment owns VietQR, Notification owns inbox."
       ],
       "stateMachine": [
-        "Model legal states and transitions for frontend_customer delivery slice for Request deposit waiver and appeal a customer trust decision; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "Public discovery and detail remain readable without an account; any SELF action requires a verified E18 CUSTOMER session.",
+        "Pending, stale, expired and completed states are rendered from server responses; a UI-only transition cannot confirm booking, payment, waiver or refund."
       ],
       "authorization": {
         "actions": [
-          "vs-e19-s07-st01:view",
-          "vs-e19-s07-st01:manage"
+          "deposit-waiver:request",
+          "trust-appeal:submit"
         ],
         "dataPartitions": [
-          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+          "CUSTOMER SELF bound to own E08 quote/booking; never another customers case"
         ],
         "fieldGroups": [
-          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+          "CUSTOMER_DECISION_SUMMARY only; TRUST_FACTS, SCORE_DETAIL and INTERNAL_CASE excluded"
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Keep stable command idempotency key through safe retry, and refresh server revision on stale conflicts.",
+        "Disable duplicate submit while a command is in flight and never mark success from optimistic UI alone.",
+        "Clear SELF query cache on logout/account switch; refuse to reuse an old CUSTOMER session for another subject."
       ],
-      "dependencies": [],
+      "dependencies": [
+        {
+          "sourceId": "VS-E23-S04-ST06",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E23-S05-ST06",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E19-S03-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for frontend_customer delivery slice for Request deposit waiver and appeal a customer trust decision",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "own booking and active E23 waiver/appeal feature",
+          "when": "Customer opens checkout entry",
+          "then": "the E23-owned route receives only opaque own context and displays current server status on return"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "E23 disabled, decision pending or request rejected",
+          "when": "checkout renders",
+          "then": "no final zero-deposit claim or private trust fact appears"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "foreign quote, stale session or forged return URL",
+          "when": "route runs",
+          "then": "navigation is denied and no other Customer decision or booking detail is rendered"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
       ],
       "evidence": [
-        "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
       ],
       "externalBlockers": [],
       "labels": [
@@ -65664,34 +67398,73 @@
         "roadmap-v1-3",
         "source-vs-e19-s07-st01"
       ],
-      "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo frontend_customer cho VS-E19-S07; không được lấy quyền sở hữu dữ liệu của service khác.",
+      "decisionNoteVi": "Leaf VS-E19-S07-ST01 chỉ sở hữu artifact của frontend_customer; không được tự đưa credential hoặc giá trị production vào repo.",
       "jiraKey": "SCRUM-603",
-      "specStatus": "needs-refinement",
+      "specStatus": "executable",
       "workKind": "web",
-      "dispatchable": false,
-      "testCases": [],
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm run lint && npm run build",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "Customer Web lint/TypeScript build report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "e2e",
+          "command": "npm run test:e2e -- --project=chromium",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Customer Web Chromium E2E report; add test:e2e script and deterministic fixtures"
+        }
+      ],
       "decisions": [],
       "implementationBlockers": [],
-      "activationBlockers": []
+      "activationBlockers": [],
+      "primaryRepository": "frontend_customer",
+      "repositorySlices": [
+        {
+          "repository": "frontend_customer",
+          "paths": [
+            "src/pages/CustomerCheckout.tsx",
+            "src/lib/customer-waiver-navigation.ts",
+            "e2e/customer-waiver-navigation.spec.ts"
+          ],
+          "artifacts": [
+            "own-checkout E23 route link",
+            "status refresh and disabled-feature fallback",
+            "wrong-subject and pending-decision e2e tests"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E19-S07-ST02",
       "issueType": "Subtask",
-      "summary": "[VS-E19-S07-ST02] service_booking delivery slice for Request deposit waiver and appeal a customer trust decision",
+      "summary": "[VS-E19-S07-ST02] Project E23 waiver status into own checkout read",
       "parentSourceId": "VS-E19-S07",
       "manageDescription": true,
-      "actor": "Repository ServiceOwner and implementing engineer",
-      "outcome": "service_booking supplies its bounded contract, implementation, tests, and evidence for parent VS-E19-S07.",
-      "context": "This is the service_booking implementation slice of VS-E19-S07. It must not duplicate authority assigned to another repository.",
+      "actor": "Verified Customer reading their own checkout; trusted Booking/Finance/Payment service for server-side reconciliation.",
+      "outcome": "Booking adds a self-safe checkout status projection referencing E23 final decision ID/version without becoming a trust decision or deposit-calculation owner.",
+      "context": "E23-S04-ST03 owns Booking trust-decision behavior; E08-S03-ST01 owns confirmation and E08-S03-ST02 Finance final deposit/waiver gate. This leaf only exposes consumed status for E19 checkout.",
       "inScope": [
-        "Change only service_booking plus generated artifacts explicitly owned by it.",
-        "Implement the service_booking responsibilities and interfaces stated in parent VS-E19-S07.",
-        "Attach focused unit/integration evidence and compatibility or rollback notes."
+        "Read the authoritative own quote/hold reference and Finance decision ID/version via approved boundary; project DEPOSIT_REQUIRED/WAIVER_PENDING/WAIVED_FINAL in own checkout response.",
+        "Never calculate trust score, mark paid, alter quote or hold, or confirm reservation based on Customer-supplied status.",
+        "Reject foreign booking, stale Finance decision and missing E23/Finance response with a safe status; retain correlation/revision for repair."
       ],
       "outOfScope": [
-        "Implementing another repository ownership slice.",
-        "Cross-service database access or copying an authoritative aggregate.",
-        "Closing the parent without end-to-end and Postman/Newman evidence."
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
       ],
       "businessRules": [
         "Customer cancellation uses a short-lived server quote and explicit confirmation.",
@@ -65702,82 +67475,91 @@
         "service_booking"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Consume only the authoritative E23 waiver decision and E08/E09 booking/payment contract at a typed service boundary.",
+        "Return an own-booking-safe state and source revision; never expose trust score, raw evidence or another subject identity.",
+        "For a local externally observable command, write transactional audit/outbox; otherwise read-only projection must not mutate authoritative state."
       ],
       "dataOwnership": [
-        "Customer UI reads Booking availability/reservation and Finance/Payment projections; it never joins service databases."
+        "Booking owns quote/hold and own-booking read; E23/Finance own trust decision and deposit obligation; Payment owns transaction."
       ],
       "stateMachine": [
-        "Model legal states and transitions for service_booking delivery slice for Request deposit waiver and appeal a customer trust decision; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "Checkout status follows authoritative PENDING, REQUIRED or WAIVED_FINAL; stale/unavailable evidence never becomes a final waiver."
       ],
       "authorization": {
         "actions": [
-          "vs-e19-s07-st02:view",
-          "vs-e19-s07-st02:manage"
+          "reservation:checkout:view"
         ],
         "dataPartitions": [
-          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+          "CUSTOMER SELF derived from verified Booking/Finance subject; no staff or other customer case visibility."
         ],
         "fieldGroups": [
-          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+          "RESERVATION_SUMMARY and DEPOSIT_DECISION_SUMMARY only; raw TRUST_FACTS and staff evidence denied"
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Refuse wrong realm, foreign booking, pending/unverified waiver, stale source revision and unavailable Finance/Trust dependency with a stable non-enumerating error.",
+        "Do not create payment intent, zero the payable amount or confirm a reservation from a browser-reported waiver.",
+        "Preserve source decision ID/version and correlation evidence without raw trust facts or customer PII in logs."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Bind read projection to immutable Booking and Finance revision/decision IDs.",
+        "Deduplicate externally retried commands by idempotency key and expected source version.",
+        "A conflicting or pending E23 decision cannot become a final zero-deposit Finance instruction."
       ],
-      "dependencies": [],
+      "dependencies": [
+        {
+          "sourceId": "VS-E23-S04-ST03",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E08-S03-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E08-S03-ST02",
+          "relation": "is-blocked-by"
+        }
+      ],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for service_booking delivery slice for Request deposit waiver and appeal a customer trust decision",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "own quote and final verified waiver decision",
+          "when": "checkout is read",
+          "then": "own status carries decision ID/version and WAIVED_FINAL without changing booking or pricing"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "foreign booking or Customer-provided waiver status",
+          "when": "read or confirm runs",
+          "then": "no cross-account result or self-declared waiver is accepted"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "pending or stale decision, Finance outage",
+          "when": "checkout is read",
+          "then": "final waiver is withheld and a correlation-safe pending/dependency state is visible"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Run the named focused JUnit integration suite against current/stale/foreign/waived/deposit-required fixtures.",
+        "Verify E23 decision source version and E08/E09 obligation identity without assuming a score in this service.",
+        "Prove fail-closed behavior and replay with no duplicate hold, payable instruction or payment intent."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "Named repo code and focused tests pass without inventing a second trust-policy writer.",
+        "E23 authoritative state is consumed via the approved contract, and foreign subject fields stay hidden.",
+        "Jira contains PR/CI, stale/foreign/replay evidence and dependency-failure behavior."
       ],
       "evidence": [
-        "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
       ],
       "externalBlockers": [],
       "labels": [
@@ -65785,34 +67567,73 @@
         "roadmap-v1-3",
         "source-vs-e19-s07-st02"
       ],
-      "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo service_booking cho VS-E19-S07; không được lấy quyền sở hữu dữ liệu của service khác.",
+      "decisionNoteVi": "Leaf triển khai VS-E19-S07-ST02 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
       "jiraKey": "SCRUM-604",
-      "specStatus": "needs-refinement",
-      "workKind": "decision",
-      "dispatchable": false,
-      "testCases": [],
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*CustomerCheckoutStatus*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *CustomerCheckoutStatus*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*CustomerCheckoutStatus*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *CustomerCheckoutStatus*; include persistence, authorization, and retry assertions"
+        }
+      ],
       "decisions": [],
       "implementationBlockers": [],
-      "activationBlockers": []
+      "activationBlockers": [],
+      "primaryRepository": "service_booking",
+      "repositorySlices": [
+        {
+          "repository": "service_booking",
+          "paths": [
+            "src/main/resources/graphql/schema.graphqls",
+            "src/main/java/com/vistay/booking/application/CustomerCheckoutStatusService.java",
+            "src/test/java/com/vistay/booking/application/CustomerCheckoutStatusIntegrationTest.java"
+          ],
+          "artifacts": [
+            "own checkout decision status projection",
+            "source decision revision and fail-closed behavior",
+            "foreign booking and stale-version tests"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E19-S07-ST03",
       "issueType": "Subtask",
-      "summary": "[VS-E19-S07-ST03] service_finance delivery slice for Request deposit waiver and appeal a customer trust decision",
+      "summary": "[VS-E19-S07-ST03] Expose own deposit obligation and waiver status",
       "parentSourceId": "VS-E19-S07",
       "manageDescription": true,
-      "actor": "Repository ServiceOwner and implementing engineer",
-      "outcome": "service_finance supplies its bounded contract, implementation, tests, and evidence for parent VS-E19-S07.",
-      "context": "This is the service_finance implementation slice of VS-E19-S07. It must not duplicate authority assigned to another repository.",
+      "actor": "Verified Customer reading their own checkout; trusted Booking/Finance/Payment service for server-side reconciliation.",
+      "outcome": "Finance publishes a customer-safe own-booking deposit obligation view that distinguishes required, pending review and final waived amounts without changing E23 policy.",
+      "context": "E23-S04-ST01 owns trust eligibility and waiver decision; E08-S03-ST02 owns final paid-or-waived confirmation gate, E09 owns payable instructions.",
       "inScope": [
-        "Change only service_finance plus generated artifacts explicitly owned by it.",
-        "Implement the service_finance responsibilities and interfaces stated in parent VS-E19-S07.",
-        "Attach focused unit/integration evidence and compatibility or rollback notes."
+        "Resolve owned booking subject and current Finance deposit instruction plus source E23 decision ID/version; return due amount/currency, status and next-action code only.",
+        "When final waiver is approved, expose deposit amount zero from the authoritative Finance obligation, not a client calculation; pending review retains the existing required obligation until finalized.",
+        "Use a non-enumerating response for foreign booking; do not disclose trust score, review evidence, employee debt or other receivables."
       ],
       "outOfScope": [
-        "Implementing another repository ownership slice.",
-        "Cross-service database access or copying an authoritative aggregate.",
-        "Closing the parent without end-to-end and Postman/Newman evidence."
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
       ],
       "businessRules": [
         "Customer cancellation uses a short-lived server quote and explicit confirmation.",
@@ -65823,82 +67644,91 @@
         "service_finance"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Consume only the authoritative E23 waiver decision and E08/E09 booking/payment contract at a typed service boundary.",
+        "Return an own-booking-safe state and source revision; never expose trust score, raw evidence or another subject identity.",
+        "For a local externally observable command, write transactional audit/outbox; otherwise read-only projection must not mutate authoritative state."
       ],
       "dataOwnership": [
-        "Customer UI reads Booking availability/reservation and Finance/Payment projections; it never joins service databases."
+        "Finance owns deposit obligations and payable instructions; E23 owns trust policy and waiver decision; Payment owns intent/transaction."
       ],
       "stateMachine": [
-        "Model legal states and transitions for service_finance delivery slice for Request deposit waiver and appeal a customer trust decision; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "REQUIRED remains payable while waiver is PENDING; WAIVED_FINAL is displayed only after authoritative Finance recomputation."
       ],
       "authorization": {
         "actions": [
-          "vs-e19-s07-st03:view",
-          "vs-e19-s07-st03:manage"
+          "finance:deposit:read"
         ],
         "dataPartitions": [
-          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+          "CUSTOMER SELF derived from verified Booking/Finance subject; no staff or other customer case visibility."
         ],
         "fieldGroups": [
-          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+          "OWN_DEPOSIT_DUE and DECISION_STATUS only; employee debt, trust score and review evidence denied"
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Refuse wrong realm, foreign booking, pending/unverified waiver, stale source revision and unavailable Finance/Trust dependency with a stable non-enumerating error.",
+        "Do not create payment intent, zero the payable amount or confirm a reservation from a browser-reported waiver.",
+        "Preserve source decision ID/version and correlation evidence without raw trust facts or customer PII in logs."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Bind read projection to immutable Booking and Finance revision/decision IDs.",
+        "Deduplicate externally retried commands by idempotency key and expected source version.",
+        "A conflicting or pending E23 decision cannot become a final zero-deposit Finance instruction."
       ],
-      "dependencies": [],
+      "dependencies": [
+        {
+          "sourceId": "VS-E23-S04-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E08-S03-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E09-S07-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for service_finance delivery slice for Request deposit waiver and appeal a customer trust decision",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "own payable booking and current Finance obligation",
+          "when": "Customer reads deposit status",
+          "then": "due amount and E23 decision version match Finance without exposing trust evidence"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "pending waiver or conflicting decision",
+          "when": "Finance read runs",
+          "then": "required obligation stays authoritative and no premature zero-deposit instruction is shown"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "foreign booking or unavailable decision source",
+          "when": "read runs",
+          "then": "no amount or case existence is disclosed and stable failure is returned"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Run the named focused JUnit integration suite against current/stale/foreign/waived/deposit-required fixtures.",
+        "Verify E23 decision source version and E08/E09 obligation identity without assuming a score in this service.",
+        "Prove fail-closed behavior and replay with no duplicate hold, payable instruction or payment intent."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "Named repo code and focused tests pass without inventing a second trust-policy writer.",
+        "E23 authoritative state is consumed via the approved contract, and foreign subject fields stay hidden.",
+        "Jira contains PR/CI, stale/foreign/replay evidence and dependency-failure behavior."
       ],
       "evidence": [
-        "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
       ],
       "externalBlockers": [],
       "labels": [
@@ -65906,34 +67736,73 @@
         "roadmap-v1-3",
         "source-vs-e19-s07-st03"
       ],
-      "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo service_finance cho VS-E19-S07; không được lấy quyền sở hữu dữ liệu của service khác.",
+      "decisionNoteVi": "Leaf triển khai VS-E19-S07-ST03 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
       "jiraKey": "SCRUM-605",
-      "specStatus": "needs-refinement",
-      "workKind": "decision",
-      "dispatchable": false,
-      "testCases": [],
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*CustomerDepositObligation*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *CustomerDepositObligation*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*CustomerDepositObligation*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *CustomerDepositObligation*; include persistence, authorization, and retry assertions"
+        }
+      ],
       "decisions": [],
       "implementationBlockers": [],
-      "activationBlockers": []
+      "activationBlockers": [],
+      "primaryRepository": "service_finance",
+      "repositorySlices": [
+        {
+          "repository": "service_finance",
+          "paths": [
+            "src/main/resources/graphql/schema.graphqls",
+            "src/main/java/com/vistay/finance/application/CustomerDepositObligationService.java",
+            "src/test/java/com/vistay/finance/application/CustomerDepositObligationIntegrationTest.java"
+          ],
+          "artifacts": [
+            "own deposit obligation read",
+            "E23 decision revision linkage",
+            "pending/waived/foreign tests"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E19-S07-ST04",
       "issueType": "Subtask",
-      "summary": "[VS-E19-S07-ST04] service_payment delivery slice for Request deposit waiver and appeal a customer trust decision",
+      "summary": "[VS-E19-S07-ST04] Gate customer VietQR on final deposit obligation",
       "parentSourceId": "VS-E19-S07",
       "manageDescription": true,
-      "actor": "Repository ServiceOwner and implementing engineer",
-      "outcome": "service_payment supplies its bounded contract, implementation, tests, and evidence for parent VS-E19-S07.",
-      "context": "This is the service_payment implementation slice of VS-E19-S07. It must not duplicate authority assigned to another repository.",
+      "actor": "Verified Customer reading their own checkout; trusted Booking/Finance/Payment service for server-side reconciliation.",
+      "outcome": "Payment refuses to create a deposit VietQR intent unless Finance has a currently payable, non-waived instruction for the own booking.",
+      "context": "E23-S04-ST04 owns Payment trust-policy integration; E09-S03-ST01 owns idempotent intent creation from Finance instruction. This leaf narrows the Customer checkout guard against pending/waived states.",
       "inScope": [
-        "Change only service_payment plus generated artifacts explicitly owned by it.",
-        "Implement the service_payment responsibilities and interfaces stated in parent VS-E19-S07.",
-        "Attach focused unit/integration evidence and compatibility or rollback notes."
+        "Validate authenticated Customer ownership through Finance instruction, its revision and E23 final waiver outcome before calling the existing E09 create-intent path.",
+        "For WAIVER_PENDING return a safe wait state; for WAIVED_FINAL zero deposit skip intent creation entirely, and handle existing unpaid intent through E09 legal cancellation/supersession only.",
+        "Do not reverse a SUCCEEDED transfer, modify a deposit obligation, invent a zero-value QR or expose another Customer banking instruction."
       ],
       "outOfScope": [
-        "Implementing another repository ownership slice.",
-        "Cross-service database access or copying an authoritative aggregate.",
-        "Closing the parent without end-to-end and Postman/Newman evidence."
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
       ],
       "businessRules": [
         "Customer cancellation uses a short-lived server quote and explicit confirmation.",
@@ -65944,82 +67813,95 @@
         "service_payment"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Consume only the authoritative E23 waiver decision and E08/E09 booking/payment contract at a typed service boundary.",
+        "Return an own-booking-safe state and source revision; never expose trust score, raw evidence or another subject identity.",
+        "For a local externally observable command, write transactional audit/outbox; otherwise read-only projection must not mutate authoritative state."
       ],
       "dataOwnership": [
-        "Customer UI reads Booking availability/reservation and Finance/Payment projections; it never joins service databases."
+        "Payment owns intent lifecycle; Finance owns deposit obligation and instruction; E23 owns waiver approval; Booking owns reservation."
       ],
       "stateMachine": [
-        "Model legal states and transitions for service_payment delivery slice for Request deposit waiver and appeal a customer trust decision; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "REQUIRED with valid Finance instruction may create intent; PENDING and WAIVED_FINAL create no new deposit intent."
       ],
       "authorization": {
         "actions": [
-          "vs-e19-s07-st04:view",
-          "vs-e19-s07-st04:manage"
+          "payment:intent:create"
         ],
         "dataPartitions": [
-          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+          "CUSTOMER SELF derived from verified Booking/Finance subject; no staff or other customer case visibility."
         ],
         "fieldGroups": [
-          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+          "OWN_PAYMENT_INTENT only; raw trust case and provider callback secret denied"
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Refuse wrong realm, foreign booking, pending/unverified waiver, stale source revision and unavailable Finance/Trust dependency with a stable non-enumerating error.",
+        "Do not create payment intent, zero the payable amount or confirm a reservation from a browser-reported waiver.",
+        "Preserve source decision ID/version and correlation evidence without raw trust facts or customer PII in logs."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Bind read projection to immutable Booking and Finance revision/decision IDs.",
+        "Deduplicate externally retried commands by idempotency key and expected source version.",
+        "A conflicting or pending E23 decision cannot become a final zero-deposit Finance instruction."
       ],
-      "dependencies": [],
+      "dependencies": [
+        {
+          "sourceId": "VS-E23-S04-ST04",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E19-S07-ST03",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E09-S03-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E09-S04-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for service_payment delivery slice for Request deposit waiver and appeal a customer trust decision",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "own required deposit and valid Finance instruction",
+          "when": "Customer asks for VietQR twice with same key",
+          "then": "one E09 intent is produced and owned status is readable"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "pending or final waived obligation",
+          "when": "Customer asks for a new deposit QR",
+          "then": "no zero-value or unneeded intent is created and UI receives correct safe status"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "foreign instruction or provider payment races with waiver",
+          "when": "creation runs",
+          "then": "one authoritative Finance/Payment outcome wins without automatic reversal or false zero-deposit success"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Run the named focused JUnit integration suite against current/stale/foreign/waived/deposit-required fixtures.",
+        "Verify E23 decision source version and E08/E09 obligation identity without assuming a score in this service.",
+        "Prove fail-closed behavior and replay with no duplicate hold, payable instruction or payment intent."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "Named repo code and focused tests pass without inventing a second trust-policy writer.",
+        "E23 authoritative state is consumed via the approved contract, and foreign subject fields stay hidden.",
+        "Jira contains PR/CI, stale/foreign/replay evidence and dependency-failure behavior."
       ],
       "evidence": [
-        "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
       ],
       "externalBlockers": [],
       "labels": [
@@ -66027,34 +67909,73 @@
         "roadmap-v1-3",
         "source-vs-e19-s07-st04"
       ],
-      "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo service_payment cho VS-E19-S07; không được lấy quyền sở hữu dữ liệu của service khác.",
+      "decisionNoteVi": "Leaf triển khai VS-E19-S07-ST04 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
       "jiraKey": "SCRUM-606",
-      "specStatus": "needs-refinement",
-      "workKind": "decision",
-      "dispatchable": false,
-      "testCases": [],
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*CustomerDepositIntentGuard*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *CustomerDepositIntentGuard*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*CustomerDepositIntentGuard*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *CustomerDepositIntentGuard*; include persistence, authorization, and retry assertions"
+        }
+      ],
       "decisions": [],
       "implementationBlockers": [],
-      "activationBlockers": []
+      "activationBlockers": [],
+      "primaryRepository": "service_payment",
+      "repositorySlices": [
+        {
+          "repository": "service_payment",
+          "paths": [
+            "src/main/java/com/vistay/payment/application/CustomerDepositIntentGuard.java",
+            "src/main/java/com/vistay/payment/adapter/out/finance/FinanceInstructionClient.java",
+            "src/test/java/com/vistay/payment/application/CustomerDepositIntentGuardIntegrationTest.java"
+          ],
+          "artifacts": [
+            "current Finance instruction gate",
+            "pending/waived QR suppression",
+            "concurrent paid/waived and foreign instruction tests"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E19-S07-ST05",
       "issueType": "Subtask",
-      "summary": "[VS-E19-S07-ST05] platform_contracts delivery slice for Request deposit waiver and appeal a customer trust decision",
+      "summary": "[VS-E19-S07-ST05] Specify E23-to-E19 waiver checkout handshake",
       "parentSourceId": "VS-E19-S07",
       "manageDescription": true,
-      "actor": "Repository ServiceOwner and implementing engineer",
-      "outcome": "platform_contracts supplies its bounded contract, implementation, tests, and evidence for parent VS-E19-S07.",
-      "context": "This is the platform_contracts implementation slice of VS-E19-S07. It must not duplicate authority assigned to another repository.",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Contracts pins how E23 waiver/appeal outcome maps to E08 booking confirmation, Finance deposit obligation and E09 Payment intent without publishing a second trust policy.",
+      "context": "E23-S04-ST07 and E23-S05-ST07 own trust-policy and appeal contract; E19-T01 owns broad customer discovery/checkout composition. This leaf defines only their handoff boundary.",
       "inScope": [
-        "Change only platform_contracts plus generated artifacts explicitly owned by it.",
-        "Implement the platform_contracts responsibilities and interfaces stated in parent VS-E19-S07.",
-        "Attach focused unit/integration evidence and compatibility or rollback notes."
+        "Define typed case reference, own booking/quote ID, decision ID/version, PENDING/REQUIRED/WAIVED_FINAL states and stale/failure codes; source trust facts remain E23 private.",
+        "Map final waiver to Finance zero-deposit obligation and E08 confirmation gate; pending keeps the current required instruction and never grants a booking.",
+        "Add valid/negative fixtures for wrong realm, other Customer, stale version, provider-paid race and appeal pending; document no implicit refund/reversal or Client-side scoring."
       ],
       "outOfScope": [
-        "Implementing another repository ownership slice.",
-        "Cross-service database access or copying an authoritative aggregate.",
-        "Closing the parent without end-to-end and Postman/Newman evidence."
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
       ],
       "businessRules": [
         "Customer cancellation uses a short-lived server quote and explicit confirmation.",
@@ -66065,82 +67986,91 @@
         "platform_contracts"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
       ],
       "dataOwnership": [
-        "Customer UI reads Booking availability/reservation and Finance/Payment projections; it never joins service databases."
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
       ],
       "stateMachine": [
-        "Model legal states and transitions for platform_contracts delivery slice for Request deposit waiver and appeal a customer trust decision; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
       ],
       "authorization": {
         "actions": [
-          "vs-e19-s07-st05:view",
-          "vs-e19-s07-st05:manage"
+          "customer-waiver-handoff:publish"
         ],
         "dataPartitions": [
-          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
         ],
         "fieldGroups": [
-          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
       ],
-      "dependencies": [],
+      "dependencies": [
+        {
+          "sourceId": "VS-E23-S04-ST07",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E23-S05-ST07",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E19-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for platform_contracts delivery slice for Request deposit waiver and appeal a customer trust decision",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "E23 final and pending decisions plus E08/E09 source revisions",
+          "when": "contract validation runs",
+          "then": "owner, allowed status transition and Finance instruction consequences are deterministic"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "unverified waiver, cross-customer ID, stale source or paid-intent race",
+          "when": "negative fixture validates",
+          "then": "contract rejects a zero-deposit confirmation or silent reversal with exact error code"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "unchanged canonical fixture",
+          "when": "publication repeats",
+          "then": "same fingerprint is produced and earlier policy versions remain immutable"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
       ],
       "evidence": [
-        "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
       ],
       "externalBlockers": [],
       "labels": [
@@ -66148,15 +68078,408 @@
         "roadmap-v1-3",
         "source-vs-e19-s07-st05"
       ],
-      "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo platform_contracts cho VS-E19-S07; không được lấy quyền sở hữu dữ liệu của service khác.",
+      "decisionNoteVi": "Leaf VS-E19-S07-ST05 chỉ sở hữu artifact của platform_contracts; không được tự đưa credential hoặc giá trị production vào repo.",
       "jiraKey": "SCRUM-607",
-      "specStatus": "needs-refinement",
+      "specStatus": "executable",
       "workKind": "contract",
-      "dispatchable": false,
-      "testCases": [],
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "contract",
+          "command": "npm run validate:schemas",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "waiver checkout handoff schema/negative fixture report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "unit",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "full platform_contracts validation and fingerprint report"
+        }
+      ],
       "decisions": [],
       "implementationBlockers": [],
-      "activationBlockers": []
+      "activationBlockers": [],
+      "primaryRepository": "platform_contracts",
+      "repositorySlices": [
+        {
+          "repository": "platform_contracts",
+          "paths": [
+            "docs/customer-waiver-checkout-handoff-v1.md",
+            "schemas/customer-waiver-handoff/**",
+            "fixtures/customer-waiver-handoff/**",
+            "scripts/validate-schemas.mjs"
+          ],
+          "artifacts": [
+            "E23/E08/E09 handoff matrix",
+            "versioned status/error contract",
+            "cross-customer and payment-race fixtures"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
+      "sourceId": "VS-E19-T01",
+      "jiraKey": "SCRUM-847",
+      "issueType": "Task",
+      "summary": "[VS-E19-T01] Publish Customer discovery and checkout composition contracts",
+      "manageDescription": true,
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Contracts publishes safe public Property and Booking discovery/detail/availability and SELF-only E08/E09/E13 Customer composition, with exact owner/action/field matrix and negative fixtures.",
+      "context": "Current Property GraphQL exposes only serviceInfo; Booking propertyAvailability returns internal block/branch details. E08/E09/E13 own commands, finances and inbox; E19 defines customer-safe composition, not duplicate ledgers.",
+      "inScope": [
+        "Publish versioned public search/detail/availability query shapes, cursor/filter/revision semantics, max ranges and eligibility/price owner matrix; forbid exposing backoffice availability as public.",
+        "Document E08 quote/hold/cancel and E09 Finance/Payment request/status/refund plus E13 inbox reuse with CUSTOMER SELF authentication, stable errors and no browser-side money logic.",
+        "Provide valid and invalid fixtures for hidden unit, forged cursor, stale quote, wrong realm/subject, other Customer booking/payment/notification IDs, disabled VietQR and partial provider failure.",
+        "State that E19-S07 delegates waiver/appeal UX to E23-S04-ST06 and E23-S05-ST06; E19 does not create a second trust policy or duplicate Customer UI task."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "businessRules": [
+        "Customer cancellation uses a short-lived server quote and explicit confirmation.",
+        "Customer sees trust tier and safe reason codes, never the raw numeric trust score or anti-fraud evidence.",
+        "All ownership-negative tests prove one customer cannot access another customer booking or payment."
+      ],
+      "repositories": [
+        "platform_contracts"
+      ],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "customer-discovery-contract:publish"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E18-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "E04/E05/E06/E08/E09/E13 and E18 owner contracts",
+          "when": "composition validation runs",
+          "then": "each public and SELF field has one owner, revision and stable error semantics"
+        },
+        {
+          "id": "AC02",
+          "given": "public block detail, client calculated money, wrong realm or cross-customer ID",
+          "when": "negative fixture runs",
+          "then": "schema/validation fails with exact source and forbidden field"
+        },
+        {
+          "id": "AC03",
+          "given": "unchanged canonical fixtures",
+          "when": "validator reruns",
+          "then": "same fingerprint is produced and older published contracts remain immutable"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-platform-contracts",
+        "roadmap-v1-3",
+        "source-vs-e19-t01"
+      ],
+      "decisionNoteVi": "Leaf VS-E19-T01 chỉ sở hữu artifact của platform_contracts; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "contract",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "contract",
+          "command": "npm run validate:graphql && npm run validate:schemas",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "Customer GraphQL composition and schema fixture validation"
+        },
+        {
+          "id": "TEST-02",
+          "level": "unit",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "platform_contracts full validation and fingerprint report"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "parentSourceId": "VS-E19",
+      "primaryRepository": "platform_contracts",
+      "repositorySlices": [
+        {
+          "repository": "platform_contracts",
+          "paths": [
+            "docs/customer-discovery-checkout-v1.md",
+            "graphql/customer/**",
+            "schemas/customer-discovery/**",
+            "fixtures/customer-discovery/**",
+            "scripts/validate-graphql.mjs"
+          ],
+          "artifacts": [
+            "customer public/SELF contract",
+            "owner/action/field matrix",
+            "positive/negative integration fixtures",
+            "cross-epic reuse and activation gates"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
+      "sourceId": "VS-E19-T02",
+      "jiraKey": "SCRUM-848",
+      "issueType": "Task",
+      "summary": "[VS-E19-T02] Prove Customer discovery checkout and ownership with Postman",
+      "manageDescription": true,
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "A deterministic Newman suite exercises anonymous discovery and two-Customer quote/hold/confirm/payment/cancel/notification flows with explicit ownership negatives and safe cleanup.",
+      "context": "Existing Postman collections focus on backoffice and Host; E19 must not commit live VietQR callbacks, passwords or active customer tokens into examples.",
+      "inScope": [
+        "Add optional per-folder flags for public discovery, customer authenticated booking and Payment sandbox, with two Customer subjects and isolated disposable exact-unit fixtures.",
+        "Assert valid filters, hidden unit, stale availability, quote/hold replay and expiry, pending-deposit versus confirmed reservation, QR pending/expired/manual fallback, cancellation preview and refund pending.",
+        "Test cross-customer booking, Finance instruction, QR intent and inbox cursor denied; run waiver/appeal negatives only behind an E23-ready flag, otherwise report a named skip; redact secrets/PII and skip live payment mutation/callback by default.",
+        "Run static schema/collection validation and optional local Newman; clean up held inventory and redact machine-readable JSON/JUnit evidence."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "businessRules": [
+        "Customer cancellation uses a short-lived server quote and explicit confirmation.",
+        "Customer sees trust tier and safe reason codes, never the raw numeric trust score or anti-fraud evidence.",
+        "All ownership-negative tests prove one customer cannot access another customer booking or payment."
+      ],
+      "repositories": [
+        "platform_infrastructure"
+      ],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "customer-booking:test"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E19-T01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E19-S01-ST03",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E19-S02-ST03",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E19-S03-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E19-S04-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E19-S05-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E19-S06-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "two Customer subjects and eligible/hidden/blocked property fixtures",
+          "when": "optional Newman booking flow runs",
+          "then": "public search, owned quote/hold and payment/cancellation/notification assertions have redacted evidence"
+        },
+        {
+          "id": "AC02",
+          "given": "foreign Customer IDs/cursors, stale quote or disabled VietQR",
+          "when": "negative flow runs",
+          "then": "no other-Customer existence, money or notification content leaks and no false booking/payment success is asserted"
+        },
+        {
+          "id": "AC03",
+          "given": "collection is rerun after cleanup",
+          "when": "same-key replay and fixture teardown complete",
+          "then": "no duplicate hold, charge or reservation remains and report fingerprint is stable"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-platform-infrastructure",
+        "roadmap-v1-3",
+        "source-vs-e19-t02"
+      ],
+      "decisionNoteVi": "Leaf VS-E19-T02 chỉ sở hữu artifact của platform_infrastructure; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "integration",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "contract",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-PostmanCustomerBooking.ps1 -StaticOnly",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "static collection secret/contract validation report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "e2e",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-PostmanCustomerBooking.ps1",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "redacted Newman JSON/JUnit and fixture cleanup report"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "parentSourceId": "VS-E19",
+      "primaryRepository": "platform_infrastructure",
+      "repositorySlices": [
+        {
+          "repository": "platform_infrastructure",
+          "paths": [
+            "postman/ViStay-Customer-Booking-v1.postman_collection.json",
+            "postman/ViStay-Customer-Booking-local.postman_environment.example.json",
+            "postman/fixtures/customer-booking/**",
+            "scripts/Test-PostmanCustomerBooking.ps1",
+            "postman/README.md"
+          ],
+          "artifacts": [
+            "Customer booking Postman collection",
+            "two-account disposable fixture/run flags",
+            "static/Newman and negative-access report"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E20",
