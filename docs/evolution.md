@@ -17,6 +17,14 @@
 - A retryable mutation accepts a stable idempotency key. A mutation susceptible to concurrent writes accepts an expected/optimistic version.
 - Notification subscriptions expose a durable cursor and define reconnect, replay, authorization, and resynchronization behavior.
 
+### Notification contract boundary
+
+- `vistay.notification.notification-created` v1 remains compatible for legacy consumers; additive notification intake metadata is carried by v2.
+- Delivery-state and recipient-exception events are versioned independently so provider and recipient-repair changes do not rewrite notification history.
+- Required `IN_APP`/`EMAIL` channels cannot be disabled by recipient preferences; `PUSH` is feature flagged and requires a valid device reference.
+- Raw contact destinations and provider payloads never cross the contract boundary. Use an encrypted Notification-owned snapshot plus a masked display value.
+- GraphQL mutations require scoped idempotency keys and expected versions where retries or concurrent writes are possible.
+
 ## Kafka events
 
 - Topics are derived as `<type>.v<version>`, for example `vistay.auth.account-provisioned.v1`; the aggregate UUID is the record key.

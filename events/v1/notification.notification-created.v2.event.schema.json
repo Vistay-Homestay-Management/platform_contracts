@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/events/v1/notification.notification-created.v2.event.schema.json",
+  "title": "Notification created event v2",
+  "allOf": [
+    { "$ref": "https://contracts.vistay.vn/events/v1/common-event-envelope.schema.json" },
+    {
+      "type": "object",
+      "properties": {
+        "type": { "const": "vistay.notification.notification-created" },
+        "version": { "const": 2 },
+        "data": {
+          "$ref": "https://contracts.vistay.vn/events/v1/notification.notification-created.v2.payload.schema.json"
+        }
+      }
+    }
+  ]
+}

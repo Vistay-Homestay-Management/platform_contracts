@@ -1,6 +1,9 @@
 subscription NotificationStream($afterCursor: Cursor) {
   notificationStream(afterCursor: $afterCursor) {
     cursor
+    eventVersion
+    notificationRevision
+    deliveryGuarantee
     notification {
       id
       category
@@ -9,6 +12,7 @@ subscription NotificationStream($afterCursor: Cursor) {
       channels
       createdAt
       readAt
+      inboxRevision
     }
   }
 }

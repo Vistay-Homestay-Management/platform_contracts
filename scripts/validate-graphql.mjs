@@ -45,7 +45,15 @@ const apiSchema = composition.schema
   .toAPISchema()
   .toGraphQLJSSchema();
 
-const operationFiles = ["viewer.graphql", "notification-stream.graphql", "payment-intent.graphql"];
+const operationFiles = [
+  "viewer.graphql",
+  "notification-stream.graphql",
+  "notification-inbox.graphql",
+  "notification-preferences.graphql",
+  "notification-operations.graphql",
+  "notification-templates.graphql",
+  "payment-intent.graphql",
+];
 for (const file of operationFiles) {
   const operation = parse(
     await readFile(new URL(`operations/${file}`, root), "utf8"),

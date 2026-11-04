@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/events/v1/notification.delivery-state-changed.payload.schema.json",
+  "title": "Notification delivery state changed payload v1",
+  "description": "Delivery state and bounded provider classification without raw destinations or provider payloads.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "deliveryId",
+    "notificationId",
+    "recipientAccountId",
+    "channel",
+    "provider",
+    "status",
+    "templateRevision",
+    "policyRevision",
+    "providerIdempotencyKey",
+    "attemptNumber",
+    "maximumAttempts",
+    "errorClass",
+    "errorCode",
+    "destinationMasked",
+    "contactSnapshotRevision",
+    "deliveryRevision",
+    "occurredAt"
+  ],
+  "properties": {
+    "deliveryId": { "type": "string", "format": "uuid" },
+    "notificationId": { "type": "string", "format": "uuid" },
+    "recipientAccountId": { "type": "string", "format": "uuid" },
+    "channel": { "enum": ["IN_APP", "EMAIL", "PUSH"] },
+    "provider": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "maxLength": 80
+    },
+    "status": {
+      "enum": [
+        "QUEUED",
+        "PROCESSING",
+        "ACCEPTED",
+        "SENT",
+        "DELIVERED",
+        "READ",
+        "FAILED",
+        "BOUNCED",
+        "DEAD_LETTERED",
+        "CANCELLED"
+      ]
+    },
+    "templateRevision": { "type": "integer", "minimum": 1 },
+    "policyRevision": { "type": "integer", "minimum": 1 },
+    "providerIdempotencyKey": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "attemptNumber": { "type": "integer", "minimum": 0 },
+    "maximumAttempts": { "type": "integer", "minimum": 1 },
+    "errorClass": {
+      "anyOf": [
+        {
+          "enum": [
+            "TRANSIENT",
+            "PERMANENT",
+            "RATE_LIMITED",
+            "PROVIDER_OUTAGE",
+            "INVALID_CONTACT",
+            "BOUNCED",
+            "UNKNOWN"
+          ]
+        },
+        { "type": "null" }
+      ]
+    },
+    "errorCode": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_.-]*$",
+          "maxLength": 100
+        },
+        { "type": "null" }
+      ]
+    },
+    "destinationMasked": {
+      "anyOf": [
+        { "type": "string", "minLength": 1, "maxLength": 254 },
+        { "type": "null" }
+      ]
+    },
+    "contactSnapshotRevision": {
+      "anyOf": [{ "type": "integer", "minimum": 1 }, { "type": "null" }]
+    },
+    "providerMessageId": {
+      "anyOf": [{ "type": "string", "maxLength": 180 }, { "type": "null" }]
+    },
+    "retryAfterSeconds": {
+      "anyOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }]
+    },
+    "deliveryRevision": { "type": "integer", "minimum": 1 },
+    "occurredAt": { "type": "string", "format": "date-time" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "status": { "enum": ["FAILED", "BOUNCED", "DEAD_LETTERED"] } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": { "errorClass": { "not": { "type": "null" } } }
+      }
+    },
+    {
+      "if": {
+        "properties": { "status": { "enum": ["QUEUED", "PROCESSING"] } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": { "providerMessageId": { "type": "null" } }
+      }
+    }
+  ]
+}

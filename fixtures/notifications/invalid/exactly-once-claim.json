@@ -1,0 +1,10 @@
+{
+  "fixtureVersion": 1,
+  "kind": "exactly-once-display-claim",
+  "valid": false,
+  "violation": "EXACTLY_ONCE_DISPLAY",
+  "request": {
+    "deliveryGuarantee": "EXACTLY_ONCE"
+  },
+  "expectedError": "AT_LEAST_ONCE_ONLY"
+}

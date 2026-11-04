@@ -1,0 +1,16 @@
+{
+  "fixtureVersion": 1,
+  "kind": "notification-recipient-resolution",
+  "valid": true,
+  "request": {
+    "recipientKind": "BOOKING_PARTY",
+    "accountId": "22222222-2222-4222-8222-222222222222",
+    "contactSnapshotRevision": 7
+  },
+  "expected": {
+    "destinationStoredAs": "ENCRYPTED_SNAPSHOT_PLUS_MASKED_DISPLAY",
+    "canonicalProfileCopied": false,
+    "crossPartitionAccess": false,
+    "exceptionOnMissingContact": "MISSING_CONTACT"
+  }
+}

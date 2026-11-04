@@ -1,0 +1,18 @@
+{
+  "fixtureVersion": 1,
+  "kind": "notification-push-feature-flag",
+  "valid": true,
+  "request": {
+    "pushEnabled": false,
+    "deviceReferencePresent": true,
+    "notificationTypeAllowsPush": true,
+    "channels": ["IN_APP", "EMAIL", "PUSH"],
+    "requiredChannels": ["IN_APP", "EMAIL"],
+    "optionalChannels": ["PUSH"]
+  },
+  "expected": {
+    "effectiveChannels": ["IN_APP", "EMAIL"],
+    "mandatoryChannelsRemainEnabled": true,
+    "pushCreated": false
+  }
+}

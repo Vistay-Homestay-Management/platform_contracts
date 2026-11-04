@@ -1,0 +1,87 @@
+query NotificationDelivery($id: ID!) {
+  notificationDelivery(id: $id) {
+    id
+    notificationId
+    channel
+    status
+    provider
+    templateRevision
+    policyRevision
+    destinationMasked
+    contactSnapshotRevision
+    attemptCount
+    maximumAttempts
+    nextAttemptAt
+    lastErrorCode
+    lastErrorClass
+    providerMessageId
+    revision
+    updatedAt
+  }
+}
+
+query NotificationProviderHealth {
+  notificationProviderHealth {
+    provider
+    status
+    circuitState
+    failureRate
+    latencyMilliseconds
+    retryAfterSeconds
+    checkedAt
+  }
+}
+
+query NotificationRecipientExceptions($input: RecipientExceptionQueryInput) {
+  notificationRecipientExceptions(input: $input) {
+    nodes {
+      id
+      notificationId
+      recipientAccountId
+      recipientKind
+      exceptionType
+      status
+      reasonCode
+      resolutionAction
+      destinationMasked
+      contactSnapshotRevision
+      revision
+      createdAt
+      resolvedAt
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+      startCursor
+      cursorState
+      retainedFrom
+      reconcileFrom
+    }
+  }
+}
+
+mutation RetryNotificationDelivery($input: RetryNotificationDeliveryInput!) {
+  retryNotificationDelivery(input: $input) {
+    id
+    status
+    attemptCount
+    maximumAttempts
+    nextAttemptAt
+    lastErrorCode
+    lastErrorClass
+    revision
+    updatedAt
+  }
+}
+
+mutation ResolveNotificationRecipientException(
+  $input: ResolveRecipientExceptionInput!
+) {
+  resolveNotificationRecipientException(input: $input) {
+    id
+    status
+    resolutionAction
+    revision
+    resolvedAt
+  }
+}

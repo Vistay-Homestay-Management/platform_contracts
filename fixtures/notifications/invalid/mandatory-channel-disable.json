@@ -1,0 +1,12 @@
+{
+  "fixtureVersion": 1,
+  "kind": "mandatory-channel-disable",
+  "valid": false,
+  "violation": "MANDATORY_CHANNEL_DISABLED",
+  "request": {
+    "channel": "EMAIL",
+    "required": true,
+    "enabled": false
+  },
+  "expectedError": "MANDATORY_CHANNEL_CANNOT_BE_DISABLED"
+}
