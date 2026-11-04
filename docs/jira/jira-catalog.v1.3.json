@@ -37089,8 +37089,8 @@
       "summary": "[VS-E10] Owner Settlement & Finance Dashboard",
       "manageDescription": true,
       "actor": "Finance settlement reviewer and property owner",
-      "outcome": "Owner Settlement & Finance Dashboard is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This epic is part of the ViStay VS-E10 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "Owner settlement delivery is decomposed into authoritative term snapshots, source-derived calculation, exception/adjustment review, immutable approval/correction, payout/dashboard, Admin/Host consumers, contracts and Postman evidence.",
+      "context": "The Epic and Stories coordinate outcomes only; historical S01 stays immutable and executable repository leaves carry implementation and evidence.",
       "inScope": [
         "Implement and verify: Owner Settlement & Finance Dashboard.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -37199,7 +37199,7 @@
         "source-vs-e10"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "web",
       "dispatchable": false,
       "testCases": [],
@@ -37341,8 +37341,8 @@
       "parentSourceId": "VS-E10",
       "manageDescription": true,
       "actor": "Finance settlement reviewer and property owner",
-      "outcome": "Calculate traceable revenue/cost/commission/rent lines is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E10 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "S02 has explicit executable Finance, Admin, Host or infrastructure children with authoritative source and field-level access rules.",
+      "context": "Assign only executable children; the Story remains a non-dispatchable business outcome boundary.",
       "inScope": [
         "Implement and verify: Calculate traceable revenue/cost/commission/rent lines.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -37451,13 +37451,196 @@
         "source-vs-e10-s02"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "web",
       "dispatchable": false,
       "testCases": [],
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E10-S02-ST01",
+      "jiraKey": "SCRUM-736",
+      "issueType": "Subtask",
+      "summary": "[VS-E10-S02-ST01] Calculate traceable settlement lines from authoritative sources",
+      "parentSourceId": "VS-E10-S02",
+      "manageDescription": true,
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Finance calculates immutable, source-linked MANAGEMENT, LEASED and OWNED settlement lines from verified collections, refunds, booking service dates and an effective Property term snapshot rather than caller-supplied money.",
+      "context": "SettlementPeriodService currently deletes lines and accepts grossRevenue, commissionRate and cleaningFee in CalculateSettlementCommand. Replace that unsafe input with source identities and a reproducible calculation revision after the T01 basis remediation is available.",
+      "inScope": [
+        "Replace monetary bookingItems input with period ID, expectedVersion, source cutoff and idempotency key; load frozen Property term plus Finance collection/refund allocations and Booking service-date components through versioned service boundaries.",
+        "For MANAGEMENT, calculate basis from verified collected lodging after discounts/refunds; exclude unearned deposit, staff markup, damage, cleaning and employee commission; include OTA commission only when the effective term explicitly assigns it to the host settlement.",
+        "For LEASED, create fixed-rent lines independent of booking revenue and prorate partial calendar months using actual days in the property timezone with VND HALF_UP plus a deterministic final residual; OWNED creates no host payable line.",
+        "Persist line category, source IDs/revisions, covered service dates, formula inputs, term/calculation version and fingerprint; recalculation appends a new version and preserves every prior line."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "businessRules": [
+        "MANAGEMENT basis is verified collected lodging after discounts/refunds; exclude unearned deposit, staff markup, damage/cleaning, and employee commission.",
+        "OTA commission is included only when the effective contract says so.",
+        "LEASED uses fixed monthly amount with actual-day proration; OWNED produces no host payable.",
+        "Closed periods are immutable; reopen requires maker-checker reason and compensating history."
+      ],
+      "repositories": [
+        "service_finance"
+      ],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "Finance owns settlement periods/versions, calculation lines, exceptions, adjustments, payable/payout state, financial dashboard projections and exports; Property owns effective property-party and immutable commercial term versions; Booking owns reservation commercial service-date snapshots."
+      ],
+      "stateMachine": [
+        "Calculation version is DRAFT -> CALCULATED -> SUPERSEDED, or FAILED; a submitted/approved version cannot be recalculated in place.",
+        "Each line is immutable and belongs to one calculation version; a correction creates a replacement or compensating line referencing the original.",
+        "An incomplete source cutoff remains FAILED/EXCEPTION and cannot advance to approval."
+      ],
+      "authorization": {
+        "actions": [
+          "settlement:calculate",
+          "settlement:view",
+          "settlement:source:view"
+        ],
+        "dataPartitions": [
+          "HOST_SELF for settlements/payables belonging to the authenticated host party; ADMIN organization plus SITE/BRANCH for operational work; SYSTEM only for authenticated projection, repair, or payout integration."
+        ],
+        "fieldGroups": [
+          "SETTLEMENT_SUMMARY is baseline; FINANCIAL, CONTRACT_TERM, ADJUSTMENT_DETAIL, PAYOUT_DETAIL, PII, DOCUMENT, and INTERNAL_AUDIT require explicit grants."
+        ]
+      },
+      "failureSemantics": [
+        "Reject calculation or transition when the effective contract term, verified collection/refund basis, booking service-date allocation, currency, partition, or expected revision is absent or inconsistent.",
+        "Return distinct stable term-missing, basis-incomplete, calculation-mismatch, adjustment-conflict, maker-checker, closed-period, stale-revision, forbidden, and dependency-unavailable codes without exposing another host or restricted contract terms.",
+        "Closed financial versions are immutable; corrections use a linked settlement revision, compensating line, adjustment, payable movement, or repair queue and never delete historical money."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E10-T01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E10-T01-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E10-T01-ST05",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E09-T08-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "complete authoritative sources for MANAGEMENT, LEASED and OWNED properties",
+          "when": "calculation runs",
+          "then": "one append-only version with traceable formulas/lines/totals/fingerprint is produced and each model follows its approved basis"
+        },
+        {
+          "id": "AC02",
+          "given": "caller-supplied money, missing/overlapping term, unverified collection, source/currency mismatch, excluded component leakage, stale revision, or missing grant",
+          "when": "calculation runs",
+          "then": "a stable error/exception is recorded and no approvable calculation is produced"
+        },
+        {
+          "id": "AC03",
+          "given": "identical inputs replay or two calculations race",
+          "when": "processing completes",
+          "then": "one canonical version/fingerprint remains current and historical versions/lines are not deleted"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-finance",
+        "roadmap-v1-3",
+        "source-vs-e10-s02-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E10-S02-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*SettlementCalculation*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *SettlementCalculation*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*SettlementCalculation*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *SettlementCalculation*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "service_finance",
+      "repositorySlices": [
+        {
+          "repository": "service_finance",
+          "paths": [
+            "src/main/resources/db/migration/V15__traceable_settlement_lines.sql",
+            "src/main/java/com/vistay/finance/application/dto/CalculateSettlementCommand.java",
+            "src/main/java/com/vistay/finance/application/service/SettlementCalculationService.java",
+            "src/main/java/com/vistay/finance/domain/model/SettlementLine.java",
+            "src/main/java/com/vistay/finance/adapter/in/rest/SettlementController.java",
+            "src/test/java/com/vistay/finance/application/service/SettlementCalculationIntegrationTest.java"
+          ],
+          "artifacts": [
+            "source-only calculation command",
+            "append-only settlement calculation versions",
+            "MANAGEMENT/LEASED/OWNED calculation engine",
+            "boundary/source/fingerprint tests"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E10-S03",
@@ -37467,8 +37650,8 @@
       "parentSourceId": "VS-E10",
       "manageDescription": true,
       "actor": "Finance settlement reviewer and property owner",
-      "outcome": "Review exceptions and controlled adjustments is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E10 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "S03 has explicit executable Finance, Admin, Host or infrastructure children with authoritative source and field-level access rules.",
+      "context": "Assign only executable children; the Story remains a non-dispatchable business outcome boundary.",
       "inScope": [
         "Implement and verify: Review exceptions and controlled adjustments.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -37577,13 +37760,359 @@
         "source-vs-e10-s03"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "web",
       "dispatchable": false,
       "testCases": [],
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E10-S03-ST01",
+      "jiraKey": "SCRUM-737",
+      "issueType": "Subtask",
+      "summary": "[VS-E10-S03-ST01] Implement settlement exception and adjustment ledger",
+      "parentSourceId": "VS-E10-S03",
+      "manageDescription": true,
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Finance exposes calculation exceptions and controls settlement credits/debits through an append-only, maker-checker adjustment ledger with explicit source and host-visible reason.",
+      "context": "settlement_adjustments currently accepts and immediately totals a signed amount from one operator. Add exception classification, proposal/approval separation, immutable evidence and correction behavior.",
+      "inScope": [
+        "Add exception records for missing term/snapshot/source, currency or amount mismatch, duplicate booking/service period, unallocated refund, overlap and reconciliation imbalance with owner/age/resolution.",
+        "Replace immediate adjustment with propose, submit, approve/reject/cancel and query APIs using category, amount/currency, host-visible reason, internal evidence Media IDs, source reference, maker/checker and expectedVersion.",
+        "Require a checker distinct from proposer and calculator for monetary adjustments; approved adjustments appear only in a new calculation/correction version.",
+        "Prevent adjustments from disguising an unresolved source/term error; immutable closed-period corrections post to a linked correction period/version."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "businessRules": [
+        "MANAGEMENT basis is verified collected lodging after discounts/refunds; exclude unearned deposit, staff markup, damage/cleaning, and employee commission.",
+        "OTA commission is included only when the effective contract says so.",
+        "LEASED uses fixed monthly amount with actual-day proration; OWNED produces no host payable.",
+        "Closed periods are immutable; reopen requires maker-checker reason and compensating history."
+      ],
+      "repositories": [
+        "service_finance"
+      ],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "Finance owns settlement periods/versions, calculation lines, exceptions, adjustments, payable/payout state, financial dashboard projections and exports; Property owns effective property-party and immutable commercial term versions; Booking owns reservation commercial service-date snapshots."
+      ],
+      "stateMachine": [
+        "Exception is OPEN -> IN_REVIEW -> RESOLVED or WAIVED; WAIVED requires explicit privileged reason and never supplies a missing monetary source.",
+        "Adjustment is DRAFT -> SUBMITTED -> APPROVED or REJECTED/CANCELLED; approved content is immutable.",
+        "A closed-period adjustment creates a CORRECTION_PENDING successor and compensating line instead of mutating the closed version."
+      ],
+      "authorization": {
+        "actions": [
+          "settlement:exception:view",
+          "settlement:exception:resolve",
+          "settlement:adjustment:create",
+          "settlement:adjustment:approve"
+        ],
+        "dataPartitions": [
+          "HOST_SELF for settlements/payables belonging to the authenticated host party; ADMIN organization plus SITE/BRANCH for operational work; SYSTEM only for authenticated projection, repair, or payout integration."
+        ],
+        "fieldGroups": [
+          "SETTLEMENT_SUMMARY is baseline; FINANCIAL, CONTRACT_TERM, ADJUSTMENT_DETAIL, PAYOUT_DETAIL, PII, DOCUMENT, and INTERNAL_AUDIT require explicit grants."
+        ]
+      },
+      "failureSemantics": [
+        "Reject calculation or transition when the effective contract term, verified collection/refund basis, booking service-date allocation, currency, partition, or expected revision is absent or inconsistent.",
+        "Return distinct stable term-missing, basis-incomplete, calculation-mismatch, adjustment-conflict, maker-checker, closed-period, stale-revision, forbidden, and dependency-unavailable codes without exposing another host or restricted contract terms.",
+        "Closed financial versions are immutable; corrections use a linked settlement revision, compensating line, adjustment, payable movement, or repair queue and never delete historical money."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E10-S02-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "a classified exception or valid adjustment proposal with distinct authorized checker",
+          "when": "review/approval completes",
+          "then": "one append-only resolution/approved adjustment and a traceable recalculation/correction effect are persisted"
+        },
+        {
+          "id": "AC02",
+          "given": "self-approval, hidden source error, amount/currency mismatch, closed-period in-place change, stale version, duplicate changed request, or missing partition/field grant",
+          "when": "review/approval runs",
+          "then": "the precise stable error leaves current settlement totals unchanged"
+        },
+        {
+          "id": "AC03",
+          "given": "commands replay or reviewers race",
+          "when": "processing settles",
+          "then": "one current decision and a complete immutable exception/adjustment timeline remain"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-finance",
+        "roadmap-v1-3",
+        "source-vs-e10-s03-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E10-S03-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*SettlementAdjustment*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *SettlementAdjustment*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*SettlementAdjustment*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *SettlementAdjustment*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "service_finance",
+      "repositorySlices": [
+        {
+          "repository": "service_finance",
+          "paths": [
+            "src/main/resources/db/migration/V16__settlement_exceptions_adjustments.sql",
+            "src/main/java/com/vistay/finance/domain/model/SettlementException.java",
+            "src/main/java/com/vistay/finance/domain/model/SettlementAdjustment.java",
+            "src/main/java/com/vistay/finance/application/service/SettlementExceptionService.java",
+            "src/main/java/com/vistay/finance/application/service/SettlementAdjustmentService.java",
+            "src/main/java/com/vistay/finance/adapter/in/rest/SettlementController.java",
+            "src/test/java/com/vistay/finance/application/service/SettlementAdjustmentIntegrationTest.java"
+          ],
+          "artifacts": [
+            "exception queue and resolution API",
+            "maker-checker adjustment aggregate",
+            "correction-version integration",
+            "authorization/concurrency/replay tests"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
+      "sourceId": "VS-E10-S03-ST02",
+      "jiraKey": "SCRUM-738",
+      "issueType": "Subtask",
+      "summary": "[VS-E10-S03-ST02] Build Admin settlement exception workspace",
+      "parentSourceId": "VS-E10-S03",
+      "manageDescription": true,
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Admin Web and Mobile provide a partition-safe exception queue and explicit adjustment maker-checker workflow with formula/source evidence and no client-side total mutation.",
+      "context": "No settlement UI exists in frontend_admin today; this leaf creates new shared-client and UI artifacts after Finance exception/adjustment APIs are available. Admin Web and Mobile consume authoritative Finance/Property results through the shared client and never calculate settlement, proration, adjustment, payable, or payout values locally.",
+      "inScope": [
+        "Add typed exception list/claim/resolve and adjustment create/submit/approve/reject/status operations with stable error mapping.",
+        "Build Web queue with age/category/source diagnostics, calculation diff, protected evidence, assignment, host-visible/internal reasons and explicit maker-checker confirmation.",
+        "Build Mobile read/claim/status and proposal parity; hide approval/evidence details unless actions and ADJUSTMENT_DETAIL/INTERNAL_AUDIT grants permit them.",
+        "Handle loading, empty, redaction, self-approval, stale claim/revision, resolved source, closed period, replay and dependency failure."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "businessRules": [
+        "MANAGEMENT basis is verified collected lodging after discounts/refunds; exclude unearned deposit, staff markup, damage/cleaning, and employee commission.",
+        "OTA commission is included only when the effective contract says so.",
+        "LEASED uses fixed monthly amount with actual-day proration; OWNED produces no host payable.",
+        "Closed periods are immutable; reopen requires maker-checker reason and compensating history."
+      ],
+      "repositories": [
+        "frontend_admin"
+      ],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "settlement:exception:view",
+          "settlement:exception:resolve",
+          "settlement:adjustment:create",
+          "settlement:adjustment:approve"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E10-S03-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "authorized makers/checkers and a current exception/adjustment",
+          "when": "review and approval complete",
+          "then": "Web/Mobile refresh to the authoritative decision and new Finance totals/version without local arithmetic"
+        },
+        {
+          "id": "AC02",
+          "given": "missing action/partition/ADJUSTMENT_DETAIL/INTERNAL_AUDIT grant, self-approval, stale revision, closed-period mutation, or dependency failure",
+          "when": "render/submit occurs",
+          "then": "restricted controls/data are absent or precise non-leaking feedback blocks false success"
+        },
+        {
+          "id": "AC03",
+          "given": "claim/approval replays or the app resumes",
+          "when": "current data is fetched",
+          "then": "one durable decision/timeline is shown and no silent duplicate mutation occurs"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-frontend-admin",
+        "roadmap-v1-3",
+        "source-vs-e10-s03-st02"
+      ],
+      "decisionNoteVi": "Leaf VS-E10-S03-ST02 chỉ sở hữu artifact của frontend_admin; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E10-S03-ST02 shared-client plus Admin Web/Mobile Vitest report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "npm run typecheck",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "frontend_admin workspace typecheck report"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "frontend_admin",
+      "repositorySlices": [
+        {
+          "repository": "frontend_admin",
+          "paths": [
+            "packages/api-client/src/index.ts",
+            "packages/api-client/src/index.test.ts",
+            "apps/web/src/SettlementExceptionWorkspace.tsx",
+            "apps/web/src/SettlementExceptionWorkspace.test.tsx",
+            "apps/mobile/src/SettlementExceptionWorkspace.tsx",
+            "apps/mobile/src/SettlementExceptionWorkspace.test.tsx",
+            "apps/web/src/App.tsx",
+            "apps/mobile/App.tsx"
+          ],
+          "artifacts": [
+            "typed exception/adjustment client",
+            "Admin Web review queue",
+            "Admin Mobile review/status view",
+            "permission/maker-checker/replay tests"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E10-S04",
@@ -37593,8 +38122,8 @@
       "parentSourceId": "VS-E10",
       "manageDescription": true,
       "actor": "Finance settlement reviewer and property owner",
-      "outcome": "Approve/close/reopen under maker-checker policy is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E10 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "S04 has explicit executable Finance, Admin, Host or infrastructure children with authoritative source and field-level access rules.",
+      "context": "Assign only executable children; the Story remains a non-dispatchable business outcome boundary.",
       "inScope": [
         "Implement and verify: Approve/close/reopen under maker-checker policy.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -37703,13 +38232,190 @@
         "source-vs-e10-s04"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "web",
       "dispatchable": false,
       "testCases": [],
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": []
+    },
+    {
+      "sourceId": "VS-E10-S04-ST01",
+      "jiraKey": "SCRUM-739",
+      "issueType": "Subtask",
+      "summary": "[VS-E10-S04-ST01] Harden settlement approval close and corrective reopen",
+      "parentSourceId": "VS-E10-S04",
+      "manageDescription": true,
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Finance submits, approves/rejects, closes and corrects settlement versions under maker-checker policy while preserving the exact reviewed calculation and every prior approval.",
+      "context": "SettlementPeriod currently checks only opener versus approver, stores rejection/reopen text in notes, clears approval on reopen, and allows an approved period to be reopened in place. Replace those behaviors additively.",
+      "inScope": [
+        "Freeze calculation version/fingerprint, source cutoff, term snapshot, approved adjustments and totals on submit; reject any changed dependency before approval.",
+        "Require checker distinct from opener, calculator and adjustment proposers; record submitter/reviewer decisions, reason, revision, timestamps and authorization evidence in append-only transition rows.",
+        "Model submit, approve/reject, close after payable creation/finality and corrective reopen; a closed/approved historical version remains immutable and reopen creates a linked correction revision.",
+        "Add expectedVersion/idempotency to every transition and outbox settlement-version state changes transactionally."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "businessRules": [
+        "MANAGEMENT basis is verified collected lodging after discounts/refunds; exclude unearned deposit, staff markup, damage/cleaning, and employee commission.",
+        "OTA commission is included only when the effective contract says so.",
+        "LEASED uses fixed monthly amount with actual-day proration; OWNED produces no host payable.",
+        "Closed periods are immutable; reopen requires maker-checker reason and compensating history."
+      ],
+      "repositories": [
+        "service_finance"
+      ],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "Finance owns settlement periods/versions, calculation lines, exceptions, adjustments, payable/payout state, financial dashboard projections and exports; Property owns effective property-party and immutable commercial term versions; Booking owns reservation commercial service-date snapshots."
+      ],
+      "stateMachine": [
+        "OPEN -> CALCULATED -> PENDING_APPROVAL -> APPROVED or REJECTED; APPROVED -> PAYABLE_CREATED -> PARTIALLY_PAID/PAID -> CLOSED.",
+        "A rejected calculation may create a replacement version; an approved/closed version never returns to an editable state.",
+        "Corrective reopen creates CORRECTION_PENDING -> CALCULATED successor linked to the frozen predecessor and requires reason plus distinct approval."
+      ],
+      "authorization": {
+        "actions": [
+          "settlement:submit",
+          "settlement:approve",
+          "settlement:reject",
+          "settlement:close",
+          "settlement:reopen"
+        ],
+        "dataPartitions": [
+          "HOST_SELF for settlements/payables belonging to the authenticated host party; ADMIN organization plus SITE/BRANCH for operational work; SYSTEM only for authenticated projection, repair, or payout integration."
+        ],
+        "fieldGroups": [
+          "SETTLEMENT_SUMMARY is baseline; FINANCIAL, CONTRACT_TERM, ADJUSTMENT_DETAIL, PAYOUT_DETAIL, PII, DOCUMENT, and INTERNAL_AUDIT require explicit grants."
+        ]
+      },
+      "failureSemantics": [
+        "Reject calculation or transition when the effective contract term, verified collection/refund basis, booking service-date allocation, currency, partition, or expected revision is absent or inconsistent.",
+        "Return distinct stable term-missing, basis-incomplete, calculation-mismatch, adjustment-conflict, maker-checker, closed-period, stale-revision, forbidden, and dependency-unavailable codes without exposing another host or restricted contract terms.",
+        "Closed financial versions are immutable; corrections use a linked settlement revision, compensating line, adjustment, payable movement, or repair queue and never delete historical money."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E10-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E10-S03-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "a complete unchanged calculated version and authorized distinct checker",
+          "when": "submit/approve/close runs",
+          "then": "the exact fingerprint and decisions are frozen with one legal transition and outbox event"
+        },
+        {
+          "id": "AC02",
+          "given": "self-approval, changed source/term/adjustment, unresolved exception, stale revision, illegal state, missing grant, or in-place reopen of approved history",
+          "when": "transition runs",
+          "then": "a stable error returns and the frozen version/approval remains unchanged"
+        },
+        {
+          "id": "AC03",
+          "given": "commands race/replay or a closed period requires correction",
+          "when": "processing completes",
+          "then": "one transition/successor revision remains with the complete original approval history"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-finance",
+        "roadmap-v1-3",
+        "source-vs-e10-s04-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E10-S04-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*SettlementApproval*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *SettlementApproval*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*SettlementApproval*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *SettlementApproval*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "service_finance",
+      "repositorySlices": [
+        {
+          "repository": "service_finance",
+          "paths": [
+            "src/main/resources/db/migration/V17__settlement_approval_history.sql",
+            "src/main/java/com/vistay/finance/domain/model/SettlementPeriod.java",
+            "src/main/java/com/vistay/finance/domain/model/SettlementApprovalDecision.java",
+            "src/main/java/com/vistay/finance/application/service/SettlementApprovalService.java",
+            "src/main/java/com/vistay/finance/adapter/in/rest/SettlementController.java",
+            "src/test/java/com/vistay/finance/application/service/SettlementApprovalIntegrationTest.java"
+          ],
+          "artifacts": [
+            "frozen approval snapshot/fingerprint",
+            "append-only transition/decision history",
+            "corrective reopen revision",
+            "maker-checker/concurrency/outbox tests"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E10-S05",
@@ -37719,8 +38425,8 @@
       "parentSourceId": "VS-E10",
       "manageDescription": true,
       "actor": "Finance settlement reviewer and property owner",
-      "outcome": "Track payable/payment state and export secure dashboard data is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This story is part of the ViStay VS-E10 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "S05 has explicit executable Finance, Admin, Host or infrastructure children with authoritative source and field-level access rules.",
+      "context": "Assign only executable children; the Story remains a non-dispatchable business outcome boundary.",
       "inScope": [
         "Implement and verify: Track payable/payment state and export secure dashboard data.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -37829,7 +38535,7 @@
         "source-vs-e10-s05"
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "web",
       "dispatchable": false,
       "testCases": [],
@@ -37838,14 +38544,757 @@
       "activationBlockers": []
     },
     {
+      "sourceId": "VS-E10-S05-ST01",
+      "jiraKey": "SCRUM-740",
+      "issueType": "Subtask",
+      "summary": "[VS-E10-S05-ST01] Implement payable payout and partitioned dashboard projections",
+      "parentSourceId": "VS-E10-S05",
+      "manageDescription": true,
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Finance creates one payable from an approved settlement, appends partial/final payout movements, and serves host/branch-partitioned dashboard, statement and secure export projections.",
+      "context": "Finance already has payables, createPayable/recordPayout and unfiltered findAll dashboard/export APIs guarded by ALL scope. Harden identity, payout ledger, partition filters, host self-service and export behavior.",
+      "inScope": [
+        "Create payable idempotently from the exact approved settlement version/fingerprint with host/property/contract-term references and due date; OWNED settlement creates no host payable.",
+        "Record payout movements with amount/currency/account/reference/occurredAt/operator, prevent overpayment/duplicate reference, derive OPEN/PARTIALLY_PAID/SETTLED/OVERDUE and close settlement only after finality.",
+        "Add cursor-filtered host/branch/property/status/date dashboard and settlement statement projections; enforce HOST_SELF or ADMIN partition in repository queries, not post-filtering findAll.",
+        "Generate authorized redacted CSV export with immutable request/filter/as-of metadata, checksum, expiry and audit; never include payment credentials or cross-host rows."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "businessRules": [
+        "MANAGEMENT basis is verified collected lodging after discounts/refunds; exclude unearned deposit, staff markup, damage/cleaning, and employee commission.",
+        "OTA commission is included only when the effective contract says so.",
+        "LEASED uses fixed monthly amount with actual-day proration; OWNED produces no host payable.",
+        "Closed periods are immutable; reopen requires maker-checker reason and compensating history."
+      ],
+      "repositories": [
+        "service_finance"
+      ],
+      "interfaces": [
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
+      ],
+      "dataOwnership": [
+        "Finance owns settlement periods/versions, calculation lines, exceptions, adjustments, payable/payout state, financial dashboard projections and exports; Property owns effective property-party and immutable commercial term versions; Booking owns reservation commercial service-date snapshots."
+      ],
+      "stateMachine": [
+        "Payable is OPEN -> PARTIALLY_PAID -> SETTLED, or OVERDUE/CANCELLED; payout movements are immutable and corrections are reversals.",
+        "Export request is REQUESTED -> GENERATING -> READY/FAILED -> EXPIRED and its download is purpose-bound/audited.",
+        "Settlement may close only when payable is settled or an explicit approved zero-payable model applies."
+      ],
+      "authorization": {
+        "actions": [
+          "settlement:payable:create",
+          "settlement:payout:record",
+          "settlement:dashboard:view",
+          "settlement:statement:view",
+          "settlement:export"
+        ],
+        "dataPartitions": [
+          "HOST_SELF for settlements/payables belonging to the authenticated host party; ADMIN organization plus SITE/BRANCH for operational work; SYSTEM only for authenticated projection, repair, or payout integration."
+        ],
+        "fieldGroups": [
+          "SETTLEMENT_SUMMARY is baseline; FINANCIAL, CONTRACT_TERM, ADJUSTMENT_DETAIL, PAYOUT_DETAIL, PII, DOCUMENT, and INTERNAL_AUDIT require explicit grants."
+        ]
+      },
+      "failureSemantics": [
+        "Reject calculation or transition when the effective contract term, verified collection/refund basis, booking service-date allocation, currency, partition, or expected revision is absent or inconsistent.",
+        "Return distinct stable term-missing, basis-incomplete, calculation-mismatch, adjustment-conflict, maker-checker, closed-period, stale-revision, forbidden, and dependency-unavailable codes without exposing another host or restricted contract terms.",
+        "Closed financial versions are immutable; corrections use a linked settlement revision, compensating line, adjustment, payable movement, or repair queue and never delete historical money."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E10-S04-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E09-T08-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an approved payable settlement and authorized payout/dashboard callers",
+          "when": "payable, partial/final payout, query and export run",
+          "then": "one reconciled payable ledger and only partition-eligible projections/export rows are produced"
+        },
+        {
+          "id": "AC02",
+          "given": "OWNED payable attempt, overpayment, duplicate changed reference, currency/fingerprint mismatch, cross-host/branch access, missing field grant, or stale revision",
+          "when": "mutation/query/export runs",
+          "then": "a stable error or redacted result occurs without incorrect movement or row leakage"
+        },
+        {
+          "id": "AC03",
+          "given": "payable/payout/export commands replay or race",
+          "when": "processing completes",
+          "then": "one business movement/export result remains and payable plus settlement totals reconcile"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "observability": [
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-service-finance",
+        "roadmap-v1-3",
+        "source-vs-e10-s05-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E10-S05-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*SettlementPayoutDashboard*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *SettlementPayoutDashboard*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*SettlementPayoutDashboard*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *SettlementPayoutDashboard*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "service_finance",
+      "repositorySlices": [
+        {
+          "repository": "service_finance",
+          "paths": [
+            "src/main/resources/db/migration/V18__settlement_payout_dashboard.sql",
+            "src/main/java/com/vistay/finance/application/service/SettlementPayoutService.java",
+            "src/main/java/com/vistay/finance/application/service/SettlementDashboardService.java",
+            "src/main/java/com/vistay/finance/adapter/in/rest/SettlementController.java",
+            "src/main/java/com/vistay/finance/domain/repository/SettlementPeriodRepository.java",
+            "src/main/java/com/vistay/finance/domain/repository/PayableRepository.java",
+            "src/test/java/com/vistay/finance/application/service/SettlementPayoutDashboardIntegrationTest.java"
+          ],
+          "artifacts": [
+            "idempotent payable creation",
+            "append-only payout movement ledger",
+            "partitioned dashboard/statement queries",
+            "audited redacted CSV export"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
+      "sourceId": "VS-E10-S05-ST02",
+      "jiraKey": "SCRUM-741",
+      "issueType": "Subtask",
+      "summary": "[VS-E10-S05-ST02] Build Admin settlement and payout dashboard",
+      "parentSourceId": "VS-E10-S05",
+      "manageDescription": true,
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Admin Web and Mobile provide partition-safe settlement calculation review, approval, payable/payout tracking, statement detail and secure export using authoritative Finance revisions.",
+      "context": "No settlement/dashboard UI exists in frontend_admin today; implement new shared-client and destinations against the hardened Finance APIs. Admin Web and Mobile consume authoritative Finance/Property results through the shared client and never calculate settlement, proration, adjustment, payable, or payout values locally.",
+      "inScope": [
+        "Add typed settlement list/detail/timeline, calculate/submit/approve/reject/correct, payable/payout, dashboard and export operations with stable errors.",
+        "Build Web dashboard filters/KPIs, formula/source line detail, version diff, approval confirmation, payable/payout timeline and expiring export status.",
+        "Build Mobile summary/detail/approval-status and bounded payout visibility; hide high-risk actions and protected fields unless explicitly granted.",
+        "Handle loading/empty/redaction, unresolved exceptions, fingerprint change, self-approval, stale revision, partial payout, export expiry, replay and dependency failure."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "businessRules": [
+        "MANAGEMENT basis is verified collected lodging after discounts/refunds; exclude unearned deposit, staff markup, damage/cleaning, and employee commission.",
+        "OTA commission is included only when the effective contract says so.",
+        "LEASED uses fixed monthly amount with actual-day proration; OWNED produces no host payable.",
+        "Closed periods are immutable; reopen requires maker-checker reason and compensating history."
+      ],
+      "repositories": [
+        "frontend_admin"
+      ],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "settlement:view",
+          "settlement:calculate",
+          "settlement:approve",
+          "settlement:payout:record",
+          "settlement:dashboard:view",
+          "settlement:export"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E10-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E10-S03-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E10-S04-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E10-S05-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E10-T01-ST05",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authorized operator and authoritative current settlement",
+          "when": "review/approval/payout/dashboard/export succeeds",
+          "then": "Web/Mobile show the new revision/state and reconciled Finance totals without client-side calculation"
+        },
+        {
+          "id": "AC02",
+          "given": "missing action/partition/field grant, unresolved exception, changed fingerprint, self-approval, stale revision, partial failure, or expired export",
+          "when": "render/submit occurs",
+          "then": "restricted controls/data are absent or precise non-leaking feedback blocks false success"
+        },
+        {
+          "id": "AC03",
+          "given": "mutation replays or app resumes/refetches",
+          "when": "durable state loads",
+          "then": "one timeline/payable/export result appears and no silent duplicate financial mutation occurs"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-frontend-admin",
+        "roadmap-v1-3",
+        "source-vs-e10-s05-st02"
+      ],
+      "decisionNoteVi": "Leaf VS-E10-S05-ST02 chỉ sở hữu artifact của frontend_admin; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E10-S05-ST02 shared-client plus Admin Web/Mobile Vitest report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "npm run typecheck",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "frontend_admin workspace typecheck report"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "frontend_admin",
+      "repositorySlices": [
+        {
+          "repository": "frontend_admin",
+          "paths": [
+            "packages/api-client/src/index.ts",
+            "packages/api-client/src/index.test.ts",
+            "apps/web/src/SettlementDashboard.tsx",
+            "apps/web/src/SettlementDashboard.test.tsx",
+            "apps/web/src/SettlementDetailWorkspace.tsx",
+            "apps/web/src/SettlementDetailWorkspace.test.tsx",
+            "apps/mobile/src/SettlementWorkspace.tsx",
+            "apps/mobile/src/SettlementWorkspace.test.tsx",
+            "apps/web/src/App.tsx",
+            "apps/mobile/App.tsx"
+          ],
+          "artifacts": [
+            "typed settlement/dashboard client",
+            "Admin Web dashboard/detail/approval workspace",
+            "Admin Mobile settlement view",
+            "permission/version/payout/export tests"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
+      "sourceId": "VS-E10-S05-ST03",
+      "jiraKey": "SCRUM-742",
+      "issueType": "Subtask",
+      "summary": "[VS-E10-S05-ST03] Build Host settlement statement and payout portal",
+      "parentSourceId": "VS-E10-S05",
+      "manageDescription": true,
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Host Web lets an authenticated host view only their settlement statements, explainable approved lines/adjustments, payable and payout timeline, and download a purpose-bound statement export.",
+      "context": "frontend_host is currently a Vite shell with no settlement screen or test script. This leaf creates the Host consumer; it cannot calculate, approve, adjust or record payouts.",
+      "inScope": [
+        "Add GraphQL/REST client module and routes for HOST_SELF settlement list/detail/statement/payable/payout/export status.",
+        "Build responsive summary cards, period filters, line formula explanation, approved host-visible adjustments, status/timeline, partial/final payout and export download state.",
+        "Hide internal notes, other host shares, employee commission, payment account credentials and INTERNAL_AUDIT data; show only the authenticated host party allocation.",
+        "Add Vitest configuration/tests and handle loading, empty, forbidden, redacted, corrected version, partial payout, export expiry, dependency and session refresh."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "businessRules": [
+        "MANAGEMENT basis is verified collected lodging after discounts/refunds; exclude unearned deposit, staff markup, damage/cleaning, and employee commission.",
+        "OTA commission is included only when the effective contract says so.",
+        "LEASED uses fixed monthly amount with actual-day proration; OWNED produces no host payable.",
+        "Closed periods are immutable; reopen requires maker-checker reason and compensating history."
+      ],
+      "repositories": [
+        "frontend_host"
+      ],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "settlement:statement:view",
+          "settlement:export"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E10-S05-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E10-T01-ST04",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E10-T01-ST05",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "an authenticated host with an approved settlement/payable",
+          "when": "list/detail/export loads",
+          "then": "only that host party allocation, explainable lines and payout timeline are displayed and export is purpose-bound"
+        },
+        {
+          "id": "AC02",
+          "given": "another host/property, missing HOST_SELF/FINANCIAL grant, internal-only adjustment/term/payment fields, expired export, or dependency failure",
+          "when": "the portal requests/renders data",
+          "then": "access is denied or fields are absent without leaking aggregate existence or values"
+        },
+        {
+          "id": "AC03",
+          "given": "a correction/payout arrives or session resumes",
+          "when": "the page refetches",
+          "then": "the authoritative version/timeline replaces stale data without creating a mutation"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-frontend-host",
+        "roadmap-v1-3",
+        "source-vs-e10-s05-st03"
+      ],
+      "decisionNoteVi": "Leaf VS-E10-S05-ST03 chỉ sở hữu artifact của frontend_host; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Host settlement portal Vitest report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "npm run build",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "frontend_host typecheck and production build report"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "frontend_host",
+      "repositorySlices": [
+        {
+          "repository": "frontend_host",
+          "paths": [
+            "package.json",
+            "src/lib/settlementClient.ts",
+            "src/pages/SettlementsPage.tsx",
+            "src/pages/SettlementStatementPage.tsx",
+            "src/pages/SettlementStatementPage.test.tsx",
+            "src/App.tsx",
+            "src/App.css",
+            "vite.config.ts"
+          ],
+          "artifacts": [
+            "Host settlement client/routes",
+            "responsive statement and payout UI",
+            "purpose-bound export flow",
+            "HOST_SELF/redaction/correction tests"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
+      "sourceId": "VS-E10-S05-ST04",
+      "jiraKey": "SCRUM-743",
+      "issueType": "Subtask",
+      "summary": "[VS-E10-S05-ST04] Add settlement lifecycle Postman evidence",
+      "parentSourceId": "VS-E10-S05",
+      "manageDescription": true,
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "A deterministic Postman/Newman flow proves settlement source calculation, exception/adjustment, maker-checker, payable/payout, partitioned dashboard, Host statement, export and correction behavior end to end.",
+      "context": "Existing authorization matrix references Finance controller tests but there is no callable settlement lifecycle Postman collection or deterministic cross-service fixture.",
+      "inScope": [
+        "Add collection/environment and Property/Booking/Finance fixtures for MANAGEMENT, LEASED partial month and OWNED, including verified collections/refunds and host/branch identities.",
+        "Exercise calculate, exception repair, adjustment maker-checker, submit/approve, payable, partial/final payout, Admin dashboard, HOST_SELF statement/export and closed-period correction.",
+        "Assert negative client-supplied money, missing/overlap term, excluded component, self-approval, stale revision, cross-host/branch access, overpayment, replay and dependency failure.",
+        "Add runner that checks compose/readiness, seeds safely, records Newman JSON/JUnit plus reconciliation queries and cleans deterministically."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "businessRules": [
+        "MANAGEMENT basis is verified collected lodging after discounts/refunds; exclude unearned deposit, staff markup, damage/cleaning, and employee commission.",
+        "OTA commission is included only when the effective contract says so.",
+        "LEASED uses fixed monthly amount with actual-day proration; OWNED produces no host payable.",
+        "Closed periods are immutable; reopen requires maker-checker reason and compensating history."
+      ],
+      "repositories": [
+        "platform_infrastructure"
+      ],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "settlement:calculate",
+          "settlement:adjustment:approve",
+          "settlement:approve",
+          "settlement:payout:record",
+          "settlement:statement:view",
+          "settlement:export"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E10-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E10-S03-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E10-S04-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E10-S05-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E10-S05-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E10-S05-ST03",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "clean local services and deterministic MANAGEMENT/LEASED/OWNED fixtures",
+          "when": "the runner executes",
+          "then": "calculation through payout/statement/export and correction happy paths pass with balanced source/fingerprint evidence"
+        },
+        {
+          "id": "AC02",
+          "given": "unsafe monetary input, term/source/exclusion error, self-approval, stale revision, cross-partition access, overpayment, replay or dependency failure",
+          "when": "negative scenarios run",
+          "then": "stable errors/redaction and absence of partial financial effects are asserted"
+        },
+        {
+          "id": "AC03",
+          "given": "the collection runs twice",
+          "when": "cleanup/reseed/replay complete",
+          "then": "no duplicate settlement version, adjustment, approval, payable, payout or export business effect remains"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "repo-platform-infrastructure",
+        "roadmap-v1-3",
+        "source-vs-e10-s05-st04"
+      ],
+      "decisionNoteVi": "Leaf VS-E10-S05-ST04 chỉ sở hữu artifact của platform_infrastructure; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "infrastructure",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "operational",
+          "command": "docker compose -f compose.full.yaml config",
+          "verifies": [
+            "AC01"
+          ],
+          "evidence": "redacted compose/routing validation output"
+        },
+        {
+          "id": "TEST-02",
+          "level": "e2e",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-PostmanSettlementLifecycle.ps1",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "settlement lifecycle Newman JSON/JUnit plus reconciliation/cleanup report"
+        }
+      ],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "primaryRepository": "platform_infrastructure",
+      "repositorySlices": [
+        {
+          "repository": "platform_infrastructure",
+          "paths": [
+            "postman/ViStay-Settlement-Lifecycle.postman_collection.json",
+            "postman/ViStay-Local.postman_environment.json",
+            "postman/fixtures/settlement-property.sql",
+            "postman/fixtures/settlement-booking.sql",
+            "postman/fixtures/settlement-finance.sql",
+            "scripts/Seed-SettlementLifecycleE2E.ps1",
+            "scripts/Test-PostmanSettlementLifecycle.ps1",
+            "postman/README.md"
+          ],
+          "artifacts": [
+            "settlement lifecycle Postman collection",
+            "cross-service deterministic fixtures",
+            "repeatable PowerShell/Newman runner",
+            "calculation/authorization/reconciliation evidence"
+          ]
+        }
+      ],
+      "contracts": []
+    },
+    {
       "sourceId": "VS-E10-T01",
       "issueType": "Task",
       "summary": "[VS-E10-T01] Remediate settlement basis and contract-term calculations",
       "parentSourceId": "VS-E10",
       "manageDescription": true,
       "actor": "Finance settlement reviewer and property owner",
-      "outcome": "Remediate settlement basis and contract-term calculations is delivered as a deterministic, authorized, observable capability with executable acceptance evidence.",
-      "context": "This task is part of the ViStay VS-E10 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "outcome": "Settlement basis remediation is split into Finance calculation authority, Property term snapshots, Admin inspection, Host explanation and versioned contracts.",
+      "context": "The coordinating Task is non-dispatchable; run contract and Property prerequisites before Finance cutover, then migrate clients.",
       "inScope": [
         "Implement and verify: Remediate settlement basis and contract-term calculations.",
         "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
@@ -37962,7 +39411,7 @@
       ],
       "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
       "jiraKey": "SCRUM-584",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "web",
       "dispatchable": false,
       "testCases": [],
@@ -37976,18 +39425,19 @@
       "summary": "[VS-E10-T01-ST01] service_finance delivery slice for Remediate settlement basis and contract-term calculations",
       "parentSourceId": "VS-E10-T01",
       "manageDescription": true,
-      "actor": "Repository ServiceOwner and implementing engineer",
-      "outcome": "service_finance supplies its bounded contract, implementation, tests, and evidence for parent VS-E10-T01.",
-      "context": "This is the service_finance implementation slice of VS-E10-T01. It must not duplicate authority assigned to another repository.",
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Finance replaces caller-supplied generic settlement arithmetic with a versioned source/basis model and migrates existing periods through non-destructive comparison and corrective entries.",
+      "context": "The current service stores gross/commission/cleaning/net totals and accepts them from CalculateSettlementCommand. Preserve existing rows, add source lineage and compare before switching authoritative calculation.",
       "inScope": [
-        "Change only service_finance plus generated artifacts explicitly owned by it.",
-        "Implement the service_finance responsibilities and interfaces stated in parent VS-E10-T01.",
-        "Attach focused unit/integration evidence and compatibility or rollback notes."
+        "Add settlement version/source/basis tables and stable legacy period/line linkage without dropping V3 tables.",
+        "Define line categories COLLECTED_LODGING, REFUND, MANAGEMENT_FEE, OTA_COMMISSION, FIXED_RENT, PRORATION, ELIGIBLE_COST and ADJUSTMENT with explicit sign/owner/term rules.",
+        "Backfill legacy periods as UNVERIFIED_LEGACY, run source-derived shadow calculations and classify exact match, explained difference or exception.",
+        "Cut over new calculations only after contract fixtures and zero unexplained differences; correct already closed periods through a linked correction version."
       ],
       "outOfScope": [
-        "Implementing another repository ownership slice.",
-        "Cross-service database access or copying an authoritative aggregate.",
-        "Closing the parent without end-to-end and Postman/Newman evidence."
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
       ],
       "businessRules": [
         "MANAGEMENT basis is verified collected lodging after discounts/refunds; exclude unearned deposit, staff markup, damage/cleaning, and employee commission.",
@@ -37999,82 +39449,95 @@
         "service_finance"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
       ],
       "dataOwnership": [
-        "Finance owns settlement periods, lines, adjustments, payable state, and exports; Property supplies effective immutable contract-term snapshots."
+        "Finance owns settlement periods/versions, calculation lines, exceptions, adjustments, payable/payout state, financial dashboard projections and exports; Property owns effective property-party and immutable commercial term versions; Booking owns reservation commercial service-date snapshots."
       ],
       "stateMachine": [
-        "Model legal states and transitions for service_finance delivery slice for Remediate settlement basis and contract-term calculations; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "Legacy record is DISCOVERED -> BACKFILLED -> SHADOW_CALCULATED -> VERIFIED or EXCEPTION -> CUTOVER_READY.",
+        "UNVERIFIED_LEGACY remains readable but cannot be represented as newly source-verified evidence.",
+        "Closed mismatch produces a CORRECTION_PENDING successor; original lines/totals/approval remain immutable."
       ],
       "authorization": {
         "actions": [
-          "vs-e10-t01-st01:view",
-          "vs-e10-t01-st01:manage"
+          "settlement:basis:migrate",
+          "settlement:basis:reconcile",
+          "settlement:view"
         ],
         "dataPartitions": [
-          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+          "HOST_SELF for settlements/payables belonging to the authenticated host party; ADMIN organization plus SITE/BRANCH for operational work; SYSTEM only for authenticated projection, repair, or payout integration."
         ],
         "fieldGroups": [
-          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+          "SETTLEMENT_SUMMARY is baseline; FINANCIAL, CONTRACT_TERM, ADJUSTMENT_DETAIL, PAYOUT_DETAIL, PII, DOCUMENT, and INTERNAL_AUDIT require explicit grants."
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Reject calculation or transition when the effective contract term, verified collection/refund basis, booking service-date allocation, currency, partition, or expected revision is absent or inconsistent.",
+        "Return distinct stable term-missing, basis-incomplete, calculation-mismatch, adjustment-conflict, maker-checker, closed-period, stale-revision, forbidden, and dependency-unavailable codes without exposing another host or restricted contract terms.",
+        "Closed financial versions are immutable; corrections use a linked settlement revision, compensating line, adjustment, payable movement, or repair queue and never delete historical money."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
       ],
-      "dependencies": [],
+      "dependencies": [
+        {
+          "sourceId": "VS-E10-T01-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E10-T01-ST05",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E09-T08-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for service_finance delivery slice for Remediate settlement basis and contract-term calculations",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "legacy periods and complete Property/Booking/Finance sources",
+          "when": "backfill/shadow calculation runs",
+          "then": "each record receives immutable lineage and an exact/explained/exception comparison without rewriting history"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "missing source/term, currency/model mismatch, unexplained difference, stale revision, or unauthorized cutover",
+          "when": "migration advances",
+          "then": "the record/cutover is blocked with a stable exception and legacy/current data remains intact"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "backfill/shadow/cutover replays",
+          "when": "processing repeats",
+          "then": "one migration state/fingerprint per period remains and closed corrections are appended once"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
       ],
       "evidence": [
-        "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
       ],
       "externalBlockers": [],
       "labels": [
@@ -38082,15 +39545,57 @@
         "roadmap-v1-3",
         "source-vs-e10-t01-st01"
       ],
-      "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo service_finance cho VS-E10-T01; không được lấy quyền sở hữu dữ liệu của service khác.",
+      "decisionNoteVi": "Leaf triển khai VS-E10-T01-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
       "jiraKey": "SCRUM-585",
-      "specStatus": "needs-refinement",
-      "workKind": "contract",
-      "dispatchable": false,
-      "testCases": [],
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*SettlementBasisMigration*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *SettlementBasisMigration*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*SettlementBasisMigration*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *SettlementBasisMigration*; include persistence, authorization, and retry assertions"
+        }
+      ],
       "decisions": [],
       "implementationBlockers": [],
-      "activationBlockers": []
+      "activationBlockers": [],
+      "primaryRepository": "service_finance",
+      "repositorySlices": [
+        {
+          "repository": "service_finance",
+          "paths": [
+            "src/main/resources/db/migration/V14__settlement_basis_versions.sql",
+            "src/main/java/com/vistay/finance/domain/model/SettlementBasisVersion.java",
+            "src/main/java/com/vistay/finance/application/service/SettlementBasisMigrationService.java",
+            "src/main/java/com/vistay/finance/application/service/SettlementPeriodService.java",
+            "src/test/java/com/vistay/finance/application/service/SettlementBasisMigrationIntegrationTest.java"
+          ],
+          "artifacts": [
+            "additive settlement basis/version schema",
+            "legacy source-lineage backfill",
+            "shadow comparison/cutover report",
+            "closed-period corrective migration"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E10-T01-ST02",
@@ -38098,18 +39603,19 @@
       "summary": "[VS-E10-T01-ST02] service_property delivery slice for Remediate settlement basis and contract-term calculations",
       "parentSourceId": "VS-E10-T01",
       "manageDescription": true,
-      "actor": "Repository ServiceOwner and implementing engineer",
-      "outcome": "service_property supplies its bounded contract, implementation, tests, and evidence for parent VS-E10-T01.",
-      "context": "This is the service_property implementation slice of VS-E10-T01. It must not duplicate authority assigned to another repository.",
+      "actor": "Authorized backoffice operator or trusted ViStay service",
+      "outcome": "Property supplies an authenticated immutable effective settlement-term snapshot with host shares, operating model and complete commercial parameters for a property and period.",
+      "context": "Property V2 already contains property_parties, owner_contracts and contract_property_terms, but only partition topology has application APIs. Implement the missing authoritative snapshot boundary without moving terms into Finance.",
       "inScope": [
-        "Change only service_property plus generated artifacts explicitly owned by it.",
-        "Implement the service_property responsibilities and interfaces stated in parent VS-E10-T01.",
-        "Attach focused unit/integration evidence and compatibility or rollback notes."
+        "Add effectiveSettlementTerm(propertyId, asOf/period) gRPC/GraphQL boundary returning property/branch/timezone, contract/term version, effective interval, model, currency, fixed amount or management fee, payment cycle, host parties/shares, OTA commission allocation, eligible cost rules and fingerprint.",
+        "Validate exactly one approved effective term, non-overlap, model-required values, effective host shares/signatory and supported currency/cycle before publishing a snapshot.",
+        "Persist immutable term snapshot/version or compute canonical signed snapshot from active version and outbox term-version changes for Finance invalidation.",
+        "Do not expose document content/PII or calculate Finance settlement/payable totals."
       ],
       "outOfScope": [
-        "Implementing another repository ownership slice.",
-        "Cross-service database access or copying an authoritative aggregate.",
-        "Closing the parent without end-to-end and Postman/Newman evidence."
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
       ],
       "businessRules": [
         "MANAGEMENT basis is verified collected lodging after discounts/refunds; exclude unearned deposit, staff markup, damage/cleaning, and employee commission.",
@@ -38121,82 +39627,90 @@
         "service_property"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Expose only the operations named in this issue through the owning GraphQL or gRPC boundary.",
+        "Return stable validation, forbidden, not-found, conflict, and dependency-unavailable codes.",
+        "Persist an outbox event in the same transaction for every externally observable state change."
       ],
       "dataOwnership": [
-        "Finance owns settlement periods, lines, adjustments, payable state, and exports; Property supplies effective immutable contract-term snapshots."
+        "Property owns property, host-party roles, ownership shares, effective contract/property-term versions and their settlement snapshot; Finance owns every settlement calculation, adjustment, payable and payout."
       ],
       "stateMachine": [
-        "Model legal states and transitions for service_property delivery slice for Remediate settlement basis and contract-term calculations; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "Term version is DRAFT -> APPROVED -> ACTIVE -> SUPERSEDED/EXPIRED/TERMINATED; only APPROVED may become effective.",
+        "A published snapshot is immutable and identified by term ID/version/fingerprint/effective interval.",
+        "Replacement changes future/effective snapshots and emits invalidation; it never changes a fingerprint already frozen by Finance."
       ],
       "authorization": {
         "actions": [
-          "vs-e10-t01-st02:view",
-          "vs-e10-t01-st02:manage"
+          "property:settlement-term:view",
+          "property:settlement-term:publish"
         ],
         "dataPartitions": [
-          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+          "HOST_SELF for settlements/payables belonging to the authenticated host party; ADMIN organization plus SITE/BRANCH for operational work; SYSTEM only for authenticated projection, repair, or payout integration."
         ],
         "fieldGroups": [
-          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+          "SETTLEMENT_SUMMARY is baseline; FINANCIAL, CONTRACT_TERM, ADJUSTMENT_DETAIL, PAYOUT_DETAIL, PII, DOCUMENT, and INTERNAL_AUDIT require explicit grants."
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Fail closed on missing/overlapping/unapproved term, invalid ownership shares/signatory, currency/model inconsistency, stale revision, forbidden partition, or snapshot dependency failure.",
+        "Never infer a commercial term from property JSON, client input, or Finance defaults; only an approved effective Property version may be snapshotted.",
+        "Corrections create a replacement term/snapshot version and never rewrite one already referenced by a settlement."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
       ],
-      "dependencies": [],
+      "dependencies": [
+        {
+          "sourceId": "VS-E10-T01-ST05",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E04-S04-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for service_property delivery slice for Remediate settlement basis and contract-term calculations",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "one valid effective term and host-party allocation",
+          "when": "Finance requests a period snapshot",
+          "then": "a complete immutable canonical snapshot/fingerprint is returned for the authorized property/period"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "missing/overlapping/unapproved term, invalid model value, share/signatory/currency/date inconsistency, or unauthorized caller",
+          "when": "lookup/publish runs",
+          "then": "a stable error returns and no ambiguous snapshot is published"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "the lookup or term-change event replays",
+          "when": "processing repeats",
+          "then": "the same version/fingerprint is returned or one explicit replacement version is emitted"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Propagate correlation ID into audit and outbox records.",
+        "Emit bounded metrics for command result, state, dependency failures, retry count, and processing age without filenames, document contents, or PII.",
+        "Document a repair query for stuck work and a safe retry or terminal-resolution procedure."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
       ],
       "evidence": [
-        "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
       ],
       "externalBlockers": [],
       "labels": [
@@ -38204,15 +39718,58 @@
         "roadmap-v1-3",
         "source-vs-e10-t01-st02"
       ],
-      "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo service_property cho VS-E10-T01; không được lấy quyền sở hữu dữ liệu của service khác.",
+      "decisionNoteVi": "Leaf triển khai VS-E10-T01-ST02 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
       "jiraKey": "SCRUM-586",
-      "specStatus": "needs-refinement",
-      "workKind": "contract",
-      "dispatchable": false,
-      "testCases": [],
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*SettlementTermSnapshot*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *SettlementTermSnapshot*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*SettlementTermSnapshot*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *SettlementTermSnapshot*; include persistence, authorization, and retry assertions"
+        }
+      ],
       "decisions": [],
       "implementationBlockers": [],
-      "activationBlockers": []
+      "activationBlockers": [],
+      "primaryRepository": "service_property",
+      "repositorySlices": [
+        {
+          "repository": "service_property",
+          "paths": [
+            "src/main/resources/db/migration/V8__settlement_term_snapshots.sql",
+            "src/main/java/com/vistay/property/domain/settlement/**",
+            "src/main/java/com/vistay/property/application/SettlementTermSnapshotService.java",
+            "src/main/java/com/vistay/property/adapter/in/grpc/SettlementTermSnapshotGrpcService.java",
+            "src/main/java/com/vistay/property/adapter/in/graphql/SettlementTermController.java",
+            "src/test/java/com/vistay/property/application/SettlementTermSnapshotIntegrationTest.java"
+          ],
+          "artifacts": [
+            "effective settlement-term snapshot",
+            "canonical term fingerprint",
+            "authenticated gRPC/GraphQL lookup",
+            "term overlap/model/share tests"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E10-T01-ST03",
@@ -38220,18 +39777,19 @@
       "summary": "[VS-E10-T01-ST03] frontend_admin delivery slice for Remediate settlement basis and contract-term calculations",
       "parentSourceId": "VS-E10-T01",
       "manageDescription": true,
-      "actor": "Repository ServiceOwner and implementing engineer",
-      "outcome": "frontend_admin supplies its bounded contract, implementation, tests, and evidence for parent VS-E10-T01.",
-      "context": "This is the frontend_admin implementation slice of VS-E10-T01. It must not duplicate authority assigned to another repository.",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Admin Web/Mobile expose settlement source/basis lineage, legacy shadow differences and correction status without allowing callers to enter authoritative gross, rate or cleaning totals.",
+      "context": "This is a new diagnostic/remediation UI built on Finance/Property contracts; no settlement UI currently exists in frontend_admin.",
       "inScope": [
-        "Change only frontend_admin plus generated artifacts explicitly owned by it.",
-        "Implement the frontend_admin responsibilities and interfaces stated in parent VS-E10-T01.",
-        "Attach focused unit/integration evidence and compatibility or rollback notes."
+        "Add typed term-snapshot, basis/source, migration comparison and correction-status queries/actions.",
+        "Build Web basis inspector showing model, effective term/fingerprint, source cutoff, categorized components, legacy versus source-derived diff and exception/cutover state.",
+        "Build Mobile read/status parity; keep migration/cutover/correction controls Web-only unless explicit high-risk actions and INTERNAL_AUDIT are granted.",
+        "Remove/never create free monetary gross/commission/cleaning inputs and test redaction, missing source, mismatch, stale revision, replay and dependency failure."
       ],
       "outOfScope": [
-        "Implementing another repository ownership slice.",
-        "Cross-service database access or copying an authoritative aggregate.",
-        "Closing the parent without end-to-end and Postman/Newman evidence."
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
       ],
       "businessRules": [
         "MANAGEMENT basis is verified collected lodging after discounts/refunds; exclude unearned deposit, staff markup, damage/cleaning, and employee commission.",
@@ -38243,82 +39801,93 @@
         "frontend_admin"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
       ],
       "dataOwnership": [
-        "Finance owns settlement periods, lines, adjustments, payable state, and exports; Property supplies effective immutable contract-term snapshots."
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
       ],
       "stateMachine": [
-        "Model legal states and transitions for frontend_admin delivery slice for Remediate settlement basis and contract-term calculations; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
       ],
       "authorization": {
         "actions": [
-          "vs-e10-t01-st03:view",
-          "vs-e10-t01-st03:manage"
+          "settlement:view",
+          "settlement:basis:reconcile",
+          "settlement:basis:migrate"
         ],
         "dataPartitions": [
-          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
         ],
         "fieldGroups": [
-          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
       ],
-      "dependencies": [],
+      "dependencies": [
+        {
+          "sourceId": "VS-E10-T01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E10-T01-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E10-T01-ST05",
+          "relation": "is-blocked-by"
+        }
+      ],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for frontend_admin delivery slice for Remediate settlement basis and contract-term calculations",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "authorized operator and source/shadow results",
+          "when": "the basis workspace loads or an allowed remediation runs",
+          "then": "the exact term/source/fingerprint/diff/current state is displayed and refreshed without client arithmetic"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "missing action/partition/CONTRACT_TERM/INTERNAL_AUDIT grant, source exception, stale revision, or dependency failure",
+          "when": "render/submit occurs",
+          "then": "restricted values/actions are absent and precise non-leaking feedback blocks cutover/correction"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "remediation replays or app resumes",
+          "when": "current status loads",
+          "then": "one durable comparison/correction result appears without a free monetary override or duplicate command"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
       ],
       "evidence": [
-        "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
       ],
       "externalBlockers": [],
       "labels": [
@@ -38326,15 +39895,59 @@
         "roadmap-v1-3",
         "source-vs-e10-t01-st03"
       ],
-      "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo frontend_admin cho VS-E10-T01; không được lấy quyền sở hữu dữ liệu của service khác.",
+      "decisionNoteVi": "Leaf VS-E10-T01-ST03 chỉ sở hữu artifact của frontend_admin; không được tự đưa credential hoặc giá trị production vào repo.",
       "jiraKey": "SCRUM-587",
-      "specStatus": "needs-refinement",
+      "specStatus": "executable",
       "workKind": "web",
-      "dispatchable": false,
-      "testCases": [],
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "settlement basis shared-client plus Web/Mobile tests"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "npm run typecheck",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "frontend_admin workspace typecheck report"
+        }
+      ],
       "decisions": [],
       "implementationBlockers": [],
-      "activationBlockers": []
+      "activationBlockers": [],
+      "primaryRepository": "frontend_admin",
+      "repositorySlices": [
+        {
+          "repository": "frontend_admin",
+          "paths": [
+            "packages/api-client/src/index.ts",
+            "packages/api-client/src/index.test.ts",
+            "apps/web/src/SettlementBasisWorkspace.tsx",
+            "apps/web/src/SettlementBasisWorkspace.test.tsx",
+            "apps/mobile/src/SettlementBasisWorkspace.tsx",
+            "apps/mobile/src/SettlementBasisWorkspace.test.tsx"
+          ],
+          "artifacts": [
+            "typed settlement basis client",
+            "Admin Web source/diff inspector",
+            "Mobile remediation status",
+            "no-client-money/redaction tests"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E10-T01-ST04",
@@ -38342,18 +39955,19 @@
       "summary": "[VS-E10-T01-ST04] frontend_host delivery slice for Remediate settlement basis and contract-term calculations",
       "parentSourceId": "VS-E10-T01",
       "manageDescription": true,
-      "actor": "Repository ServiceOwner and implementing engineer",
-      "outcome": "frontend_host supplies its bounded contract, implementation, tests, and evidence for parent VS-E10-T01.",
-      "context": "This is the frontend_host implementation slice of VS-E10-T01. It must not duplicate authority assigned to another repository.",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Host Web explains approved settlement basis and corrective versions in host-safe language while exposing only the authenticated host allocation and no internal remediation controls.",
+      "context": "frontend_host is a Vite shell. Create the bounded explanatory consumer after contracts and Finance/Property projections exist.",
       "inScope": [
-        "Change only frontend_host plus generated artifacts explicitly owned by it.",
-        "Implement the frontend_host responsibilities and interfaces stated in parent VS-E10-T01.",
-        "Attach focused unit/integration evidence and compatibility or rollback notes."
+        "Add HOST_SELF statement-basis query/client and routes.",
+        "Show operating model, covered period, approved calculation version, host allocation, summarized included/excluded components, approved host-visible adjustments and correction relationship.",
+        "Hide contract internals not granted, other host shares, employee commission, internal exceptions/diffs, payment credentials and migration controls.",
+        "Add test tooling and cases for redaction, corrected version, missing statement, forbidden host, dependency and session refresh."
       ],
       "outOfScope": [
-        "Implementing another repository ownership slice.",
-        "Cross-service database access or copying an authoritative aggregate.",
-        "Closing the parent without end-to-end and Postman/Newman evidence."
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
       ],
       "businessRules": [
         "MANAGEMENT basis is verified collected lodging after discounts/refunds; exclude unearned deposit, staff markup, damage/cleaning, and employee commission.",
@@ -38365,82 +39979,91 @@
         "frontend_host"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
       ],
       "dataOwnership": [
-        "Finance owns settlement periods, lines, adjustments, payable state, and exports; Property supplies effective immutable contract-term snapshots."
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
       ],
       "stateMachine": [
-        "Model legal states and transitions for frontend_host delivery slice for Remediate settlement basis and contract-term calculations; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
       ],
       "authorization": {
         "actions": [
-          "vs-e10-t01-st04:view",
-          "vs-e10-t01-st04:manage"
+          "settlement:statement:view"
         ],
         "dataPartitions": [
-          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
         ],
         "fieldGroups": [
-          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
       ],
-      "dependencies": [],
+      "dependencies": [
+        {
+          "sourceId": "VS-E10-T01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E10-T01-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E10-T01-ST05",
+          "relation": "is-blocked-by"
+        }
+      ],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for frontend_host delivery slice for Remediate settlement basis and contract-term calculations",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "an authenticated host and approved statement",
+          "when": "basis detail loads",
+          "then": "only that host allocation and approved explainable included/excluded/correction summary is displayed"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "another host, missing HOST_SELF/FINANCIAL/CONTRACT_TERM grant, internal exception/term field, or dependency failure",
+          "when": "the page requests/renders",
+          "then": "access is denied or the field is absent without leaking another party value"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "a correction is approved or session resumes",
+          "when": "the page refetches",
+          "then": "the authoritative current/corrected relationship appears without a mutation"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
       ],
       "evidence": [
-        "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
       ],
       "externalBlockers": [],
       "labels": [
@@ -38448,15 +40071,60 @@
         "roadmap-v1-3",
         "source-vs-e10-t01-st04"
       ],
-      "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo frontend_host cho VS-E10-T01; không được lấy quyền sở hữu dữ liệu của service khác.",
+      "decisionNoteVi": "Leaf VS-E10-T01-ST04 chỉ sở hữu artifact của frontend_host; không được tự đưa credential hoặc giá trị production vào repo.",
       "jiraKey": "SCRUM-588",
-      "specStatus": "needs-refinement",
+      "specStatus": "executable",
       "workKind": "web",
-      "dispatchable": false,
-      "testCases": [],
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Host settlement basis Vitest report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "npm run build",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "frontend_host typecheck and build report"
+        }
+      ],
       "decisions": [],
       "implementationBlockers": [],
-      "activationBlockers": []
+      "activationBlockers": [],
+      "primaryRepository": "frontend_host",
+      "repositorySlices": [
+        {
+          "repository": "frontend_host",
+          "paths": [
+            "package.json",
+            "src/lib/settlementClient.ts",
+            "src/pages/SettlementBasisPage.tsx",
+            "src/pages/SettlementBasisPage.test.tsx",
+            "src/App.tsx",
+            "src/App.css",
+            "vite.config.ts"
+          ],
+          "artifacts": [
+            "Host settlement-basis route/client",
+            "host-safe formula explanation",
+            "correction-version presentation",
+            "HOST_SELF/redaction tests"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E10-T01-ST05",
@@ -38464,18 +40132,19 @@
       "summary": "[VS-E10-T01-ST05] platform_contracts delivery slice for Remediate settlement basis and contract-term calculations",
       "parentSourceId": "VS-E10-T01",
       "manageDescription": true,
-      "actor": "Repository ServiceOwner and implementing engineer",
-      "outcome": "platform_contracts supplies its bounded contract, implementation, tests, and evidence for parent VS-E10-T01.",
-      "context": "This is the platform_contracts implementation slice of VS-E10-T01. It must not duplicate authority assigned to another repository.",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Platform Contracts defines the effective Property settlement-term snapshot, Finance source/basis versions, formulas, compatibility events and boundary fixtures before service/client cutover.",
+      "context": "Only Finance payment instruction proto exists today; no settlement GraphQL/gRPC/event contracts or formula fixtures exist. These are target artifacts, not claims of current implementation.",
       "inScope": [
-        "Change only platform_contracts plus generated artifacts explicitly owned by it.",
-        "Implement the platform_contracts responsibilities and interfaces stated in parent VS-E10-T01.",
-        "Attach focused unit/integration evidence and compatibility or rollback notes."
+        "Document MANAGEMENT verified-collected-lodging basis and exclusions, optional term-owned OTA commission, LEASED actual-calendar-day fixed-rent proration, OWNED zero host payable, VND HALF_UP/residual and closed correction semantics.",
+        "Add Property settlement-term gRPC contract, Finance settlement GraphQL operations and Property/Finance version-change events with owner/version/fingerprint/source-cutoff fields.",
+        "Add valid MANAGEMENT refund/exclusion, LEASED 28/29/30/31-day and partial-term, OWNED, multi-host allocation and correction fixtures.",
+        "Add invalid caller-money, missing/overlap term, excluded-component leakage, currency/share imbalance, changed fingerprint, in-place closed rewrite and cross-owner field fixtures."
       ],
       "outOfScope": [
-        "Implementing another repository ownership slice.",
-        "Cross-service database access or copying an authoritative aggregate.",
-        "Closing the parent without end-to-end and Postman/Newman evidence."
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
       ],
       "businessRules": [
         "MANAGEMENT basis is verified collected lodging after discounts/refunds; exclude unearned deposit, staff markup, damage/cleaning, and employee commission.",
@@ -38487,82 +40156,79 @@
         "platform_contracts"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
       ],
       "dataOwnership": [
-        "Finance owns settlement periods, lines, adjustments, payable state, and exports; Property supplies effective immutable contract-term snapshots."
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
       ],
       "stateMachine": [
-        "Model legal states and transitions for platform_contracts delivery slice for Remediate settlement basis and contract-term calculations; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
       ],
       "authorization": {
         "actions": [
-          "vs-e10-t01-st05:view",
-          "vs-e10-t01-st05:manage"
+          "settlement:contract:publish",
+          "property:settlement-term:contract:publish"
         ],
         "dataPartitions": [
-          "SYSTEM for internal repair only; otherwise enforce the subject account type and the resource customer, host-party, site, branch, or assigned-employee partition."
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
         ],
         "fieldGroups": [
-          "SUMMARY by default; FINANCIAL, PII, DOCUMENT, TRUST_DETAIL, and INTERNAL_AUDIT require explicit grants and response-field filtering."
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
       ],
       "dependencies": [],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for platform_contracts delivery slice for Remediate settlement basis and contract-term calculations",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "approved MANAGEMENT/LEASED/OWNED and correction fixtures",
+          "when": "contract validation runs",
+          "then": "basis/exclusions/proration/allocation/rounding/fingerprint invariants validate deterministically"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "caller money, missing/overlap term, excluded leakage, share/currency imbalance, changed fingerprint, closed rewrite, or owner violation",
+          "when": "negative fixtures run",
+          "then": "CI fails with a stable path-specific diagnostic"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "identical canonical sources and term",
+          "when": "validation repeats",
+          "then": "the same calculation/snapshot fingerprints and contract shapes are produced"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
       ],
       "evidence": [
-        "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
       ],
       "externalBlockers": [],
       "labels": [
@@ -38570,15 +40236,61 @@
         "roadmap-v1-3",
         "source-vs-e10-t01-st05"
       ],
-      "decisionNoteVi": "Đây là lát cắt triển khai riêng của repo platform_contracts cho VS-E10-T01; không được lấy quyền sở hữu dữ liệu của service khác.",
+      "decisionNoteVi": "Leaf VS-E10-T01-ST05 chỉ sở hữu artifact của platform_contracts; không được tự đưa credential hoặc giá trị production vào repo.",
       "jiraKey": "SCRUM-589",
-      "specStatus": "needs-refinement",
+      "specStatus": "executable",
       "workKind": "contract",
-      "dispatchable": false,
-      "testCases": [],
+      "dispatchable": true,
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "contract",
+          "command": "npm run validate:graphql",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "Finance settlement subgraph/operation composition report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "contract",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "proto/event/formula boundary validation report"
+        }
+      ],
       "decisions": [],
       "implementationBlockers": [],
-      "activationBlockers": []
+      "activationBlockers": [],
+      "primaryRepository": "platform_contracts",
+      "repositorySlices": [
+        {
+          "repository": "platform_contracts",
+          "paths": [
+            "docs/owner-settlement-v1.md",
+            "proto/vistay/property/v1/property_settlement_term.proto",
+            "graphql/backoffice/subgraphs/finance.graphql",
+            "graphql/backoffice/operations/owner-settlement.graphql",
+            "events/v1/property.settlement-term-version.event.schema.json",
+            "events/v1/finance.settlement-version.event.schema.json",
+            "fixtures/owner-settlement-boundaries.v1.json",
+            "scripts/validate-schemas.mjs",
+            "scripts/validate-graphql.mjs"
+          ],
+          "artifacts": [
+            "owner settlement formula/ownership contract",
+            "Property term snapshot proto",
+            "Finance settlement GraphQL/events",
+            "boundary and negative fixtures"
+          ]
+        }
+      ],
+      "contracts": []
     },
     {
       "sourceId": "VS-E11",
