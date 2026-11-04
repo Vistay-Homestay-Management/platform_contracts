@@ -1,0 +1,156 @@
+extend schema
+  @link(
+    url: "https://specs.apollo.dev/federation/v2.7"
+    import: ["@authenticated", "@requiresScopes"]
+  )
+
+scalar DateTime
+
+directive @fieldGroup(name: HostFieldGroup!) on FIELD_DEFINITION
+
+enum HostFieldGroup {
+  SUMMARY
+  PII
+  DOCUMENT
+  INTERNAL_AUDIT
+}
+
+type Query {
+  """The safe Host projection bound to the authenticated HOST realm token."""
+  hostViewer: HostViewer!
+    @authenticated
+    @requiresScopes(scopes: [["host:read"]])
+}
+
+type Mutation {
+  """Update only caller-owned profile fields with optimistic concurrency."""
+  updateHostProfile(input: UpdateHostProfileInput!): HostProfile!
+    @authenticated
+    @requiresScopes(scopes: [["host:profile:update"]])
+
+  """Request an administrator-owned lifecycle transition."""
+  changeHostLifecycle(input: ChangeHostLifecycleInput!): HostAccount!
+    @authenticated
+    @requiresScopes(scopes: [["host:lifecycle:manage"]])
+
+  """Revoke one session through Authentication/Keycloak."""
+  revokeHostSession(input: RevokeHostSessionInput!): HostSession!
+    @authenticated
+    @requiresScopes(scopes: [["host:session:revoke"]])
+}
+
+type HostViewer {
+  accountId: ID!
+  profileId: ID!
+  realm: HostRealm!
+  subjectType: HostSubjectType!
+  lifecycleState: HostLifecycleState!
+  authorizationVersion: Int!
+  profile: HostProfile!
+  propertyOwnBindings: [PropertyOwnBinding!]!
+}
+
+type HostProfile {
+  profileId: ID!
+  displayName: String!
+  preferredLocale: String!
+  verificationStatus: HostVerificationStatus!
+  aggregateVersion: Int!
+  email: String @fieldGroup(name: PII)
+  phone: String @fieldGroup(name: PII)
+  avatarMediaId: ID
+}
+
+type HostAccount {
+  accountId: ID!
+  realm: HostRealm!
+  subjectType: HostSubjectType!
+  state: HostLifecycleState!
+  authorizationVersion: Int!
+}
+
+type HostSession {
+  sessionId: ID!
+  state: HostSessionState!
+  aggregateVersion: Int!
+}
+
+type PropertyOwnBinding {
+  propertyId: ID!
+  branchId: ID!
+  membershipVersion: Int!
+  source: PropertyBindingSource!
+  ownershipTerm: PropertyOwnershipTerm!
+}
+
+input UpdateHostProfileInput {
+  displayName: String
+  preferredLocale: String
+  phone: String
+  avatarMediaId: ID
+  expectedVersion: Int!
+  idempotencyKey: String!
+}
+
+input ChangeHostLifecycleInput {
+  accountId: ID!
+  targetState: HostLifecycleState!
+  expectedVersion: Int!
+  reasonCode: HostLifecycleReason!
+  idempotencyKey: String!
+}
+
+input RevokeHostSessionInput {
+  sessionId: ID!
+  expectedVersion: Int!
+  reasonCode: HostSessionRevokeReason!
+  idempotencyKey: String!
+}
+
+enum HostRealm {
+  HOST
+}
+
+enum HostSubjectType {
+  HOST
+}
+
+enum HostLifecycleState {
+  INVITED
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum HostSessionState {
+  ACTIVE
+  EXPIRED
+  REVOKED
+}
+
+enum HostVerificationStatus {
+  PENDING
+  VERIFIED
+  REQUIRES_REVIEW
+}
+
+enum HostLifecycleReason {
+  INVITATION_ACCEPTED
+  ADMIN_SUSPENSION
+  ADMIN_REACTIVATION
+  ADMIN_DEACTIVATION
+}
+
+enum HostSessionRevokeReason {
+  SELF_REQUEST
+  ADMIN_SECURITY_ACTION
+  ACCOUNT_LIFECYCLE
+}
+
+enum PropertyBindingSource {
+  PROPERTY_ACTIVE_MEMBERSHIP
+}
+
+enum PropertyOwnershipTerm {
+  OWNED
+}

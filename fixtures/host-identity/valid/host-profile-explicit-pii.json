@@ -1,0 +1,18 @@
+{
+  "fixtureVersion": 1,
+  "valid": true,
+  "kind": "host-profile-explicit-pii",
+  "correlationId": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+  "request": {
+    "action": "host:profile:update",
+    "caller": "HOST",
+    "partition": "SELF",
+    "fieldGroups": ["SUMMARY", "PII"],
+    "changedFields": ["displayName", "phone"]
+  },
+  "expected": {
+    "allowed": true,
+    "visibleFields": ["displayName", "phone"],
+    "documentFieldsPresent": false
+  }
+}

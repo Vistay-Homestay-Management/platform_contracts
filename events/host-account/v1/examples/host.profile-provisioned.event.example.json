@@ -1,0 +1,21 @@
+{
+  "eventId": "77777777-7777-4777-8777-777777777777",
+  "type": "vistay.host.profile-provisioned",
+  "version": 1,
+  "aggregateId": "88888888-8888-4888-8888-888888888888",
+  "aggregateVersion": 1,
+  "correlationId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  "causationId": "55555555-5555-4555-8555-555555555555",
+  "occurredAt": "2026-11-04T03:00:02Z",
+  "data": {
+    "profileId": "88888888-8888-4888-8888-888888888888",
+    "accountId": "66666666-6666-4666-8666-666666666666",
+    "realm": "HOST",
+    "subjectType": "HOST",
+    "displayName": "Synthetic Host",
+    "preferredLocale": "vi-VN",
+    "verificationStatus": "PENDING",
+    "aggregateVersion": 1,
+    "provisionedAt": "2026-11-04T03:00:02Z"
+  }
+}

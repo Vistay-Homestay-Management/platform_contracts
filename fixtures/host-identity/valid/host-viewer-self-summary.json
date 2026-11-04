@@ -1,0 +1,19 @@
+{
+  "fixtureVersion": 1,
+  "valid": true,
+  "kind": "host-viewer-self",
+  "correlationId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  "request": {
+    "action": "host:read",
+    "caller": "HOST",
+    "partition": "SELF",
+    "realm": "HOST",
+    "subjectType": "HOST",
+    "fieldGroups": ["SUMMARY"]
+  },
+  "expected": {
+    "allowed": true,
+    "redactedFields": ["email", "phone"],
+    "credentialFieldsPresent": false
+  }
+}

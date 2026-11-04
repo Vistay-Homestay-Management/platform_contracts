@@ -1,0 +1,2056 @@
+{
+  "refinements": [
+    {
+      "sourceId": "VS-E18",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "Customer Identity & Profile is split into verified Keycloak registration, User profile binding, customer realm/edge/UX, consent, controlled offline claim, compromise recovery and cross-customer proof.",
+      "context": "Current Customer realm is disabled, Customer Web is landing-only, and User customer tables exist but no registration/claim path does. Keycloak owns credentials and sessions, Authentication owns lifecycle audit, User owns profiles, subjects and consent, Booking owns booking evidence."
+    },
+    {
+      "sourceId": "VS-E18-S01",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "Registration separates customer Keycloak identity and email proof from the User profile/authorization-subject projection.",
+      "context": "Do not infer ownership from matching email or phone; only verified CUSTOMER realm+subject is provisioned."
+    },
+    {
+      "sourceId": "VS-E18-S02",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "Session and recovery separate realm policy and customer-only frontend journeys; edge is separately owned by E18-T03.",
+      "context": "Activation requires verified email, PKCE S256, exact redirect allow-list, local mail smoke and customer issuer/audience."
+    },
+    {
+      "sourceId": "VS-E18-S03",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "Profile/consent separates User-owned SELF data and append-only versioned receipts from accessible Customer Web editing.",
+      "context": "Notification channel preferences remain E13-owned; legal text/version and production consent activation require approved policy configuration, not invented values."
+    },
+    {
+      "sourceId": "VS-E18-S04",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "Offline Customer claim is a single User-owned controlled linking workflow backed by authoritative Booking evidence and independent review.",
+      "context": "A matching contact alone never assigns an existing booking or Customer profile to an online identity."
+    },
+    {
+      "sourceId": "VS-E18-S05",
+      "specStatus": "refined-parent",
+      "dispatchable": false,
+      "outcome": "Compromise handling separates Authentication session revocation from User duplicate/relink decisions.",
+      "context": "Fail closed until Keycloak session revocation, new verification and distinct reviewer approval are confirmed."
+    }
+  ],
+  "additions": [
+    {
+      "templateSourceId": "VS-E18-S01",
+      "sourceId": "VS-E18-S01-ST01",
+      "jiraKey": "SCRUM-825",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E18-S01",
+      "summary": "[VS-E18-S01-ST01] Register and verify Customer identity in Keycloak",
+      "actor": "Verified Customer for SELF requests; authorized distinct support reviewers for privileged cases; authenticated internal service for provisioning.",
+      "outcome": "Authentication creates one CUSTOMER identity in the customer realm with mandatory email verification, a replay-safe minimal projection and no local credential storage.",
+      "context": "Authentication currently handles backoffice/Host provisioning; the customer realm is disabled and customer_accounts was removed in V5. No Customer registration facade is implemented.",
+      "inScope": [
+        "Define POST /api/v1/customer-accounts registration with normalized email, display name, idempotency key, rate limits and generic non-enumerating response; never accept ADMIN/HOST roles in customer input.",
+        "Create a Keycloak customer with VERIFY_EMAIL; dispatch an expiring verification action using the configured mail adapter and reconcile confirmation from Keycloak state, never from a browser return URL.",
+        "Persist only realm, subject, fingerprint, lifecycle/security audit and correlation ID in an additive migration; use unique realm+subject and email-normalization collision guards.",
+        "Handle Keycloak success/local commit uncertainty as a durable reconciliation state and replay without creating a second account."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "repositories": [
+        "service_authentication"
+      ],
+      "primaryRepository": "service_authentication",
+      "repositorySlices": [
+        {
+          "repository": "service_authentication",
+          "paths": [
+            "src/main/resources/db/migration/V10__customer_registration_audit.sql",
+            "src/main/java/com/vistay/authentication/application/CustomerRegistrationService.java",
+            "src/main/java/com/vistay/authentication/adapter/in/rest/CustomerRegistrationController.java",
+            "src/main/java/com/vistay/authentication/adapter/out/keycloak/KeycloakAdminClient.java",
+            "src/test/java/com/vistay/authentication/application/CustomerRegistrationServiceIntegrationTest.java"
+          ],
+          "artifacts": [
+            "Customer registration REST contract",
+            "customer Keycloak verification adapter",
+            "replay-safe registration audit and reconciliation",
+            "mail/duplicate/role escalation tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Expose only the named REST, GraphQL or internal proof operation in the owner service.",
+        "Return stable validation, forbidden, non-enumerating not-found, conflict and dependency-unavailable codes.",
+        "Persist append-only security/consent audit and transactional outbox for externally observable local state changes; reconcile Keycloak operations across the external boundary."
+      ],
+      "dataOwnership": [
+        "Keycloak owns CUSTOMER credentials, email verification, recovery and sessions; Authentication owns the minimal realm/subject projection and security command audit.",
+        "User owns Customer profile, consent receipt history, authorization subject and offline-profile claim; neither service reads the other database."
+      ],
+      "stateMachine": [
+        "Registration is PENDING_VERIFICATION -> VERIFIED or EXPIRED; a resend is an audited new verification attempt, not a new subject.",
+        "Only verified Keycloak state is eligible for User profile provisioning; deletion or reassignment never follows an untrusted redirect."
+      ],
+      "authorization": {
+        "actions": [
+          "customer-account:register",
+          "customer-account:verify"
+        ],
+        "dataPartitions": [
+          "CUSTOMER SELF is the authenticated realm+subject mapped to exactly one active authorization subject; ADMIN support needs an explicit action, audited case and scoped partition."
+        ],
+        "fieldGroups": [
+          "ACCOUNT_SELF; INTERNAL_AUDIT restricted to authorized support"
+        ]
+      },
+      "failureSemantics": [
+        "Fail closed on missing realm, wrong audience, unverified email, missing subject, stale version, suspended account or unavailable required dependency.",
+        "Do not disclose whether another customer email, profile, booking or identity exists.",
+        "Never log passwords, cookies, recovery/action links, access tokens or unredacted contact fields."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E18-T01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E18-S02-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "new normalized email and idempotency key",
+          "when": "Customer registers and verifies the email",
+          "then": "exactly one customer realm subject becomes VERIFIED with minimal projection and audit, without local password or action token"
+        },
+        {
+          "id": "AC02",
+          "given": "duplicate email, wrong role or malformed/unverified attempt",
+          "when": "registration or provisioning is retried",
+          "then": "a stable non-enumerating response creates no second identity and grants no non-CUSTOMER role"
+        },
+        {
+          "id": "AC03",
+          "given": "Keycloak succeeds but local persistence or email dispatch fails",
+          "when": "reconciliation and same-key replay run",
+          "then": "one subject is recovered by exact realm/subject, with a visible repair state and no duplicate mail or profile"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*CustomerRegistration*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *CustomerRegistration*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*CustomerRegistration*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *CustomerRegistration*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "observability": [
+        "Correlate request, realm, subject digest and case ID across local audit and Keycloak calls without recording tokens or PII in logs.",
+        "Report bounded verification/claim/revocation outcome and retry-age metrics without customer identifiers as labels.",
+        "Provide a documented safe repair route for uncertain Keycloak or Booking proof states."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "labels": [
+        "repo-service-authentication",
+        "roadmap-v1-3",
+        "source-vs-e18-s01-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E18-S01-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E18-S01",
+      "sourceId": "VS-E18-S01-ST02",
+      "jiraKey": "SCRUM-826",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E18-S01",
+      "summary": "[VS-E18-S01-ST02] Provision verified Customer profile and subject",
+      "actor": "Verified Customer for SELF requests; authorized distinct support reviewers for privileged cases; authenticated internal service for provisioning.",
+      "outcome": "User binds a verified CUSTOMER Keycloak realm+subject to one Customer profile and one CUSTOMER_MEMBER authorization subject, preserving offline profiles for later controlled claim.",
+      "context": "V2 customers and V3 authorization_subjects/CUSTOMER_MEMBER exist; ProfileService currently addresses ADMIN rows only. Do not treat a phone/email match as proof of ownership.",
+      "inScope": [
+        "Consume verified account identity through an authenticated internal boundary, checking issuer, audience, realm and verified email; create or resolve one auth_account_id and authorization_subject_id transactionally.",
+        "Add UNIQUE active realm+subject mapping and replay ledger with additive migration; leave matching unclaimed offline rows untouched and flag candidate collisions for S04/S05.",
+        "Expose self-safe myCustomerProfile only after verified mapping; emit versioned profile-created event without raw email and keep CUSTOMER_MEMBER SELF grants isolated."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "repositories": [
+        "service_user"
+      ],
+      "primaryRepository": "service_user",
+      "repositorySlices": [
+        {
+          "repository": "service_user",
+          "paths": [
+            "src/main/resources/db/migration/V15__customer_identity_binding.sql",
+            "src/main/resources/graphql/schema.graphqls",
+            "src/main/java/com/vistay/user/application/CustomerProvisioningService.java",
+            "src/main/java/com/vistay/user/adapter/in/graphql/CustomerProfileController.java",
+            "src/test/java/com/vistay/user/application/CustomerProvisioningServiceIntegrationTest.java"
+          ],
+          "artifacts": [
+            "verified Customer provisioning",
+            "unique CUSTOMER subject/profile binding",
+            "self profile query",
+            "duplicate/replay/role-negative tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Expose only the named REST, GraphQL or internal proof operation in the owner service.",
+        "Return stable validation, forbidden, non-enumerating not-found, conflict and dependency-unavailable codes.",
+        "Persist append-only security/consent audit and transactional outbox for externally observable local state changes; reconcile Keycloak operations across the external boundary."
+      ],
+      "dataOwnership": [
+        "Keycloak owns CUSTOMER credentials, email verification, recovery and sessions; Authentication owns the minimal realm/subject projection and security command audit.",
+        "User owns Customer profile, consent receipt history, authorization subject and offline-profile claim; neither service reads the other database."
+      ],
+      "stateMachine": [
+        "Unlinked verified identity -> ACTIVE linked profile; unverified identity cannot create an active profile.",
+        "Existing unclaimed offline profile remains UNCLAIMED until the S04 claim proof and approval succeed."
+      ],
+      "authorization": {
+        "actions": [
+          "customer-profile:provision",
+          "profile:read"
+        ],
+        "dataPartitions": [
+          "CUSTOMER SELF is the authenticated realm+subject mapped to exactly one active authorization subject; ADMIN support needs an explicit action, audited case and scoped partition."
+        ],
+        "fieldGroups": [
+          "PROFILE_SELF only; PII_CONTACT separately granted"
+        ]
+      },
+      "failureSemantics": [
+        "Fail closed on missing realm, wrong audience, unverified email, missing subject, stale version, suspended account or unavailable required dependency.",
+        "Do not disclose whether another customer email, profile, booking or identity exists.",
+        "Never log passwords, cookies, recovery/action links, access tokens or unredacted contact fields."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E18-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E18-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "verified CUSTOMER realm subject with no profile",
+          "when": "provisioning is consumed twice",
+          "then": "one customer, one authorization subject and one self-scoped mapping are persisted"
+        },
+        {
+          "id": "AC02",
+          "given": "unverified or wrong-realm subject or an offline row with matching email/phone",
+          "when": "provisioning runs",
+          "then": "no offline ownership is inferred and no cross-account profile is exposed"
+        },
+        {
+          "id": "AC03",
+          "given": "same subject races or an existing row is already linked elsewhere",
+          "when": "two transactions commit",
+          "then": "one winner is retained, loser gets a stable conflict and repair audit preserves both inputs"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*CustomerProvisioning*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *CustomerProvisioning*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*CustomerProvisioning*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *CustomerProvisioning*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "observability": [
+        "Correlate request, realm, subject digest and case ID across local audit and Keycloak calls without recording tokens or PII in logs.",
+        "Report bounded verification/claim/revocation outcome and retry-age metrics without customer identifiers as labels.",
+        "Provide a documented safe repair route for uncertain Keycloak or Booking proof states."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "labels": [
+        "repo-service-user",
+        "roadmap-v1-3",
+        "source-vs-e18-s01-st02"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E18-S01-ST02 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E18-S02",
+      "sourceId": "VS-E18-S02-ST01",
+      "jiraKey": "SCRUM-827",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E18-S02",
+      "summary": "[VS-E18-S02-ST01] Harden Customer realm PKCE recovery and sessions",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Customer realm has allow-listed web redirects, verified-email requirements, S256 PKCE, bounded sessions and mail-backed recovery, with activation gated on local smoke evidence.",
+      "context": "The existing vistay-customer realm is disabled with wildcard localhost redirects; no production mail provider credentials are supplied.",
+      "inScope": [
+        "Replace wildcard redirects/logout and origins with explicit environment allow-lists, retain public S256 client with implicit/direct grants disabled and unique customer audience.",
+        "Define and validate verify-email, reset-password, lockout, access/SSO/action token lifetimes and logout/session revocation; local mail capture only, production SMTP from secrets.",
+        "Test disabled-by-default rollout, required-action order, hostile redirect, old/expired link and realm-isolation failures; enable only when edge, mail and smoke gates pass."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "platform_infrastructure"
+      ],
+      "primaryRepository": "platform_infrastructure",
+      "repositorySlices": [
+        {
+          "repository": "platform_infrastructure",
+          "paths": [
+            "keycloak/realms/vistay-customer-realm.json",
+            "keycloak/README.md",
+            "scripts/Test-CustomerRealm.ps1",
+            "compose.full.yaml"
+          ],
+          "artifacts": [
+            "hardened customer realm config",
+            "local-only email capture and recovery smoke",
+            "realm activation/rollback notes"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "customer-realm:configure",
+          "customer-session:revoke"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E18-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "local realm and allowed customer origin",
+          "when": "verification, PKCE login, reset and logout run",
+          "then": "one CUSTOMER session follows verified email and S256, with no other-realm audience"
+        },
+        {
+          "id": "AC02",
+          "given": "wildcard/hostile redirect, old link or disabled email verification",
+          "when": "realm validation runs",
+          "then": "CI or activation gate rejects the config without exposing a link"
+        },
+        {
+          "id": "AC03",
+          "given": "mail or edge unavailable",
+          "when": "rollout is attempted",
+          "then": "customer realm stays disabled and rollback retains existing users and audit"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "contract",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-CustomerRealm.ps1 -StaticOnly",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "customer realm static policy validation"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-CustomerRealm.ps1",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "redacted Keycloak verify/reset/lockout/rollback smoke report"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-platform-infrastructure",
+        "roadmap-v1-3",
+        "source-vs-e18-s02-st01"
+      ],
+      "decisionNoteVi": "Leaf VS-E18-S02-ST01 chỉ sở hữu artifact của platform_infrastructure; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "infrastructure",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [
+        "Production customer realm activation requires approved HTTPS origin, mail transport/verification and E18-T03 edge smoke."
+      ],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E18-S02",
+      "sourceId": "VS-E18-S02-ST02",
+      "jiraKey": "SCRUM-828",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E18-S02",
+      "summary": "[VS-E18-S02-ST02] Build Customer Web auth and recovery journeys",
+      "actor": "Customer using their own browser session",
+      "outcome": "Customer Web offers accessible register, verify-email pending, login, logout and recovery flows using customer realm Authorization Code + S256 and self-scoped APIs.",
+      "context": "frontend_customer App.tsx is a promotional landing page with no login/session routes; the customer realm is currently disabled.",
+      "inScope": [
+        "Add dedicated register/login/verify-pending/recovery routes; keep public search content usable while protected profile actions require login.",
+        "Use customer-only OIDC issuer, audience, state, nonce and PKCE verifier; validate callback and clear stale client state on error/logout without persisting access/refresh tokens in localStorage.",
+        "Render expired verification and recovery errors with generic non-enumerating copy, accessible focus/status and a safe resend; prohibit cross-realm callback acceptance."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "frontend_customer"
+      ],
+      "primaryRepository": "frontend_customer",
+      "repositorySlices": [
+        {
+          "repository": "frontend_customer",
+          "paths": [
+            "src/App.tsx",
+            "src/lib/customer-auth.ts",
+            "src/pages/CustomerAuth.tsx",
+            "src/pages/CustomerRecovery.tsx",
+            "src/lib/apollo.ts",
+            "e2e/customer-auth.spec.ts"
+          ],
+          "artifacts": [
+            "Customer auth routes and recovery UI",
+            "OIDC callback and token lifecycle integration",
+            "cross-realm/expired/replay e2e cases"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Consume Customer realm OIDC and the versioned E18 Customer GraphQL/REST operations; no direct database or Keycloak Admin API use.",
+        "Guard protected routes, clear client query cache on logout and require an explicit authenticated customer subject for every private operation."
+      ],
+      "dataOwnership": [
+        "Customer Web owns presentation and ephemeral browser session state only; Keycloak owns credentials, User owns profiles/consent, and Booking owns booking proof."
+      ],
+      "stateMachine": [
+        "Public -> Authenticating -> Verified session -> Expired/Logged out; invalid callbacks never enter verified session.",
+        "Pending verification and consent withdrawal are explicit UI states; no browser-side change implies a server-side claim or policy approval."
+      ],
+      "authorization": {
+        "actions": [
+          "customer-session:login",
+          "customer-session:logout",
+          "customer-account:register"
+        ],
+        "dataPartitions": [
+          "CUSTOMER SELF is the authenticated realm+subject mapped to exactly one active authorization subject; ADMIN support needs an explicit action, audited case and scoped partition."
+        ],
+        "fieldGroups": [
+          "Render only PROFILE_SELF, CONTACT_SELF and CONSENT_SELF fields explicitly returned by the owned User API; never render support-only fields."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Do not automatically resubmit mutations on network timeout without a stable request idempotency key.",
+        "On stale profile version, refresh authoritative User data before offering resubmit.",
+        "Never infer successful claim, verification or consent from a local optimistic update."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E18-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E18-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E18-S01-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E18-T03",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "customer on allowed origin and verified account",
+          "when": "register, verify and PKCE login finish",
+          "then": "a customer-only session opens the protected route without exposing credentials in URL or storage"
+        },
+        {
+          "id": "AC02",
+          "given": "cancelled callback, wrong realm, stale code or expired reset link",
+          "when": "the user returns",
+          "then": "the UI clears state and offers safe recovery without exposing account existence"
+        },
+        {
+          "id": "AC03",
+          "given": "logout or expired session",
+          "when": "a protected Customer request is made",
+          "then": "it fails closed and no stale profile/contact data is rendered"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm run lint && npm run build",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "Customer Web lint and TypeScript/build report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "e2e",
+          "command": "npm run test:e2e -- --project=chromium",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Playwright Customer Web auth/partition/redaction report; add test:e2e script in the named repository"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-frontend-customer",
+        "roadmap-v1-3",
+        "source-vs-e18-s02-st02"
+      ],
+      "decisionNoteVi": "Leaf VS-E18-S02-ST02 chỉ sở hữu artifact của frontend_customer; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E18-S03",
+      "sourceId": "VS-E18-S03-ST01",
+      "jiraKey": "SCRUM-829",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E18-S03",
+      "summary": "[VS-E18-S03-ST01] Implement Customer self profile and consent ledger",
+      "actor": "Verified Customer for SELF requests; authorized distinct support reviewers for privileged cases; authenticated internal service for provisioning.",
+      "outcome": "User exposes SELF-only Customer profile/contact updates and an append-only versioned consent receipt ledger; email or phone changes require new verification.",
+      "context": "Customer table already stores email, normalized_phone and avatar_media_id. User privacy policy assigns consent records to User; E13 owns notification channel preferences and Media owns avatar bytes.",
+      "inScope": [
+        "Add myCustomerProfile and updateMyCustomerProfile mutations with version compare-and-swap, field allow-list and no client-supplied customerId.",
+        "Stage email/phone changes until separately verified; keep the old contact active until verification and never silently replace a verified identity.",
+        "Append consent receipts with purpose, legal-text version/hash, action grant/withdraw, time, channel and audit evidence; no pre-checked optional marketing consent; reject unrecognized or retired policy versions.",
+        "Return own current consent state and history without leaking internal notes, unrelated customers or security audit; follow Media private avatar reference and E13 notification-preference boundary."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "repositories": [
+        "service_user"
+      ],
+      "primaryRepository": "service_user",
+      "repositorySlices": [
+        {
+          "repository": "service_user",
+          "paths": [
+            "src/main/resources/db/migration/V16__customer_consent_receipts.sql",
+            "src/main/resources/graphql/schema.graphqls",
+            "src/main/java/com/vistay/user/application/CustomerSelfProfileService.java",
+            "src/main/java/com/vistay/user/application/CustomerConsentService.java",
+            "src/test/java/com/vistay/user/application/CustomerSelfProfileIntegrationTest.java"
+          ],
+          "artifacts": [
+            "SELF profile GraphQL operations",
+            "pending contact-verification flow",
+            "append-only consent receipts with policy version",
+            "authorization/version/withdraw tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Expose only the named REST, GraphQL or internal proof operation in the owner service.",
+        "Return stable validation, forbidden, non-enumerating not-found, conflict and dependency-unavailable codes.",
+        "Persist append-only security/consent audit and transactional outbox for externally observable local state changes; reconcile Keycloak operations across the external boundary."
+      ],
+      "dataOwnership": [
+        "Keycloak owns CUSTOMER credentials, email verification, recovery and sessions; Authentication owns the minimal realm/subject projection and security command audit.",
+        "User owns Customer profile, consent receipt history, authorization subject and offline-profile claim; neither service reads the other database."
+      ],
+      "stateMachine": [
+        "Profile contact change PENDING_VERIFICATION -> VERIFIED/APPLIED or EXPIRED; old verified contact remains effective until success.",
+        "Consent state is derived from ordered immutable GRANT/WITHDRAW receipts for each purpose+version; no in-place edits."
+      ],
+      "authorization": {
+        "actions": [
+          "profile:read",
+          "profile:update",
+          "customer-consent:record",
+          "customer-consent:read"
+        ],
+        "dataPartitions": [
+          "CUSTOMER SELF is the authenticated realm+subject mapped to exactly one active authorization subject; ADMIN support needs an explicit action, audited case and scoped partition."
+        ],
+        "fieldGroups": [
+          "PROFILE_SELF, CONTACT_SELF and CONSENT_SELF separately; INTERNAL_NOTES and AUDIT excluded"
+        ]
+      },
+      "failureSemantics": [
+        "Fail closed on missing realm, wrong audience, unverified email, missing subject, stale version, suspended account or unavailable required dependency.",
+        "Do not disclose whether another customer email, profile, booking or identity exists.",
+        "Never log passwords, cookies, recovery/action links, access tokens or unredacted contact fields."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E18-S01-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E18-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "linked verified Customer and current profile version",
+          "when": "self-safe fields and optional consent are updated",
+          "then": "one version change and independently auditable consent receipt are persisted, with latest own state readable"
+        },
+        {
+          "id": "AC02",
+          "given": "new email/phone or a retired/missing policy version",
+          "when": "update is requested",
+          "then": "contact remains unchanged until verification and invalid consent is rejected without side effects"
+        },
+        {
+          "id": "AC03",
+          "given": "other Customer ID, stale version or replayed consent withdrawal",
+          "when": "the request is attempted",
+          "then": "no cross-account data, duplicate receipt or silent overwrite is observed"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*CustomerSelfProfile*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *CustomerSelfProfile*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*CustomerSelfProfile*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *CustomerSelfProfile*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "observability": [
+        "Correlate request, realm, subject digest and case ID across local audit and Keycloak calls without recording tokens or PII in logs.",
+        "Report bounded verification/claim/revocation outcome and retry-age metrics without customer identifiers as labels.",
+        "Provide a documented safe repair route for uncertain Keycloak or Booking proof states."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "labels": [
+        "repo-service-user",
+        "roadmap-v1-3",
+        "source-vs-e18-s03-st01",
+        "policy-configurable"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E18-S03-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [
+        "Publishing production consent text, purpose versions and retention needs approved configurable policy before public activation."
+      ],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E18-S03",
+      "sourceId": "VS-E18-S03-ST02",
+      "jiraKey": "SCRUM-830",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E18-S03",
+      "summary": "[VS-E18-S03-ST02] Build Customer profile and consent workspace",
+      "actor": "Customer using their own browser session",
+      "outcome": "Customer Web renders editable self profile and versioned purpose-specific consent state with clear pending-contact-verification and withdrawal feedback.",
+      "context": "The customer frontend has only landing-page UI. User owns the profile and consent ledger; E13 owns delivery-channel notification preferences.",
+      "inScope": [
+        "Build authenticated self profile view/edit with field-level error, optimistic-version conflict refresh and accessible mobile layout; never show internal notes.",
+        "Present legal text version/hash supplied by approved policy contract, explicit opt-in/withdraw actions, immutable receipt history and separate pending verification status.",
+        "Keep account data out of browser persistent storage and clear queries on logout; link E13 notification preferences when available rather than duplicating its source of truth."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "frontend_customer"
+      ],
+      "primaryRepository": "frontend_customer",
+      "repositorySlices": [
+        {
+          "repository": "frontend_customer",
+          "paths": [
+            "src/pages/CustomerProfile.tsx",
+            "src/pages/CustomerConsent.tsx",
+            "src/lib/apollo.ts",
+            "src/App.tsx",
+            "e2e/customer-profile.spec.ts"
+          ],
+          "artifacts": [
+            "self profile and consent screens",
+            "contact-verification status and safe conflict recovery",
+            "mobile/auth/withdrawal e2e"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Consume Customer realm OIDC and the versioned E18 Customer GraphQL/REST operations; no direct database or Keycloak Admin API use.",
+        "Guard protected routes, clear client query cache on logout and require an explicit authenticated customer subject for every private operation."
+      ],
+      "dataOwnership": [
+        "Customer Web owns presentation and ephemeral browser session state only; Keycloak owns credentials, User owns profiles/consent, and Booking owns booking proof."
+      ],
+      "stateMachine": [
+        "Public -> Authenticating -> Verified session -> Expired/Logged out; invalid callbacks never enter verified session.",
+        "Pending verification and consent withdrawal are explicit UI states; no browser-side change implies a server-side claim or policy approval."
+      ],
+      "authorization": {
+        "actions": [
+          "profile:read",
+          "profile:update",
+          "customer-consent:read",
+          "customer-consent:record"
+        ],
+        "dataPartitions": [
+          "CUSTOMER SELF is the authenticated realm+subject mapped to exactly one active authorization subject; ADMIN support needs an explicit action, audited case and scoped partition."
+        ],
+        "fieldGroups": [
+          "Render only PROFILE_SELF, CONTACT_SELF and CONSENT_SELF fields explicitly returned by the owned User API; never render support-only fields."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Do not automatically resubmit mutations on network timeout without a stable request idempotency key.",
+        "On stale profile version, refresh authoritative User data before offering resubmit.",
+        "Never infer successful claim, verification or consent from a local optimistic update."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E18-S03-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E18-S02-ST02",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "logged-in Customer and current policy version",
+          "when": "profile edit and consent are saved",
+          "then": "only the own profile and purpose-specific receipts display with accessible confirmation"
+        },
+        {
+          "id": "AC02",
+          "given": "pending contact proof, stale revision or expired session",
+          "when": "UI refreshes",
+          "then": "old contact remains visible, conflict asks refresh and protected data disappears after logout"
+        },
+        {
+          "id": "AC03",
+          "given": "other Customer ID or INTERNAL_NOTES in a crafted response",
+          "when": "render/requests run",
+          "then": "UI neither requests cross-customer data nor renders forbidden fields"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm run lint && npm run build",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "Customer Web lint and TypeScript/build report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "e2e",
+          "command": "npm run test:e2e -- --project=chromium",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "Playwright Customer Web auth/partition/redaction report; add test:e2e script in the named repository"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-frontend-customer",
+        "roadmap-v1-3",
+        "source-vs-e18-s03-st02"
+      ],
+      "decisionNoteVi": "Leaf VS-E18-S03-ST02 chỉ sở hữu artifact của frontend_customer; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E18-S04",
+      "sourceId": "VS-E18-S04-ST01",
+      "jiraKey": "SCRUM-831",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E18-S04",
+      "summary": "[VS-E18-S04-ST01] Implement audited offline Customer profile claim",
+      "actor": "Verified Customer for SELF requests; authorized distinct support reviewers for privileged cases; authenticated internal service for provisioning.",
+      "outcome": "An unlinked offline Customer profile may be claimed only through explicit proof tied to the original booking/customer record and audited support approval; no automatic email/phone match transfers ownership.",
+      "context": "User customers.auth_account_id is nullable for offline records. Booking owns booking evidence; User owns the Customer link and authorization subject, and must not query Booking tables.",
+      "inScope": [
+        "Expose claim initiation and review using opaque profile/booking references, proof evidence from an authenticated Booking service boundary and an expiry-bound challenge, without returning candidate existence.",
+        "Require separate authorized reviewer (not claimant or original creator) for ambiguous matches or conflicting claims; proof alone without authoritative booking corroboration cannot transfer ownership.",
+        "Atomically link exactly one previously unclaimed profile to one verified CUSTOMER subject using expectedVersion, uniqueness and an idempotency key; record immutable before/after subject identifiers, reason, reviewer and evidence digest.",
+        "Block claim if linked, anonymized, booking evidence revoked/unavailable or another pending claim exists; expose a safe reject/expire and human-resolution route without leaking historic PII."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "repositories": [
+        "service_user"
+      ],
+      "primaryRepository": "service_user",
+      "repositorySlices": [
+        {
+          "repository": "service_user",
+          "paths": [
+            "src/main/resources/db/migration/V17__customer_offline_claim.sql",
+            "src/main/resources/graphql/schema.graphqls",
+            "src/main/java/com/vistay/user/application/CustomerProfileClaimService.java",
+            "src/main/java/com/vistay/user/adapter/out/booking/BookingClaimEvidenceClient.java",
+            "src/test/java/com/vistay/user/application/CustomerProfileClaimServiceIntegrationTest.java"
+          ],
+          "artifacts": [
+            "claim challenge and approval workflow",
+            "bounded Booking evidence port",
+            "unique verified subject link",
+            "race/false-match audit tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Expose only the named REST, GraphQL or internal proof operation in the owner service.",
+        "Return stable validation, forbidden, non-enumerating not-found, conflict and dependency-unavailable codes.",
+        "Persist append-only security/consent audit and transactional outbox for externally observable local state changes; reconcile Keycloak operations across the external boundary."
+      ],
+      "dataOwnership": [
+        "Keycloak owns CUSTOMER credentials, email verification, recovery and sessions; Authentication owns the minimal realm/subject projection and security command audit.",
+        "User owns Customer profile, consent receipt history, authorization subject and offline-profile claim; neither service reads the other database."
+      ],
+      "stateMachine": [
+        "Claim REQUESTED -> EVIDENCE_VERIFIED -> APPROVED -> LINKED or REJECTED/EXPIRED/CONFLICT.",
+        "Only an approved, current evidence revision can move an UNCLAIMED profile to LINKED; prior owner or linked profile can never be silently replaced."
+      ],
+      "authorization": {
+        "actions": [
+          "customer-profile:claim:initiate",
+          "customer-profile:claim:review"
+        ],
+        "dataPartitions": [
+          "CUSTOMER SELF is the authenticated realm+subject mapped to exactly one active authorization subject; ADMIN support needs an explicit action, audited case and scoped partition."
+        ],
+        "fieldGroups": [
+          "CLAIM_STATUS_SELF only; CLAIM_EVIDENCE and PII_CONTACT limited to audited support"
+        ]
+      },
+      "failureSemantics": [
+        "Fail closed on missing realm, wrong audience, unverified email, missing subject, stale version, suspended account or unavailable required dependency.",
+        "Do not disclose whether another customer email, profile, booking or identity exists.",
+        "Never log passwords, cookies, recovery/action links, access tokens or unredacted contact fields."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E18-S01-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E18-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "verified account, eligible unlinked offline record, authoritative Booking proof and independent approval",
+          "when": "claim commits",
+          "then": "one original Customer profile is linked to the verified subject with retained history and complete approval/evidence audit"
+        },
+        {
+          "id": "AC02",
+          "given": "same name/email/phone without booking proof, another account, rejected or expired challenge",
+          "when": "claim is requested",
+          "then": "response remains non-enumerating and no link, inherited booking access or consent change occurs"
+        },
+        {
+          "id": "AC03",
+          "given": "two simultaneous verified claimants or Booking dependency outage",
+          "when": "claim and retry run",
+          "then": "only one can win; conflicts and uncertain evidence remain pending for review, without reassignment or duplicate event"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*CustomerProfileClaim*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *CustomerProfileClaim*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*CustomerProfileClaim*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *CustomerProfileClaim*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "observability": [
+        "Correlate request, realm, subject digest and case ID across local audit and Keycloak calls without recording tokens or PII in logs.",
+        "Report bounded verification/claim/revocation outcome and retry-age metrics without customer identifiers as labels.",
+        "Provide a documented safe repair route for uncertain Keycloak or Booking proof states."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "labels": [
+        "repo-service-user",
+        "roadmap-v1-3",
+        "source-vs-e18-s04-st01",
+        "policy-configurable"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E18-S04-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E18-S05",
+      "sourceId": "VS-E18-S05-ST01",
+      "jiraKey": "SCRUM-832",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E18-S05",
+      "summary": "[VS-E18-S05-ST01] Revoke compromised Customer sessions before recovery",
+      "actor": "Verified Customer for SELF requests; authorized distinct support reviewers for privileged cases; authenticated internal service for provisioning.",
+      "outcome": "Authentication supports audited, rate-limited Customer account freeze and recovery, revoking customer Keycloak sessions and credentials before any identity relink is allowed.",
+      "context": "Keycloak owns sessions and credentials; Authentication has existing revocation/security audit tables but no Customer-specific compromise workflow.",
+      "inScope": [
+        "Add self-reported and authorized support compromise intake with case ID, reason, cooldown and no account enumeration; freeze the customer identity before issuing new login grants.",
+        "Revoke Keycloak active sessions and offline/refresh grants with bounded retry and recorded reconciliation state; reject relinking until revocation is confirmed and email is newly verified.",
+        "Require step-up support approval for recovery and record old/new realm+subject, actor, timestamps and evidence digests; never send a raw recovery token to support or place it in logs."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "repositories": [
+        "service_authentication"
+      ],
+      "primaryRepository": "service_authentication",
+      "repositorySlices": [
+        {
+          "repository": "service_authentication",
+          "paths": [
+            "src/main/resources/db/migration/V11__customer_compromise_audit.sql",
+            "src/main/java/com/vistay/authentication/application/CustomerRecoveryService.java",
+            "src/main/java/com/vistay/authentication/adapter/out/keycloak/KeycloakAdminClient.java",
+            "src/main/java/com/vistay/authentication/adapter/in/rest/CustomerRecoveryController.java",
+            "src/test/java/com/vistay/authentication/application/CustomerRecoveryServiceIntegrationTest.java"
+          ],
+          "artifacts": [
+            "customer compromise and freeze commands",
+            "Keycloak all-session revocation reconciliation",
+            "step-up recovery audit and denial tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Expose only the named REST, GraphQL or internal proof operation in the owner service.",
+        "Return stable validation, forbidden, non-enumerating not-found, conflict and dependency-unavailable codes.",
+        "Persist append-only security/consent audit and transactional outbox for externally observable local state changes; reconcile Keycloak operations across the external boundary."
+      ],
+      "dataOwnership": [
+        "Keycloak owns CUSTOMER credentials, email verification, recovery and sessions; Authentication owns the minimal realm/subject projection and security command audit.",
+        "User owns Customer profile, consent receipt history, authorization subject and offline-profile claim; neither service reads the other database."
+      ],
+      "stateMachine": [
+        "Account ACTIVE -> FROZEN -> REVOKING -> REVOKED -> RECOVERY_PENDING -> REVERIFIED -> ACTIVE.",
+        "Revocation failure remains FROZEN and cannot issue a new linked profile or active session."
+      ],
+      "authorization": {
+        "actions": [
+          "customer-account:compromise:report",
+          "customer-account:recover:approve"
+        ],
+        "dataPartitions": [
+          "CUSTOMER SELF is the authenticated realm+subject mapped to exactly one active authorization subject; ADMIN support needs an explicit action, audited case and scoped partition."
+        ],
+        "fieldGroups": [
+          "ACCOUNT_SELF report; SECURITY_AUDIT support-only"
+        ]
+      },
+      "failureSemantics": [
+        "Fail closed on missing realm, wrong audience, unverified email, missing subject, stale version, suspended account or unavailable required dependency.",
+        "Do not disclose whether another customer email, profile, booking or identity exists.",
+        "Never log passwords, cookies, recovery/action links, access tokens or unredacted contact fields."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E18-S01-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E18-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E18-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "compromised Customer and authorized recovery case",
+          "when": "freeze and revoke complete before re-verification",
+          "then": "old online/offline sessions are unusable and only a verified reviewed recovery path reactivates identity"
+        },
+        {
+          "id": "AC02",
+          "given": "unauthorized supporter, wrong realm or stale session",
+          "when": "freeze/recovery is attempted",
+          "then": "no customer is enumerated or silently reassigned and a stable denial is audited"
+        },
+        {
+          "id": "AC03",
+          "given": "Keycloak revocation times out",
+          "when": "the worker retries or recovery is attempted",
+          "then": "account remains frozen, a repairable state is visible and no relink or valid old token succeeds"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*CustomerRecovery*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *CustomerRecovery*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*CustomerRecovery*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *CustomerRecovery*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "observability": [
+        "Correlate request, realm, subject digest and case ID across local audit and Keycloak calls without recording tokens or PII in logs.",
+        "Report bounded verification/claim/revocation outcome and retry-age metrics without customer identifiers as labels.",
+        "Provide a documented safe repair route for uncertain Keycloak or Booking proof states."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "labels": [
+        "repo-service-authentication",
+        "roadmap-v1-3",
+        "source-vs-e18-s05-st01"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E18-S05-ST01 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E18-S05",
+      "sourceId": "VS-E18-S05-ST02",
+      "jiraKey": "SCRUM-833",
+      "issueType": "Subtask",
+      "parentSourceId": "VS-E18-S05",
+      "summary": "[VS-E18-S05-ST02] Resolve duplicate Customer identity and claim collisions",
+      "actor": "Verified Customer for SELF requests; authorized distinct support reviewers for privileged cases; authenticated internal service for provisioning.",
+      "outcome": "User detects conflicting Customer subjects/offline claims and provides a gated, append-only reviewer resolution path that retains history and never broadens SELF access prematurely.",
+      "context": "Existing customer indexes on email/phone are non-unique; they are candidate signals, not identity proof. Authentication owns verified-recovery and session revocation.",
+      "inScope": [
+        "Identify duplicates as REVIEW_REQUIRED cases without merging accounts; include exact profile/subject IDs and provenance in restricted audit but only generic status in customer responses.",
+        "Require confirmed Authentication session revocation, fresh verification and two-person support review before relinking; never merge consent receipts or booking data across profiles automatically.",
+        "Use expectedVersion and exclusive active subject constraints to record superseded links and ordered audit/outbox evidence; provide reversible pending decision, not historical deletion.",
+        "Test attacker same-phone/email, race between claim and recovery, wrong realm and no-access to restricted data while a case is pending."
+      ],
+      "outOfScope": [
+        "Frontend rendering outside the owning service contract.",
+        "Direct reads from another service database.",
+        "Production credentials, destructive history rewrites, or silent fallback authorization."
+      ],
+      "repositories": [
+        "service_user"
+      ],
+      "primaryRepository": "service_user",
+      "repositorySlices": [
+        {
+          "repository": "service_user",
+          "paths": [
+            "src/main/resources/db/migration/V18__customer_identity_resolution.sql",
+            "src/main/java/com/vistay/user/application/CustomerIdentityResolutionService.java",
+            "src/main/java/com/vistay/user/adapter/in/graphql/CustomerIdentityResolutionController.java",
+            "src/test/java/com/vistay/user/application/CustomerIdentityResolutionServiceIntegrationTest.java"
+          ],
+          "artifacts": [
+            "duplicate/conflict cases",
+            "two-person resolution and relink gate",
+            "identity history and audit",
+            "colliding subject/claim tests"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Expose only the named REST, GraphQL or internal proof operation in the owner service.",
+        "Return stable validation, forbidden, non-enumerating not-found, conflict and dependency-unavailable codes.",
+        "Persist append-only security/consent audit and transactional outbox for externally observable local state changes; reconcile Keycloak operations across the external boundary."
+      ],
+      "dataOwnership": [
+        "Keycloak owns CUSTOMER credentials, email verification, recovery and sessions; Authentication owns the minimal realm/subject projection and security command audit.",
+        "User owns Customer profile, consent receipt history, authorization subject and offline-profile claim; neither service reads the other database."
+      ],
+      "stateMachine": [
+        "Collision DETECTED -> REVIEW_REQUIRED -> APPROVED/REJECTED; APPROVED -> RELINKED only after session revocation and verified subject proof.",
+        "Any uncertain or stale evidence remains REVIEW_REQUIRED and cannot broaden booking/profile access."
+      ],
+      "authorization": {
+        "actions": [
+          "customer-identity:review",
+          "customer-identity:resolve"
+        ],
+        "dataPartitions": [
+          "CUSTOMER SELF is the authenticated realm+subject mapped to exactly one active authorization subject; ADMIN support needs an explicit action, audited case and scoped partition."
+        ],
+        "fieldGroups": [
+          "CASE_SUMMARY self; CLAIM_EVIDENCE, CONTACT_PII and SECURITY_AUDIT reviewer-only"
+        ]
+      },
+      "failureSemantics": [
+        "Fail closed on missing realm, wrong audience, unverified email, missing subject, stale version, suspended account or unavailable required dependency.",
+        "Do not disclose whether another customer email, profile, booking or identity exists.",
+        "Never log passwords, cookies, recovery/action links, access tokens or unredacted contact fields."
+      ],
+      "idempotencyConcurrency": [
+        "Require an idempotency key for commands that can be retried externally and persist its request fingerprint and result.",
+        "Use aggregate version compare-and-swap so concurrent writers produce one winner and a stable conflict for losers.",
+        "Deduplicate consumed events by event ID and business key."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E18-S04-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E18-S05-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E18-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "two accounts with a colliding email/phone",
+          "when": "collision is detected",
+          "then": "both remain isolated and a restricted review case is created, without implied account merge"
+        },
+        {
+          "id": "AC02",
+          "given": "reverified identity, confirmed old-session revocation and distinct approver",
+          "when": "approved relink executes",
+          "then": "exactly one winner is linked and immutable old/new subject, consent and booking provenance remain intact"
+        },
+        {
+          "id": "AC03",
+          "given": "unapproved support actor, stale revision, incomplete revocation or two racing claims",
+          "when": "resolution is attempted",
+          "then": "no relink or cross-customer access occurs and stable conflict or forbidden evidence is retained"
+        }
+      ],
+      "tests": [
+        "Run the focused Gradle test selection with Testcontainers for PostgreSQL where persistence is involved.",
+        "Prove both the authorized path and action/partition/field-group denial path; retain the XML test report in Jira evidence.",
+        "Replay the same idempotency key and expected version and assert exactly one persisted business effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*CustomerIdentityResolution*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "JUnit XML for *CustomerIdentityResolution*"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test --tests \"*CustomerIdentityResolution*\"",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "JUnit XML for *CustomerIdentityResolution*; include persistence, authorization, and retry assertions"
+        }
+      ],
+      "observability": [
+        "Correlate request, realm, subject digest and case ID across local audit and Keycloak calls without recording tokens or PII in logs.",
+        "Report bounded verification/claim/revocation outcome and retry-age metrics without customer identifiers as labels.",
+        "Provide a documented safe repair route for uncertain Keycloak or Booking proof states."
+      ],
+      "definitionOfDone": [
+        "Migration, application code, focused tests, and repository CI pass.",
+        "Contract behavior and stable error codes match the catalog and no cross-service database read is introduced.",
+        "Jira contains commit/PR, test report, denial evidence, replay evidence, and rollback/repair note."
+      ],
+      "evidence": [
+        "Commit or PR for the named repository paths.",
+        "Focused JUnit XML and CI URL.",
+        "Authorization-negative and idempotent-replay evidence.",
+        "Migration compatibility and repair/rollback note."
+      ],
+      "labels": [
+        "repo-service-user",
+        "roadmap-v1-3",
+        "source-vs-e18-s05-st02",
+        "policy-configurable"
+      ],
+      "decisionNoteVi": "Leaf triển khai VS-E18-S05-ST02 đã khóa owner repo, phạm vi file, quyền, tiêu chí và lệnh test; agent không được mở rộng sang database của service khác.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E18",
+      "sourceId": "VS-E18-T01",
+      "jiraKey": "SCRUM-834",
+      "issueType": "Task",
+      "parentSourceId": "VS-E18",
+      "summary": "[VS-E18-T01] Publish Customer identity profile and claim contracts",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Contracts defines precise customer realm/subject, profile SELF, consent receipts, Booking-backed offline claim and recovery transitions with negative fixtures and owner boundaries.",
+      "context": "Existing GraphQL backoffice and gRPC authorization contracts exist, but E18 Customer identity/profile operations are not specified end-to-end.",
+      "inScope": [
+        "Publish versioned customer REST/GraphQL and authenticated internal proof interfaces with issuer/audience, stable codes, idempotency and pagination/version semantics.",
+        "Define field groups PROFILE_SELF/CONTACT_SELF/CONSENT_SELF/CLAIM_EVIDENCE/SECURITY_AUDIT and explicit customer-vs-support action/partition matrix.",
+        "Define consent purpose/legal-text version/hash and receipt semantics as configurable policy; production legal copy and SMS activation require separate approval/gate.",
+        "Add fixtures for wrong realm, duplicate contact, unverified email, stale revision, revoked session, ambiguous claim and cross-customer enumeration; forbid cross-service DB access."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "platform_contracts"
+      ],
+      "primaryRepository": "platform_contracts",
+      "repositorySlices": [
+        {
+          "repository": "platform_contracts",
+          "paths": [
+            "docs/customer-identity-profile-v1.md",
+            "schemas/customer-identity/**",
+            "fixtures/customer-identity/**",
+            "graphql/customer/**",
+            "scripts/validate-schemas.mjs"
+          ],
+          "artifacts": [
+            "owner/action/field matrix",
+            "versioned identity/profile/claim contract",
+            "positive/negative fixture set",
+            "consent-policy activation gate"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "customer-contract:publish"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "E18 Customer profiles, auth and Booking proof boundaries",
+          "when": "contract validators run",
+          "then": "all caller, owner, issuer, action, field, state and error semantics validate deterministically"
+        },
+        {
+          "id": "AC02",
+          "given": "automatic email match, cross-service DB read, cross-realm issuer, unverifiable consent version or premature relink",
+          "when": "negative fixtures run",
+          "then": "validation fails with an exact fixture/path diagnostic"
+        },
+        {
+          "id": "AC03",
+          "given": "same canonical inputs",
+          "when": "validation is repeated",
+          "then": "fingerprints and published schema remain stable and no production legal value is invented"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "contract",
+          "command": "npm run validate:schemas && npm run validate:graphql",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "Customer contract schema and composition report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "unit",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "complete platform_contracts CI-equivalent validation log"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-platform-contracts",
+        "roadmap-v1-3",
+        "source-vs-e18-t01",
+        "policy-configurable"
+      ],
+      "decisionNoteVi": "Leaf VS-E18-T01 chỉ sở hữu artifact của platform_contracts; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "contract",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E18",
+      "sourceId": "VS-E18-T02",
+      "jiraKey": "SCRUM-835",
+      "issueType": "Task",
+      "parentSourceId": "VS-E18",
+      "summary": "[VS-E18-T02] Prove Customer identity flows with Postman",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "A Newman-ready Customer collection exercises verification, PKCE callback boundary, self profile, consent, offline claim and compromised/duplicate recovery with fixture cleanup.",
+      "context": "platform_infrastructure/postman contains Host and backoffice collections, but no Customer identity end-to-end suite. Never put raw passwords, action links or tokens in tracked environment.",
+      "inScope": [
+        "Add customer collection and sanitized local environment plus isolated two-customer/one-offline-booking fixtures and deterministic cleanup; capture email verification via local mail adapter only.",
+        "Assert authorized register/verify/login/profile/consent/claim and repeat/withdraw/recovery flows, including wrong audience, unverified email, wrong customer ID, conflicting claim and revoked session.",
+        "Run static collection validation without live credentials and optional integration Newman against local compose; attach redacted JSON/JUnit and explicit AC mapping."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "platform_infrastructure"
+      ],
+      "primaryRepository": "platform_infrastructure",
+      "repositorySlices": [
+        {
+          "repository": "platform_infrastructure",
+          "paths": [
+            "postman/ViStay-Customer-Identity-v1.postman_collection.json",
+            "postman/ViStay-Customer-Identity-local.postman_environment.example.json",
+            "postman/fixtures/customer-identity/**",
+            "scripts/Test-PostmanCustomerIdentity.ps1",
+            "postman/README.md"
+          ],
+          "artifacts": [
+            "Customer identity Postman collection",
+            "safe fixture and environment template",
+            "static/Newman runner and redacted report"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "customer-identity:test"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E18-T01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E18-T03",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E18-S01-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E18-S03-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E18-S04-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E18-S05-ST02",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "two independent Customer accounts, one eligible offline profile and local mail capture",
+          "when": "Newman suite runs",
+          "then": "authorized verify/profile/consent/claim and verified recovery have correlated positive evidence"
+        },
+        {
+          "id": "AC02",
+          "given": "wrong realm, other customer ID, ambiguous email/phone, old session or conflicting claimant",
+          "when": "negative cases run",
+          "then": "access stays denied without identity/booking enumeration or leaked tokens"
+        },
+        {
+          "id": "AC03",
+          "given": "the same fixtures and collection",
+          "when": "runner repeats and cleans up",
+          "then": "one deterministic outcome per idempotency key and no duplicate link/consent/session is left"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "contract",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-PostmanCustomerIdentity.ps1 -StaticOnly",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "Customer collection/static secret-scan report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "e2e",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-PostmanCustomerIdentity.ps1",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "redacted Newman JSON/JUnit and fixture cleanup report"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-platform-infrastructure",
+        "roadmap-v1-3",
+        "source-vs-e18-t02"
+      ],
+      "decisionNoteVi": "Leaf VS-E18-T02 chỉ sở hữu artifact của platform_infrastructure; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "integration",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [],
+      "externalBlockers": []
+    },
+    {
+      "templateSourceId": "VS-E18",
+      "sourceId": "VS-E18-T03",
+      "jiraKey": "SCRUM-836",
+      "issueType": "Task",
+      "parentSourceId": "VS-E18",
+      "summary": "[VS-E18-T03] Provision Customer edge and JWT boundary",
+      "actor": "ViStay implementation engineer or release operator",
+      "outcome": "Customer host routes only to Customer Web and Customer-scoped APIs, with strict issuer/audience federation and refusal of Admin/Host bearer tokens.",
+      "context": "Customer realm JSON exists but no validated public Customer edge routes or customer GraphQL JWT federation; E18 must not reuse the Host or Admin audience.",
+      "inScope": [
+        "Add customer.localhost Customer Web/API route, non-wildcard callback path and explicit per-environment origin/TLS policy without exposing internal service endpoints.",
+        "Validate issuer, audience, signature, expiry, realm role, subject and authorization snapshot at the edge/subgraph boundary; deny Admin/Host issuer and fail closed on User authorization outage.",
+        "Add static route/JWT negative checks and local compose two-realm smoke; keep public production exposure gated on HTTPS and approved DNS/secret configuration."
+      ],
+      "outOfScope": [
+        "Runtime business logic owned by another repository.",
+        "Production secrets or unapproved policy values.",
+        "Changing historical Jira workflow or bypassing the catalog readiness gate."
+      ],
+      "repositories": [
+        "platform_infrastructure"
+      ],
+      "primaryRepository": "platform_infrastructure",
+      "repositorySlices": [
+        {
+          "repository": "platform_infrastructure",
+          "paths": [
+            "router/**",
+            "nginx/**",
+            "caddy/**",
+            "compose.yaml",
+            "compose.full.yaml",
+            "scripts/Test-CustomerEdge.ps1"
+          ],
+          "artifacts": [
+            "customer-only web/API edge",
+            "JWT realm/audience and subject validation",
+            "cross-realm denial and rollback smoke"
+          ]
+        }
+      ],
+      "contracts": [],
+      "interfaces": [
+        "Version every externally consumed operation or event and state its owner, caller, compatibility rule, timeout, and stable error behavior.",
+        "Keep fixtures deterministic and free of production credentials or customer data."
+      ],
+      "dataOwnership": [
+        "This task owns only the named contract, UI, or infrastructure artifacts; authoritative domain rows remain in their service database."
+      ],
+      "stateMachine": [
+        "Artifact lifecycle is DRAFT -> VALIDATED -> PUBLISHED; an incompatible semantic change requires a new version.",
+        "A failed validation remains unpublished and produces an actionable diagnostic.",
+        "Rollback selects the last validated artifact and does not mutate its contents."
+      ],
+      "authorization": {
+        "actions": [
+          "customer-edge:configure"
+        ],
+        "dataPartitions": [
+          "SYSTEM contract catalogue or the explicit ADMIN SITE/BRANCH partition used by the tested operation."
+        ],
+        "fieldGroups": [
+          "SUMMARY by default; DOCUMENT, PII, and INTERNAL_AUDIT appear only in explicitly granted test cases."
+        ]
+      },
+      "failureSemantics": [
+        "Fail validation or startup when a required contract, environment value, or dependency is absent.",
+        "Never print tokens, presigned URLs, private document fields, or production values in test output.",
+        "Use stable assertion messages so a weak agent can locate the failing contract or scenario."
+      ],
+      "idempotencyConcurrency": [
+        "Fixtures use unique deterministic business keys and cleanup is safe to repeat.",
+        "Repeated publication of identical canonical input produces the same fingerprint.",
+        "Concurrent API examples assert one effect or an explicit conflict."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E18-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E18-T01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "allowed customer origin and verified customer JWT",
+          "when": "web and self API are accessed",
+          "then": "only Customer routes and owned profile fields are reachable"
+        },
+        {
+          "id": "AC02",
+          "given": "Admin/Host token, wrong audience, expired token or unavailable User authorization",
+          "when": "Customer API route is called",
+          "then": "edge rejects access without fallback to public/other-realm data"
+        },
+        {
+          "id": "AC03",
+          "given": "production TLS/DNS or secret prerequisites missing",
+          "when": "customer host activation runs",
+          "then": "public route remains disabled and last validated config can be restored"
+        }
+      ],
+      "tests": [
+        "Run every exact command listed in testCases from the repository root.",
+        "Attach the machine-readable report plus a short mapping from each AC ID to its evidence.",
+        "Repeat the deterministic validation or flow and confirm no duplicate effect."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "contract",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-CustomerEdge.ps1 -StaticOnly",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "customer edge static route and JWT policy report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-CustomerEdge.ps1",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "two-realm Customer edge compose smoke and rollback report"
+        }
+      ],
+      "observability": [
+        "Test output includes correlation ID and stable error code but no secrets or protected field values.",
+        "Operational artifacts include readiness/failure evidence and a rollback or cleanup note."
+      ],
+      "definitionOfDone": [
+        "All named artifacts exist and repository CI passes.",
+        "Compatibility, authorization-negative, repeatability, and cleanup/rollback evidence are attached.",
+        "Catalog and Jira are synchronized and a selected DryRun returns zero changes."
+      ],
+      "evidence": [
+        "Commit/PR and CI URL.",
+        "Machine-readable test or Newman report.",
+        "Compatibility and rollback/cleanup note.",
+        "Jira zero-diff synchronization result."
+      ],
+      "labels": [
+        "repo-platform-infrastructure",
+        "roadmap-v1-3",
+        "source-vs-e18-t03"
+      ],
+      "decisionNoteVi": "Leaf VS-E18-T03 chỉ sở hữu artifact của platform_infrastructure; không được tự đưa credential hoặc giá trị production vào repo.",
+      "specStatus": "executable",
+      "workKind": "infrastructure",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [
+        "Public Customer edge needs approved DNS, HTTPS and production issuer/audience secrets; local-only deployment may proceed."
+      ],
+      "externalBlockers": []
+    }
+  ]
+}

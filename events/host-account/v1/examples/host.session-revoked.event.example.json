@@ -1,0 +1,22 @@
+{
+  "eventId": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+  "type": "vistay.host.session-revoked",
+  "version": 1,
+  "aggregateId": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+  "aggregateVersion": 2,
+  "correlationId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  "causationId": null,
+  "occurredAt": "2026-11-04T03:00:05Z",
+  "data": {
+    "sessionId": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+    "accountId": "66666666-6666-4666-8666-666666666666",
+    "realm": "HOST",
+    "subjectType": "HOST",
+    "previousState": "ACTIVE",
+    "state": "REVOKED",
+    "reasonCode": "ADMIN_SECURITY_ACTION",
+    "actorType": "ADMIN",
+    "aggregateVersion": 2,
+    "revokedAt": "2026-11-04T03:00:05Z"
+  }
+}

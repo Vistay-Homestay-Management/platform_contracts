@@ -1,0 +1,13 @@
+{
+  "fixtureVersion": 1,
+  "valid": false,
+  "kind": "wrong-realm-type",
+  "violation": "WRONG_REALM_OR_TYPE",
+  "expectedError": "HOST_WRONG_REALM_OR_TYPE",
+  "correlationId": "77777777-7777-4777-8777-777777777777",
+  "input": {
+    "realm": "BACKOFFICE",
+    "subjectType": "ADMIN",
+    "audience": "backoffice-api"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/events/host-account/v1/host.profile-provisioned.payload.schema.json",
+  "title": "Host profile provisioned payload v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["profileId", "accountId", "realm", "subjectType", "displayName", "preferredLocale", "verificationStatus", "aggregateVersion", "provisionedAt"],
+  "properties": {
+    "profileId": { "type": "string", "format": "uuid" },
+    "accountId": { "type": "string", "format": "uuid" },
+    "realm": { "const": "HOST" },
+    "subjectType": { "const": "HOST" },
+    "displayName": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "preferredLocale": { "type": "string", "pattern": "^[a-z]{2}(?:-[A-Z]{2})?$" },
+    "verificationStatus": { "enum": ["PENDING", "VERIFIED", "REQUIRES_REVIEW"] },
+    "aggregateVersion": { "type": "integer", "minimum": 1 },
+    "provisionedAt": { "type": "string", "format": "date-time" }
+  }
+}

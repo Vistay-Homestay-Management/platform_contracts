@@ -1,0 +1,19 @@
+{
+  "fixtureVersion": 1,
+  "valid": true,
+  "kind": "property-own-binding",
+  "correlationId": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+  "request": {
+    "propertyId": "33333333-3333-4333-8333-333333333333",
+    "branchId": "44444444-4444-4444-8444-444444444444",
+    "source": "PROPERTY_ACTIVE_MEMBERSHIP",
+    "ownershipTerm": "OWNED",
+    "dependencyStatus": "AVAILABLE"
+  },
+  "expected": {
+    "allowed": true,
+    "scope": "PROPERTY:OWN",
+    "fallback": "DENY",
+    "inferredFromCallerClaim": false
+  }
+}
