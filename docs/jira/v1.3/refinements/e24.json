@@ -3,7 +3,7 @@
     {
       "sourceId": "VS-E24",
       "outcome": "E24 isolates Finance employee compensation, customer-facing booking markup, earned commission, customer-debt collection accountability and self/manager-scoped views into five story boundaries.",
-      "context": "Finance owns salary, policy and earning ledger; Booking owns attribution and frozen guest-facing markup; User owns staff identity/branch links. Current Finance migrations V1–V4 have settlement and rules but no employee salary or commission tables. S01–S02 have detailed leaf refinement in this wave.",
+      "context": "Finance owns salary, policy and earning ledger; Booking owns attribution and frozen guest-facing markup; User owns staff identity/branch links. Current Finance migrations V1–V4 have settlement and rules but no employee salary or commission tables. S01–S03 have detailed leaf refinement in this wave.",
       "specStatus": "refined-parent",
       "dispatchable": false
     },
@@ -1494,6 +1494,772 @@
         "repo-platform-contracts",
         "roadmap-v1-3",
         "source-vs-e24-s02-st05",
+        "policy-configurable",
+        "business-review-needed"
+      ],
+      "decisionNoteVi": "platform_contracts owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "specStatus": "executable",
+      "workKind": "contract",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [
+        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+      ],
+      "externalBlockers": []
+    },
+    {
+      "sourceId": "VS-E24-S03",
+      "outcome": "S03 accrues immutable employee earnings only after verified customer collection and fulfilled booking, applies an approved effective sales/collection split, and compensates refunds or corrections.",
+      "context": "Guest-visible markup belongs to the sales owner only after verified collection and completed service. Internal commission is a separate approved rule; customer debt and collection KPI are not employee financial liabilities. No tax, insurance, or bank payroll execution.",
+      "specStatus": "refined-parent",
+      "dispatchable": false
+    },
+    {
+      "sourceId": "VS-E24-S03-ST01",
+      "summary": "[VS-E24-S03-ST01] Accrue split and compensate earnings in Finance append-only ledger",
+      "outcome": "Finance credits only collected and completed booking earnings to verified sales and collection owners under approved versioned policy, with proportional reversals.",
+      "context": "Finance existing payment transaction and refund flows are monetary sources; no checked-in employee earning ledger exists. Guest-facing markup belongs to sales owner; a published internal rule alone may split separate commission.",
+      "inScope": [
+        "Implement effective-dated maker-checker internal commission rules and append-only ledger with booking revision, verified payment/refund ID, sales/collector employee IDs, policy version and currency minor units.",
+        "Gate accrual on confirmed source amount paid and completed service; partial collection accrues only eligible collected amount, use deterministic rounding and nonoverlapping business keys.",
+        "On refunds, canceled completed service, chargeback or attribution correction, append proportional compensating negative entries and reconcile paid, pending and reversed totals."
+      ],
+      "outOfScope": [
+        "Paying salary, tax/insurance or bank transfer; reclassifying unpaid customer bill as an employee debt."
+      ],
+      "repositories": [
+        "service_finance"
+      ],
+      "primaryRepository": "service_finance",
+      "repositorySlices": [
+        {
+          "repository": "service_finance",
+          "paths": [
+            "src/main/resources/db/migration/**",
+            "src/main/java/com/vistay/finance/**",
+            "src/test/java/**"
+          ],
+          "artifacts": [
+            "approved commission-policy and append-only earning tables",
+            "verified collection/completion reconciliation worker",
+            "partial refund, split, replay and denial tests"
+          ]
+        }
+      ],
+      "interfaces": [
+        "Consume Booking completed/corrected event and Finance verified payment/refund; expose own/scoped ledger query with policy ID and source watermark."
+      ],
+      "dataOwnership": [
+        "Finance owns approved split and earning ledger; Booking supplies completed booking/frozen markup; User supplies staff roles; customer remains Finance debtor."
+      ],
+      "stateMachine": [
+        "UNASSESSED -> PENDING_PAYMENT_OR_SERVICE -> EARNED -> PARTIAL_REVERSAL/FULL_REVERSAL; corrections append, never delete."
+      ],
+      "authorization": {
+        "actions": [
+          "finance:commission-policy:approve",
+          "finance:earnings:accrue",
+          "finance:earnings:view-self",
+          "finance:earnings:view-scope"
+        ],
+        "dataPartitions": [
+          "Employee SELF only for the authenticated staff subject; manager FINANCE access is constrained to the authorized organization/site/branch; SYSTEM access is purpose-bound with verified caller; no cross-employee or cross-branch salary lookup."
+        ],
+        "fieldGroups": [
+          "FINANCIAL own amount and authorized manager aggregate; INTERNAL_AUDIT payment source and split details, SUMMARY status only."
+        ]
+      },
+      "failureSemantics": [
+        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
+        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
+        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+      ],
+      "idempotencyConcurrency": [
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
+        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E24-S03-ST05",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E24-S03-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E24-S03-ST03",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E24-S02-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "approved policy, completed booking, correct employee roles and verified paid total",
+          "when": "Finance accrues",
+          "then": "sales receives guest-facing markup and policy-based internal commission portions accrue only on actually collected eligible amount"
+        },
+        {
+          "id": "AC02",
+          "given": "unpaid or disputed payment, missing approval or checkout absent",
+          "when": "accrual attempted",
+          "then": "ledger has no payable credit and customer remains debtor"
+        },
+        {
+          "id": "AC03",
+          "given": "partial refund after a credit or source event replay",
+          "when": "Finance reconciles",
+          "then": "linked proportional reversal appears once, old credit remains immutable and balances match verified collection"
+        }
+      ],
+      "tests": [
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*EmployeeCompensation*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E24-S03-ST01: salary/identity approval and overlap/denial/replay fixture report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E24-S03-ST01: salary/identity approval and overlap/denial/replay fixture report"
+        }
+      ],
+      "observability": [
+        "Use bounded employee pseudonym, policy version and correlation ID to trace lookup and change; never place salary or PII in metrics labels.",
+        "Expose stale identity, missing approval, rejected overlap and authorization denial counts to approved finance/SRE operators."
+      ],
+      "definitionOfDone": [
+        "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
+        "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
+        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+      ],
+      "evidence": [
+        "Repository PR and CI link.",
+        "Versioned contract and positive/negative fixture report.",
+        "Approved identity, policy and effective-interval/rollback evidence when activation is requested."
+      ],
+      "labels": [
+        "repo-service-finance",
+        "roadmap-v1-3",
+        "source-vs-e24-s03-st01",
+        "policy-configurable",
+        "business-review-needed"
+      ],
+      "decisionNoteVi": "service_finance owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [
+        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+      ],
+      "externalBlockers": []
+    },
+    {
+      "sourceId": "VS-E24-S03-ST02",
+      "summary": "[VS-E24-S03-ST02] Publish completed service and revised attribution for earning eligibility",
+      "outcome": "Booking supplies the exact completed-service milestone, frozen markup and sales owner revision so Finance can decide when an earning may accrue.",
+      "context": "Check-in or booking creation cannot establish finished service; sales owner may differ from booking creator and assigned collection owner.",
+      "inScope": [
+        "Emit authoritative checkout/completed stay event with booking ID, customer, total and frozen markup minor units, sales owner and branch, timestamps and source revision.",
+        "Emit cancellation/reassignment/price correction with linked prior event for Finance to reverse rather than overwrite historical earnings.",
+        "Distinguish staff creator, sales owner and collector; reject checkout retroactive change without audited reason."
+      ],
+      "outOfScope": [
+        "Calculating commission amounts or marking customer paid in Booking."
+      ],
+      "repositories": [
+        "service_booking"
+      ],
+      "primaryRepository": "service_booking",
+      "repositorySlices": [
+        {
+          "repository": "service_booking",
+          "paths": [
+            "src/main/java/**",
+            "src/main/resources/**",
+            "src/test/java/**"
+          ],
+          "artifacts": [
+            "booking completion/attribution outbox",
+            "frozen markup and linked correction fixtures",
+            "duplicate checkout/cancellation tests"
+          ]
+        }
+      ],
+      "interfaces": [
+        "Version completed booking source event with stable booking revision and frozen S02 policy ID; Publish through transactional outbox."
+      ],
+      "dataOwnership": [
+        "Booking owns stay completion and sales snapshot; Finance owns verified payment, commission policy and earnings ledger."
+      ],
+      "stateMachine": [
+        "CONFIRMED -> CHECKED_IN -> COMPLETED; CANCELED excludes earning, corrected milestone emits linked revision."
+      ],
+      "authorization": {
+        "actions": [
+          "booking:earnings-source:publish"
+        ],
+        "dataPartitions": [
+          "Employee SELF only for the authenticated staff subject; manager FINANCE access is constrained to the authorized organization/site/branch; SYSTEM access is purpose-bound with verified caller; no cross-employee or cross-branch salary lookup."
+        ],
+        "fieldGroups": [
+          "SUMMARY completion and staff references; FINANCIAL booked markup limited by partition, INTERNAL_AUDIT correction reasons."
+        ]
+      },
+      "failureSemantics": [
+        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
+        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
+        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+      ],
+      "idempotencyConcurrency": [
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
+        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E24-S02-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E24-S03-ST05",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "staff-created booking with assigned sales owner and real checkout",
+          "when": "event is emitted",
+          "then": "Finance gets customer debtor, frozen markup, sales owner and completed service revision"
+        },
+        {
+          "id": "AC02",
+          "given": "confirmed but not checked out, or canceled booking",
+          "when": "Finance receives source state",
+          "then": "no false completed-service earning signal is published"
+        },
+        {
+          "id": "AC03",
+          "given": "checkout event replays after a correction",
+          "when": "outbox delivers",
+          "then": "one authoritative version with linked correction remains auditable"
+        }
+      ],
+      "tests": [
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*EmployeeCompensation*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E24-S03-ST02: salary/identity approval and overlap/denial/replay fixture report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E24-S03-ST02: salary/identity approval and overlap/denial/replay fixture report"
+        }
+      ],
+      "observability": [
+        "Use bounded employee pseudonym, policy version and correlation ID to trace lookup and change; never place salary or PII in metrics labels.",
+        "Expose stale identity, missing approval, rejected overlap and authorization denial counts to approved finance/SRE operators."
+      ],
+      "definitionOfDone": [
+        "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
+        "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
+        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+      ],
+      "evidence": [
+        "Repository PR and CI link.",
+        "Versioned contract and positive/negative fixture report.",
+        "Approved identity, policy and effective-interval/rollback evidence when activation is requested."
+      ],
+      "labels": [
+        "repo-service-booking",
+        "roadmap-v1-3",
+        "source-vs-e24-s03-st02"
+      ],
+      "decisionNoteVi": "service_booking owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [
+        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+      ],
+      "externalBlockers": []
+    },
+    {
+      "sourceId": "VS-E24-S03-ST03",
+      "summary": "[VS-E24-S03-ST03] Verify current sales and collection employee eligibility for earning split",
+      "outcome": "User confirms active employment and authorized site for both attributed sales and collection staff without calculating or owning the earning.",
+      "context": "Booking frozen attribution may reference an employee who subsequently transferred; payroll recipients are identified by immutable employee IDs and policy effective time.",
+      "inScope": [
+        "Offer purpose-bound employment assertion for sale and collection roles at source milestone with site and revision, including suspended/transferred/terminated status.",
+        "Preserve historical employee identity for already earned entries while preventing new unauthorized reassignment and salary leakage.",
+        "Enforce action+site/branch+FINANCIAL grants separately for self earning view and manager split review."
+      ],
+      "outOfScope": [
+        "Storing earning balance, calculating split or treating collector as customer debtor."
+      ],
+      "repositories": [
+        "service_user"
+      ],
+      "primaryRepository": "service_user",
+      "repositorySlices": [
+        {
+          "repository": "service_user",
+          "paths": [
+            "src/main/java/**",
+            "src/main/resources/**",
+            "src/test/java/**"
+          ],
+          "artifacts": [
+            "employment/role assertion and change event",
+            "transfer/terminated/foreign-branch self-view denial cases"
+          ]
+        }
+      ],
+      "interfaces": [
+        "Supply versioned role/branch assertion keyed by employee ID and effective time for Finance; no wage or customer debt field."
+      ],
+      "dataOwnership": [
+        "User owns employment and permission context; Booking owns sales assignment, Finance owns collection assignment and earnings."
+      ],
+      "stateMachine": [
+        "ACTIVE -> TRANSFERRED/TERMINATED; historical assertion remains reconstructible for past entitlement."
+      ],
+      "authorization": {
+        "actions": [
+          "user:earnings-role:assert",
+          "user:earnings-scope:authorize"
+        ],
+        "dataPartitions": [
+          "Employee SELF only for the authenticated staff subject; manager FINANCE access is constrained to the authorized organization/site/branch; SYSTEM access is purpose-bound with verified caller; no cross-employee or cross-branch salary lookup."
+        ],
+        "fieldGroups": [
+          "SUMMARY employee/site ID only; FINANCIAL own earning access and INTERNAL_AUDIT role-change provenance separate."
+        ]
+      },
+      "failureSemantics": [
+        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
+        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
+        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+      ],
+      "idempotencyConcurrency": [
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
+        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E24-S03-ST05",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E24-S01-ST03",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "active assigned sales and collector in authorized branch",
+          "when": "Finance requests assertions",
+          "then": "User returns two role-scoped employment revisions without wage or earning amount"
+        },
+        {
+          "id": "AC02",
+          "given": "inactive employee, foreign branch manager or missing FINANCIAL grant",
+          "when": "earning read/assignment is attempted",
+          "then": "request fails without leaking other staff earnings"
+        },
+        {
+          "id": "AC03",
+          "given": "employee transfers after verified paid completed booking",
+          "when": "Finance reconstructs historical earning",
+          "then": "historical role version remains valid for audit while new assignment requires current branch grant"
+        }
+      ],
+      "tests": [
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*EmployeeCompensation*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E24-S03-ST03: salary/identity approval and overlap/denial/replay fixture report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E24-S03-ST03: salary/identity approval and overlap/denial/replay fixture report"
+        }
+      ],
+      "observability": [
+        "Use bounded employee pseudonym, policy version and correlation ID to trace lookup and change; never place salary or PII in metrics labels.",
+        "Expose stale identity, missing approval, rejected overlap and authorization denial counts to approved finance/SRE operators."
+      ],
+      "definitionOfDone": [
+        "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
+        "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
+        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+      ],
+      "evidence": [
+        "Repository PR and CI link.",
+        "Versioned contract and positive/negative fixture report.",
+        "Approved identity, policy and effective-interval/rollback evidence when activation is requested."
+      ],
+      "labels": [
+        "repo-service-user",
+        "roadmap-v1-3",
+        "source-vs-e24-s03-st03"
+      ],
+      "decisionNoteVi": "service_user owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [
+        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+      ],
+      "externalBlockers": []
+    },
+    {
+      "sourceId": "VS-E24-S03-ST04",
+      "summary": "[VS-E24-S03-ST04] Show collection-gated personal commission and reversal on Admin Web and Mobile",
+      "outcome": "Employee can see pending vs earned own markup and commission and compensating refunds; authorized manager sees only assigned staff aggregate.",
+      "context": "Finance owns earning figures and evidence; Admin frontend cannot infer earned amount from Booking total or show a confirmed but unpaid booking as paid.",
+      "inScope": [
+        "Render Web/Mobile personal earning timeline separating base salary, guest-facing markup, internal split, pending payment/completion, earned and reversed entries with asOf/policy version.",
+        "Restrict manager review to authorized branch/staff and mask salary or raw payment details when FINANCIAL/INTERNAL_AUDIT grant is missing.",
+        "Show source stale, unpaid, dispute, partial refund, unavailable and next collection action without browser-side commission arithmetic."
+      ],
+      "outOfScope": [
+        "Editing ledger entries, setting own commission policy or bank payroll execution."
+      ],
+      "repositories": [
+        "frontend_admin"
+      ],
+      "primaryRepository": "frontend_admin",
+      "repositorySlices": [
+        {
+          "repository": "frontend_admin",
+          "paths": [
+            "apps/web/src/**",
+            "apps/mobile/src/**"
+          ],
+          "artifacts": [
+            "Web/Mobile self earning timeline and restricted manager summary",
+            "unpaid vs reversed and cross-branch privacy UI tests"
+          ]
+        }
+      ],
+      "interfaces": [
+        "Consume Finance own/scoped earning query with source watermark, amount breakdown and field-group filtering."
+      ],
+      "dataOwnership": [
+        "Finance owns earning ledger/projection, Booking supplies booking labels, User supplies active scope; UI stores no authoritative amounts."
+      ],
+      "stateMachine": [
+        "LOADING -> PENDING/EARNED/REVERSED/RESTRICTED/STALE/UNAVAILABLE; stale cannot display prior values as current earning."
+      ],
+      "authorization": {
+        "actions": [
+          "finance:earnings:view-self",
+          "finance:earnings:view-scope"
+        ],
+        "dataPartitions": [
+          "Employee SELF only for the authenticated staff subject; manager FINANCE access is constrained to the authorized organization/site/branch; SYSTEM access is purpose-bound with verified caller; no cross-employee or cross-branch salary lookup."
+        ],
+        "fieldGroups": [
+          "FINANCIAL amount only to self/authorized manager; INTERNAL_AUDIT source refs hidden without grant; SUMMARY status safe."
+        ]
+      },
+      "failureSemantics": [
+        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
+        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
+        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+      ],
+      "idempotencyConcurrency": [
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
+        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E24-S03-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E24-S03-ST03",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "paid completed booking with policy split and self employee",
+          "when": "Web/Mobile opens earnings",
+          "then": "own credited markup/commission and effective policy shown separately from salary"
+        },
+        {
+          "id": "AC02",
+          "given": "unpaid booking or foreign branch manager",
+          "when": "UI loads",
+          "then": "no false EARNED badge or private other-staff amount is exposed"
+        },
+        {
+          "id": "AC03",
+          "given": "partial refund, stale projection or missing service",
+          "when": "UI refreshes",
+          "then": "compensation and source status are shown from Finance or marked unavailable"
+        }
+      ],
+      "tests": [
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm run typecheck",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E24-S03-ST04: salary/identity approval and overlap/denial/replay fixture report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E24-S03-ST04: salary/identity approval and overlap/denial/replay fixture report"
+        }
+      ],
+      "observability": [
+        "Use bounded employee pseudonym, policy version and correlation ID to trace lookup and change; never place salary or PII in metrics labels.",
+        "Expose stale identity, missing approval, rejected overlap and authorization denial counts to approved finance/SRE operators."
+      ],
+      "definitionOfDone": [
+        "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
+        "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
+        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+      ],
+      "evidence": [
+        "Repository PR and CI link.",
+        "Versioned contract and positive/negative fixture report.",
+        "Approved identity, policy and effective-interval/rollback evidence when activation is requested."
+      ],
+      "labels": [
+        "repo-frontend-admin",
+        "roadmap-v1-3",
+        "source-vs-e24-s03-st04"
+      ],
+      "decisionNoteVi": "frontend_admin owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [
+        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+      ],
+      "externalBlockers": []
+    },
+    {
+      "sourceId": "VS-E24-S03-ST05",
+      "summary": "[VS-E24-S03-ST05] Version collection-gated earnings and reversal contract",
+      "outcome": "Contracts pins independent sales markup earning and policy-based internal sales/collection commission, with immutable ledger and compensating reversal events.",
+      "context": "Customer remains debtor even when an employee is responsible for collection; payout eligibility requires verified paid source and completed stay, never a mere booking confirmation.",
+      "inScope": [
+        "Define booking completed/changed source, payment verified/refunded source and employee sales/collector attribution with distinct event and business keys.",
+        "Specify effective approved commission policy with split validation, currency/minor-unit rounding/remainder, service completion and paid-balance gates; no unapproved split defaults.",
+        "Pin append-only EARNED/PENDING/REVERSED ledger, partial payment/refund allocation and old attribution/policy replay fixtures."
+      ],
+      "outOfScope": [
+        "Bank payout, wage tax or transfer of customer debt to employee."
+      ],
+      "repositories": [
+        "platform_contracts"
+      ],
+      "primaryRepository": "platform_contracts",
+      "repositorySlices": [
+        {
+          "repository": "platform_contracts",
+          "paths": [
+            "schemas/employee-earnings/**",
+            "fixtures/employee-earnings/**",
+            "graphql/backoffice/**"
+          ],
+          "artifacts": [
+            "effective commission policy and ledger event schemas",
+            "partial refund/collection/completion fixture matrix",
+            "paid-only and field-access negative cases"
+          ]
+        }
+      ],
+      "interfaces": [
+        "Version Finance commission-policy publication, source event ingestion and restricted employee/manager earning summary."
+      ],
+      "dataOwnership": [
+        "Finance owns verified collection and earnings ledger; Booking owns booking completion and sales owner; User owns staff identity."
+      ],
+      "stateMachine": [
+        "INELIGIBLE -> PENDING_COLLECTION/SERVICE -> EARNED -> PARTIALLY_REVERSED/FULLY_REVERSED via append-only entries."
+      ],
+      "authorization": {
+        "actions": [
+          "earnings:contract:publish"
+        ],
+        "dataPartitions": [
+          "Employee SELF only for the authenticated staff subject; manager FINANCE access is constrained to the authorized organization/site/branch; SYSTEM access is purpose-bound with verified caller; no cross-employee or cross-branch salary lookup."
+        ],
+        "fieldGroups": [
+          "FINANCIAL employee own amount; manager scope for aggregate, INTERNAL_AUDIT source/effective policy; SUMMARY no private wage."
+        ]
+      },
+      "failureSemantics": [
+        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
+        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
+        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+      ],
+      "idempotencyConcurrency": [
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
+        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E24-S02-ST05",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E24-S01-ST05",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "approved split, completed booking and verified payment",
+          "when": "ledger fixtures run",
+          "then": "one earned entry per source version has explicit sales and optional collection owner without customer debt transfer"
+        },
+        {
+          "id": "AC02",
+          "given": "unpaid booking, missing published policy or disputed payment",
+          "when": "negative fixture runs",
+          "then": "no payable earning or invented split is emitted"
+        },
+        {
+          "id": "AC03",
+          "given": "refund is partial and same event replays",
+          "when": "reconciliation fixture runs",
+          "then": "one proportional compensating reversal is produced without editing past entries"
+        }
+      ],
+      "tests": [
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm run validate:schemas",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E24-S03-ST05: salary/identity approval and overlap/denial/replay fixture report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E24-S03-ST05: salary/identity approval and overlap/denial/replay fixture report"
+        }
+      ],
+      "observability": [
+        "Use bounded employee pseudonym, policy version and correlation ID to trace lookup and change; never place salary or PII in metrics labels.",
+        "Expose stale identity, missing approval, rejected overlap and authorization denial counts to approved finance/SRE operators."
+      ],
+      "definitionOfDone": [
+        "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
+        "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
+        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+      ],
+      "evidence": [
+        "Repository PR and CI link.",
+        "Versioned contract and positive/negative fixture report.",
+        "Approved identity, policy and effective-interval/rollback evidence when activation is requested."
+      ],
+      "labels": [
+        "repo-platform-contracts",
+        "roadmap-v1-3",
+        "source-vs-e24-s03-st05",
         "policy-configurable",
         "business-review-needed"
       ],
