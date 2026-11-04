@@ -42,6 +42,9 @@ for (const file of refinementFiles) {
     if (!addition.sourceId) throw new Error(`${file}: addition needs sourceId`);
     if (issueBySource.has(addition.sourceId)) throw new Error(`${file}: duplicate addition Source-ID ${addition.sourceId}`);
     const issue = deepMerge(template, addition);
+    // A new Jira issue must never reuse the template's physical Jira key.
+    // It stays keyless until the corresponding issue is created and bound.
+    if (!Object.hasOwn(addition, 'jiraKey')) delete issue.jiraKey;
     delete issue.templateSourceId;
     issues.push(issue);
     issueBySource.set(issue.sourceId, issue);
