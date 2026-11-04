@@ -3,7 +3,7 @@
     {
       "sourceId": "VS-E24",
       "outcome": "E24 isolates Finance employee compensation, customer-facing booking markup, earned commission, customer-debt collection accountability and self/manager-scoped views into five story boundaries.",
-      "context": "Finance owns salary, policy and earning ledger; Booking owns attribution and frozen guest-facing markup; User owns staff identity/branch links. Current Finance migrations V1–V4 have settlement and rules but no employee salary or commission tables. Only S01 has detailed leaf refinement in this wave.",
+      "context": "Finance owns salary, policy and earning ledger; Booking owns attribution and frozen guest-facing markup; User owns staff identity/branch links. Current Finance migrations V1–V4 have settlement and rules but no employee salary or commission tables. S01–S02 have detailed leaf refinement in this wave.",
       "specStatus": "refined-parent",
       "dispatchable": false
     },
@@ -736,6 +736,764 @@
         "repo-platform-contracts",
         "roadmap-v1-3",
         "source-vs-e24-s01-st05",
+        "policy-configurable",
+        "business-review-needed"
+      ],
+      "decisionNoteVi": "platform_contracts owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "specStatus": "executable",
+      "workKind": "contract",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [
+        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+      ],
+      "externalBlockers": []
+    },
+    {
+      "sourceId": "VS-E24-S02",
+      "outcome": "S02 versions senior-admin-only staff markup ceilings/defaults and freezes customer-facing markup and attributed sales owner into Booking at booking confirmation; Finance alone owns policy and future earning interpretation.",
+      "context": "The user permits staff to add commission to booking as a guest-visible additional amount, with a configurable default that only senior admins may change. This is separate from any internal employee commission or salary and cannot be silently recalculated after a confirmed booking.",
+      "specStatus": "refined-parent",
+      "dispatchable": false
+    },
+    {
+      "sourceId": "VS-E24-S02-ST01",
+      "summary": "[VS-E24-S02-ST01] Publish senior-admin staff markup default and limit in Finance",
+      "outcome": "Finance keeps one approved, effective-dated policy for allowable staff guest-facing markup by site and booking class, independent of internal earnings formula.",
+      "context": "Existing Finance rule catalogue is not by itself a published staff markup policy; policy values and approval identities must be supplied by authorized finance owner.",
+      "inScope": [
+        "Implement versioned markup default, lower/upper bound, currency, booking-class/site applicability, effective window, maker/checker and simulation of changed customer totals.",
+        "Restrict policy writer and approver to explicit senior-admin actions and FINANCIAL/INTERNAL_AUDIT grants; return a purpose-limited effective-policy view to Booking.",
+        "Reject overlapping effective intervals, negative/above-limit markup, stale revision, unapproved policy and unavailable policy; retain prior booked policy version for reconciliation."
+      ],
+      "outOfScope": [
+        "Determining actual booking sales owner in Finance, automatically paying commission or inventing default markup amount."
+      ],
+      "repositories": [
+        "service_finance"
+      ],
+      "primaryRepository": "service_finance",
+      "repositorySlices": [
+        {
+          "repository": "service_finance",
+          "paths": [
+            "src/main/resources/db/migration/**",
+            "src/main/java/com/vistay/finance/**",
+            "src/test/java/**"
+          ],
+          "artifacts": [
+            "effective-dated policy migration and approval endpoint",
+            "Booking purpose-bound policy view",
+            "overlap/permission/approval/replay tests"
+          ]
+        }
+      ],
+      "interfaces": [
+        "Version Finance policy query keyed by site/booking class/date with policy ID, currency, default and bound; expose approval API with expected revision."
+      ],
+      "dataOwnership": [
+        "Finance alone owns effective monetary markup policy; Booking owns applied quote/snapshot; User supplies senior admin grants."
+      ],
+      "stateMachine": [
+        "DRAFT -> SIMULATED -> APPROVED -> SCHEDULED -> ACTIVE -> SUPERSEDED; old policy retains booked reference."
+      ],
+      "authorization": {
+        "actions": [
+          "finance:markup-policy:draft",
+          "finance:markup-policy:approve",
+          "finance:markup-policy:read"
+        ],
+        "dataPartitions": [
+          "Employee SELF only for the authenticated staff subject; manager FINANCE access is constrained to the authorized organization/site/branch; SYSTEM access is purpose-bound with verified caller; no cross-employee or cross-branch salary lookup."
+        ],
+        "fieldGroups": [
+          "FINANCIAL default/limit restricted to authorized staff; INTERNAL_AUDIT maker-checker identity; SUMMARY no internal policy ceiling."
+        ]
+      },
+      "failureSemantics": [
+        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
+        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
+        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+      ],
+      "idempotencyConcurrency": [
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
+        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E24-S02-ST05",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E24-S02-ST03",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "senior finance admin, checker and valid nonoverlapping effective window",
+          "when": "policy is published",
+          "then": "Booking receives one approved site/class version with default, bound, currency and source fingerprint"
+        },
+        {
+          "id": "AC02",
+          "given": "junior admin, self-approver, missing policy or exceeded markup bound",
+          "when": "policy write/read attempted",
+          "then": "publish or quote fails closed without guessed default"
+        },
+        {
+          "id": "AC03",
+          "given": "later policy supersedes a version used by confirmed booking",
+          "when": "policy/query repeats",
+          "then": "old version remains reconstructible, previously confirmed markup never changes"
+        }
+      ],
+      "tests": [
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*EmployeeCompensation*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E24-S02-ST01: salary/identity approval and overlap/denial/replay fixture report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E24-S02-ST01: salary/identity approval and overlap/denial/replay fixture report"
+        }
+      ],
+      "observability": [
+        "Use bounded employee pseudonym, policy version and correlation ID to trace lookup and change; never place salary or PII in metrics labels.",
+        "Expose stale identity, missing approval, rejected overlap and authorization denial counts to approved finance/SRE operators."
+      ],
+      "definitionOfDone": [
+        "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
+        "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
+        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+      ],
+      "evidence": [
+        "Repository PR and CI link.",
+        "Versioned contract and positive/negative fixture report.",
+        "Approved identity, policy and effective-interval/rollback evidence when activation is requested."
+      ],
+      "labels": [
+        "repo-service-finance",
+        "roadmap-v1-3",
+        "source-vs-e24-s02-st01",
+        "policy-configurable",
+        "business-review-needed"
+      ],
+      "decisionNoteVi": "service_finance owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [
+        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+      ],
+      "externalBlockers": []
+    },
+    {
+      "sourceId": "VS-E24-S02-ST02",
+      "summary": "[VS-E24-S02-ST02] Freeze sales owner and customer-visible markup in Booking confirmation",
+      "outcome": "Booking computes and records one quoted guest payable with explicit staff-selected markup and frozen attributed sales owner, independent of internal Finance earnings.",
+      "context": "The base rate projection belongs to Booking quote; a staff-added guest-facing amount must be disclosed before acceptance and must not be changed after confirmation.",
+      "inScope": [
+        "Resolve approved Finance default/ceiling and User authorized sales-owner branch before staff quote; include base total, selected markup, final payable, policy ID, quote expiry and source revision.",
+        "On confirmation, atomically persist frozen markup and sales owner with idempotency key; emit versioned snapshot to Finance while retaining customer debtor and separate collection owner.",
+        "Reject expired quote, unauthorized staff, amount over limit, changed price, missing approved policy or customer-facing quote accidentally containing an undisclosed markup."
+      ],
+      "outOfScope": [
+        "Assigning salary, calculating internal commission accrual, rewriting confirmed bill after a later policy edit."
+      ],
+      "repositories": [
+        "service_booking"
+      ],
+      "primaryRepository": "service_booking",
+      "repositorySlices": [
+        {
+          "repository": "service_booking",
+          "paths": [
+            "src/main/java/**",
+            "src/main/resources/**",
+            "src/test/java/**"
+          ],
+          "artifacts": [
+            "staff quote/frozen booking snapshot and migration",
+            "customer price display contract and outbox event",
+            "changed-policy/expired-quote/conflict tests"
+          ]
+        }
+      ],
+      "interfaces": [
+        "Consume Finance approved policy and User employment assertion; publish confirmed booking amount/attribution with booking revision to Finance."
+      ],
+      "dataOwnership": [
+        "Booking owns immutable booking price and attributed employee; Finance owns markup limit and future earning; User owns staff grants."
+      ],
+      "stateMachine": [
+        "DRAFT_QUOTE -> STAFF_QUOTED -> CONFIRMED or EXPIRED; confirmed amount changes only by separate approved compensating booking adjustment."
+      ],
+      "authorization": {
+        "actions": [
+          "booking:staff-quote:create",
+          "booking:staff-quote:confirm"
+        ],
+        "dataPartitions": [
+          "Employee SELF only for the authenticated staff subject; manager FINANCE access is constrained to the authorized organization/site/branch; SYSTEM access is purpose-bound with verified caller; no cross-employee or cross-branch salary lookup."
+        ],
+        "fieldGroups": [
+          "SUMMARY includes customer-disclosed base/markup/total; FINANCIAL for staff internal limit and INTERNAL_AUDIT for policy/attribution history."
+        ]
+      },
+      "failureSemantics": [
+        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
+        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
+        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+      ],
+      "idempotencyConcurrency": [
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
+        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E24-S02-ST01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E24-S02-ST03",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E24-S02-ST05",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "authorized staff, approved policy and eligible current booking",
+          "when": "staff quotes then confirms",
+          "then": "persisted payable equals base plus disclosed markup, and sales owner/policy ID are frozen once"
+        },
+        {
+          "id": "AC02",
+          "given": "expired quote, above-ceiling markup or unauthorized branch",
+          "when": "confirmation attempted",
+          "then": "no booking change, duplicate charge or silent default markup occurs"
+        },
+        {
+          "id": "AC03",
+          "given": "same confirmation retries and policy version changes",
+          "when": "request is replayed",
+          "then": "same booking revision and original guest total/attribution remain unchanged"
+        }
+      ],
+      "tests": [
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*EmployeeCompensation*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E24-S02-ST02: salary/identity approval and overlap/denial/replay fixture report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E24-S02-ST02: salary/identity approval and overlap/denial/replay fixture report"
+        }
+      ],
+      "observability": [
+        "Use bounded employee pseudonym, policy version and correlation ID to trace lookup and change; never place salary or PII in metrics labels.",
+        "Expose stale identity, missing approval, rejected overlap and authorization denial counts to approved finance/SRE operators."
+      ],
+      "definitionOfDone": [
+        "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
+        "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
+        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+      ],
+      "evidence": [
+        "Repository PR and CI link.",
+        "Versioned contract and positive/negative fixture report.",
+        "Approved identity, policy and effective-interval/rollback evidence when activation is requested."
+      ],
+      "labels": [
+        "repo-service-booking",
+        "roadmap-v1-3",
+        "source-vs-e24-s02-st02",
+        "policy-configurable"
+      ],
+      "decisionNoteVi": "service_booking owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [
+        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+      ],
+      "externalBlockers": []
+    },
+    {
+      "sourceId": "VS-E24-S02-ST03",
+      "summary": "[VS-E24-S02-ST03] Assert senior admin and attributed employee booking scope in User",
+      "outcome": "User distinguishes senior-admin monetary policy grant from ordinary staff sales/quote permissions and validates sales owner branch at booking time.",
+      "context": "Keycloak authentication and a broad ADMIN account_type alone cannot authorize markup-limit changes or attach any employee as sales owner.",
+      "inScope": [
+        "Expose purpose-scoped senior-admin action+partition+FINANCIAL/INTERNAL_AUDIT approval assertions to Finance.",
+        "Validate staff sales-owner active employment and assigned branch at quote and confirmation, emitting transfers/revocations with source revision.",
+        "Forbid caller-supplied arbitrary sales owner, cross-branch assignment and replay of revoked admin authority."
+      ],
+      "outOfScope": [
+        "Storing markup amounts, changing booked quote totals or granting payroll authority by default."
+      ],
+      "repositories": [
+        "service_user"
+      ],
+      "primaryRepository": "service_user",
+      "repositorySlices": [
+        {
+          "repository": "service_user",
+          "paths": [
+            "src/main/java/**",
+            "src/main/resources/**",
+            "src/test/java/**"
+          ],
+          "artifacts": [
+            "policy-approver and sales-owner role/branch assertions",
+            "revocation/foreign-branch negative fixtures"
+          ]
+        }
+      ],
+      "interfaces": [
+        "Purpose-bound current staff and senior-admin assertion with employment revision and branch scope."
+      ],
+      "dataOwnership": [
+        "User is sole identity and grant owner; Finance owns policy, Booking owns applied amount and sales attribution."
+      ],
+      "stateMachine": [
+        "ACTIVE -> REVOKED/TRANSFERRED; prior grant assertion cannot authorize a new monetary policy version."
+      ],
+      "authorization": {
+        "actions": [
+          "user:markup-policy:authorize",
+          "user:booking-sales-owner:assert"
+        ],
+        "dataPartitions": [
+          "Employee SELF only for the authenticated staff subject; manager FINANCE access is constrained to the authorized organization/site/branch; SYSTEM access is purpose-bound with verified caller; no cross-employee or cross-branch salary lookup."
+        ],
+        "fieldGroups": [
+          "FINANCIAL/INTERNAL_AUDIT monetary policy approvals explicit; SUMMARY permits only active employment/branch reference."
+        ]
+      },
+      "failureSemantics": [
+        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
+        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
+        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+      ],
+      "idempotencyConcurrency": [
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
+        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E24-S02-ST05",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "active staff member and senior admin in own authorized branch",
+          "when": "Finance/Booking checks grants",
+          "then": "separate policy editor and sales owner assertions with current source revision are returned"
+        },
+        {
+          "id": "AC02",
+          "given": "ordinary admin tries editing default or foreign branch owner is selected",
+          "when": "policy/quote authorized",
+          "then": "request is denied without exposing confidential ceiling"
+        },
+        {
+          "id": "AC03",
+          "given": "senior admin is revoked between draft and approval",
+          "when": "current assertion is rechecked",
+          "then": "approval is rejected even if prior JWT or cached grant remains"
+        }
+      ],
+      "tests": [
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": ".\\gradlew.bat test --tests \"*EmployeeCompensation*\"",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E24-S02-ST03: salary/identity approval and overlap/denial/replay fixture report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": ".\\gradlew.bat test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E24-S02-ST03: salary/identity approval and overlap/denial/replay fixture report"
+        }
+      ],
+      "observability": [
+        "Use bounded employee pseudonym, policy version and correlation ID to trace lookup and change; never place salary or PII in metrics labels.",
+        "Expose stale identity, missing approval, rejected overlap and authorization denial counts to approved finance/SRE operators."
+      ],
+      "definitionOfDone": [
+        "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
+        "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
+        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+      ],
+      "evidence": [
+        "Repository PR and CI link.",
+        "Versioned contract and positive/negative fixture report.",
+        "Approved identity, policy and effective-interval/rollback evidence when activation is requested."
+      ],
+      "labels": [
+        "repo-service-user",
+        "roadmap-v1-3",
+        "source-vs-e24-s02-st03"
+      ],
+      "decisionNoteVi": "service_user owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "specStatus": "executable",
+      "workKind": "service",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [
+        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+      ],
+      "externalBlockers": []
+    },
+    {
+      "sourceId": "VS-E24-S02-ST04",
+      "summary": "[VS-E24-S02-ST04] Render restricted markup policy and staff quote on Admin Web and Mobile",
+      "outcome": "Authorized staff can see and disclose guest price with optional markup; only senior admin may configure defaults/ceilings and confirmed bookings remain read-only snapshots.",
+      "context": "The policy is Finance-controlled and booked amount comes from Booking server quote; Admin Web/Mobile may not calculate its own authoritative extra fee.",
+      "inScope": [
+        "Expose staff quote form on Web/Mobile with approved default, allowed bounds, customer-facing base/markup/final amount and source policy version.",
+        "Add Web senior-admin configuration/review screen with independent checker and server-sourced effective window; Mobile policy editor is omitted unless grants and approval UX are supported.",
+        "Render quoted/confirmed/expired/unavailable and cross-branch forbidden states and freeze prior confirmed markup even when policy updates."
+      ],
+      "outOfScope": [
+        "Staff self-approval of default policy, offline client-only monetary calculation, changing another staff booking attribution without audited service command."
+      ],
+      "repositories": [
+        "frontend_admin"
+      ],
+      "primaryRepository": "frontend_admin",
+      "repositorySlices": [
+        {
+          "repository": "frontend_admin",
+          "paths": [
+            "apps/web/src/**",
+            "apps/mobile/src/**"
+          ],
+          "artifacts": [
+            "server-derived Web/Mobile staff quote and confirmation UI",
+            "Web senior-admin policy maker-checker UI",
+            "cross-branch/expiry/replay/permission tests"
+          ]
+        }
+      ],
+      "interfaces": [
+        "Consume Finance policy and Booking quote/confirmation contracts; customer-facing total comes from Booking response, not browser arithmetic."
+      ],
+      "dataOwnership": [
+        "Booking returns authoritative guest quote and snapshot, Finance returns policy, User supplies actor scope; frontend stores no source monetary state."
+      ],
+      "stateMachine": [
+        "LOADING -> QUOTED -> CONFIRMED or EXPIRED/RESTRICTED/UNAVAILABLE; policy DRAFT -> APPROVED only from server."
+      ],
+      "authorization": {
+        "actions": [
+          "booking:staff-quote:create",
+          "booking:staff-quote:confirm",
+          "finance:markup-policy:draft",
+          "finance:markup-policy:approve"
+        ],
+        "dataPartitions": [
+          "Employee SELF only for the authenticated staff subject; manager FINANCE access is constrained to the authorized organization/site/branch; SYSTEM access is purpose-bound with verified caller; no cross-employee or cross-branch salary lookup."
+        ],
+        "fieldGroups": [
+          "SUMMARY displays customer price components; FINANCIAL/INTERNAL_AUDIT restrict ceiling, approver and historical override."
+        ]
+      },
+      "failureSemantics": [
+        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
+        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
+        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+      ],
+      "idempotencyConcurrency": [
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
+        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E24-S02-ST02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E24-S02-ST01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "authorized branch staff and active policy",
+          "when": "Web/Mobile obtains quote and confirms",
+          "then": "guest-facing base/markup/final are explicit, server-sourced and confirmed version is immutable on reload"
+        },
+        {
+          "id": "AC02",
+          "given": "junior staff visits senior policy editor or foreign booking is requested",
+          "when": "screen loads",
+          "then": "actions and sensitive default/limit values are hidden or server rejects"
+        },
+        {
+          "id": "AC03",
+          "given": "Finance policy becomes unavailable or quote expires",
+          "when": "staff retries",
+          "then": "UI requires a new authoritative quote and does not submit cached amount"
+        }
+      ],
+      "tests": [
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm run typecheck",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E24-S02-ST04: salary/identity approval and overlap/denial/replay fixture report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E24-S02-ST04: salary/identity approval and overlap/denial/replay fixture report"
+        }
+      ],
+      "observability": [
+        "Use bounded employee pseudonym, policy version and correlation ID to trace lookup and change; never place salary or PII in metrics labels.",
+        "Expose stale identity, missing approval, rejected overlap and authorization denial counts to approved finance/SRE operators."
+      ],
+      "definitionOfDone": [
+        "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
+        "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
+        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+      ],
+      "evidence": [
+        "Repository PR and CI link.",
+        "Versioned contract and positive/negative fixture report.",
+        "Approved identity, policy and effective-interval/rollback evidence when activation is requested."
+      ],
+      "labels": [
+        "repo-frontend-admin",
+        "roadmap-v1-3",
+        "source-vs-e24-s02-st04"
+      ],
+      "decisionNoteVi": "frontend_admin owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "specStatus": "executable",
+      "workKind": "web",
+      "dispatchable": true,
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [
+        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+      ],
+      "externalBlockers": []
+    },
+    {
+      "sourceId": "VS-E24-S02-ST05",
+      "summary": "[VS-E24-S02-ST05] Version staff booking markup policy and sales attribution contract",
+      "outcome": "Contracts defines the separation between guest-visible extra markup and internal staff commission, including booking snapshot, effective policy and authorized sales-owner changes.",
+      "context": "Only senior admin may set approved markup default/ceiling. Booking freezes the chosen guest-facing amount at confirmation; Finance holds monetary policy and accrued earnings later.",
+      "inScope": [
+        "Define markup policy effective intervals, organization/site/branch scope, currency, eligible short/medium/long booking application and approved default/max without hardcoded money or percentage.",
+        "Version staff quote/confirmation shape with base price, applied guest-visible markup, final guest payable, policy ID, sales owner and frozen snapshot; require customer-visible pre-confirmation totals.",
+        "Specify customer-quote vs staff-quote restrictions, zero versus absent markup, monotone revision, reassignment reason and idempotent confirmed snapshot fixtures."
+      ],
+      "outOfScope": [
+        "Using internal commission percentage as guest-facing markup, deriving markup from salary, or silently editing a confirmed customer bill."
+      ],
+      "repositories": [
+        "platform_contracts"
+      ],
+      "primaryRepository": "platform_contracts",
+      "repositorySlices": [
+        {
+          "repository": "platform_contracts",
+          "paths": [
+            "schemas/employee-earnings/**",
+            "graphql/backoffice/**",
+            "fixtures/employee-earnings/**"
+          ],
+          "artifacts": [
+            "markup policy schema and effective-date fixtures",
+            "Booking quote/confirmation attribution contract",
+            "customer-safe total and auth-negative contract fixtures"
+          ]
+        }
+      ],
+      "interfaces": [
+        "Finance effective policy read/approval for authorized Booking quote; Booking versioned quote and confirmation event consumed by Finance with policy ID."
+      ],
+      "dataOwnership": [
+        "Finance owns markup policy limits; Booking owns customer-visible frozen booking snapshot/attribution; User owns employee identity."
+      ],
+      "stateMachine": [
+        "Policy DRAFT -> APPROVED -> ACTIVE -> SUPERSEDED; booking quote PREVIEW -> CONFIRMED snapshot, never recalculated in-place."
+      ],
+      "authorization": {
+        "actions": [
+          "markup:contract:publish"
+        ],
+        "dataPartitions": [
+          "Employee SELF only for the authenticated staff subject; manager FINANCE access is constrained to the authorized organization/site/branch; SYSTEM access is purpose-bound with verified caller; no cross-employee or cross-branch salary lookup."
+        ],
+        "fieldGroups": [
+          "SUMMARY customer sees only total and disclosed markup, FINANCIAL internal policy/max and INTERNAL_AUDIT approvers restricted."
+        ]
+      },
+      "failureSemantics": [
+        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
+        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
+        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+      ],
+      "idempotencyConcurrency": [
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
+        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E24-S01-ST05",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "approved senior-admin policy and authorized sales owner",
+          "when": "contract fixtures validate",
+          "then": "quote has separate markup and customer total with frozen attribution and policy revision"
+        },
+        {
+          "id": "AC02",
+          "given": "nonstaff customer adds markup, policy exceeds ceiling or paid booking is edited",
+          "when": "negative fixture runs",
+          "then": "mutation fails without altered guest total or sales owner"
+        },
+        {
+          "id": "AC03",
+          "given": "same confirmation event is replayed after policy change",
+          "when": "compatibility fixture runs",
+          "then": "original markup amount and customer payable remain immutable"
+        }
+      ],
+      "tests": [
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+      ],
+      "testCases": [
+        {
+          "id": "TEST-01",
+          "level": "unit",
+          "command": "npm run validate:schemas",
+          "verifies": [
+            "AC01",
+            "AC02"
+          ],
+          "evidence": "VS-E24-S02-ST05: salary/identity approval and overlap/denial/replay fixture report"
+        },
+        {
+          "id": "TEST-02",
+          "level": "integration",
+          "command": "npm test",
+          "verifies": [
+            "AC01",
+            "AC02",
+            "AC03"
+          ],
+          "evidence": "VS-E24-S02-ST05: salary/identity approval and overlap/denial/replay fixture report"
+        }
+      ],
+      "observability": [
+        "Use bounded employee pseudonym, policy version and correlation ID to trace lookup and change; never place salary or PII in metrics labels.",
+        "Expose stale identity, missing approval, rejected overlap and authorization denial counts to approved finance/SRE operators."
+      ],
+      "definitionOfDone": [
+        "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
+        "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
+        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+      ],
+      "evidence": [
+        "Repository PR and CI link.",
+        "Versioned contract and positive/negative fixture report.",
+        "Approved identity, policy and effective-interval/rollback evidence when activation is requested."
+      ],
+      "labels": [
+        "repo-platform-contracts",
+        "roadmap-v1-3",
+        "source-vs-e24-s02-st05",
         "policy-configurable",
         "business-review-needed"
       ],
