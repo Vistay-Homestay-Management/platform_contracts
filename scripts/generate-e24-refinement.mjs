@@ -12,23 +12,30 @@ function leaf(story, index, {title,outcome,context,scope,excluded,paths,artifact
   const original=originals.get(id);
   if(!original) throw Error(`E24 issue missing: ${id}`);
   const repository=original.repositories[0];
+  const activationByStory={
+    S01:'Finance owner must explicitly approve compensation amount, visibility and effective dates before real employee salary profiles activate; no wage default is specified.',
+    S02:'Finance owner must publish markup bounds/default, senior-admin approval grant and effective interval before real staff booking quotes activate; no markup value is specified.',
+    S03:'Finance owner must publish the applicable internal sales/collection split and verify collection plus service completion before payable earnings activate; no split percentage is specified.',
+    S04:'Finance owner must publish a customer receivable due/escalation policy and verify payment sources before automated follow-up activates; no due-day threshold is specified.',
+    S05:'Actual read projections require source-backed Finance earnings and receivables plus approved employee field grants; a mock dashboard is not evidence of live financial accuracy.',
+  };
   refinements.set(id,{
     sourceId:id,summary:`[${id}] ${title}`,outcome,context,inScope:scope,outOfScope:excluded,
     repositories:[repository],primaryRepository:repository,repositorySlices:[{repository,paths,artifacts}],
     interfaces,dataOwnership:boundaries,stateMachine:states,
     authorization:{actions,dataPartitions:['Employee SELF only for the authenticated staff subject; manager FINANCE access is constrained to the authorized organization/site/branch; SYSTEM access is purpose-bound with verified caller; no cross-employee or cross-branch salary lookup.'],fieldGroups:groups},
-    failureSemantics:['Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.','Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.','Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints.'],
-    idempotencyConcurrency:['Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.','Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.','Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact.'],
+    failureSemantics:['Missing employment link, applicable approved policy, field grant or authoritative financial source fails closed; no invented monetary default is inferred.','Conflict, stale source revision, denied partition and dependency outage return distinct stable reasons without exposing salary, customer balance or employee PII.','Never log unredacted employee compensation, customer private documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints.'],
+    idempotencyConcurrency:['Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; conflicting policy interval or actor reassignment is rejected.','Historical financial and attribution versions are immutable; a correction appends a linked superseding or compensating revision, not an update to closed history.','Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second monetary or assignment effect.'],
     dependencies:deps.map(sourceId=>({sourceId,relation:'is-blocked-by'})),
     acceptanceCriteria:conditions.map(([given,when,then],i)=>({id:`AC0${i+1}`,given,when,then})),
-    tests:['Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.', 'Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API.'],
-    testCases:tests.map((command,i)=>({id:`TEST-0${i+1}`,level:i?'integration':'unit',command,verifies:i?['AC01','AC02','AC03']:['AC01','AC02'],evidence:`${id}: salary/identity approval and overlap/denial/replay fixture report`})),
+    tests:['Run the exact commands in testCases; cover valid, cross-branch/employee denial, conflicting or stale revision, retry and unavailable authoritative source.', 'Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as working salary, booking markup, collection or earnings API.'],
+    testCases:tests.map((command,i)=>({id:`TEST-0${i+1}`,level:i?'integration':'unit',command,verifies:i?['AC01','AC02','AC03']:['AC01','AC02'],evidence:`${id}: ${story} policy/source approval, partition denial and replay fixture report`})),
     observability:['Use bounded employee pseudonym, policy version and correlation ID to trace lookup and change; never place salary or PII in metrics labels.', 'Expose stale identity, missing approval, rejected overlap and authorization denial counts to approved finance/SRE operators.'],
-    definitionOfDone:['Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.', 'Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.', 'Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default.'],
+    definitionOfDone:['Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.', 'Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.', 'Record release rollback and applicable policy approval evidence; never treat proposed financial amounts or thresholds as approved defaults.'],
     evidence:['Repository PR and CI link.','Versioned contract and positive/negative fixture report.','Approved identity, policy and effective-interval/rollback evidence when activation is requested.'],
     labels:[...new Set([...original.labels,...labels])],
-    decisionNoteVi:`${repository} owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.`,
-    specStatus:'executable',workKind:original.workKind,dispatchable:true,decisions:[],implementationBlockers:[],activationBlockers:['A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages.'],externalBlockers:[],
+    decisionNoteVi:`${repository} owns only the stated E24 ${story} slice. Finance owns authoritative monetary policy, salary, verified collections and earning ledger; Booking owns frozen booking price and staff attribution; the checked-in Finance migrations V1–V4 contain no employee salary or commission tables.`,
+    specStatus:'executable',workKind:original.workKind,dispatchable:true,decisions:[],implementationBlockers:[],activationBlockers:[activationByStory[story]],externalBlockers:[],
   });
 }
 const gradle=['.\\gradlew.bat test --tests "*EmployeeCompensation*"','.\\gradlew.bat test'];

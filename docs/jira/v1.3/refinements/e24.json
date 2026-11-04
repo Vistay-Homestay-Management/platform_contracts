@@ -70,14 +70,14 @@
         ]
       },
       "failureSemantics": [
-        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
-        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
-        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+        "Missing employment link, applicable approved policy, field grant or authoritative financial source fails closed; no invented monetary default is inferred.",
+        "Conflict, stale source revision, denied partition and dependency outage return distinct stable reasons without exposing salary, customer balance or employee PII.",
+        "Never log unredacted employee compensation, customer private documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
       ],
       "idempotencyConcurrency": [
-        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
-        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
-        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; conflicting policy interval or actor reassignment is rejected.",
+        "Historical financial and attribution versions are immutable; a correction appends a linked superseding or compensating revision, not an update to closed history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second monetary or assignment effect."
       ],
       "dependencies": [
         {
@@ -110,8 +110,8 @@
         }
       ],
       "tests": [
-        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
-        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, conflicting or stale revision, retry and unavailable authoritative source.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as working salary, booking markup, collection or earnings API."
       ],
       "testCases": [
         {
@@ -122,7 +122,7 @@
             "AC01",
             "AC02"
           ],
-          "evidence": "VS-E24-S01-ST01: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S01-ST01: S01 policy/source approval, partition denial and replay fixture report"
         },
         {
           "id": "TEST-02",
@@ -133,7 +133,7 @@
             "AC02",
             "AC03"
           ],
-          "evidence": "VS-E24-S01-ST01: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S01-ST01: S01 policy/source approval, partition denial and replay fixture report"
         }
       ],
       "observability": [
@@ -143,7 +143,7 @@
       "definitionOfDone": [
         "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
         "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
-        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+        "Record release rollback and applicable policy approval evidence; never treat proposed financial amounts or thresholds as approved defaults."
       ],
       "evidence": [
         "Repository PR and CI link.",
@@ -157,14 +157,14 @@
         "policy-configurable",
         "business-review-needed"
       ],
-      "decisionNoteVi": "service_finance owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "decisionNoteVi": "service_finance owns only the stated E24 S01 slice. Finance owns authoritative monetary policy, salary, verified collections and earning ledger; Booking owns frozen booking price and staff attribution; the checked-in Finance migrations V1–V4 contain no employee salary or commission tables.",
       "specStatus": "executable",
       "workKind": "service",
       "dispatchable": true,
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": [
-        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+        "Finance owner must explicitly approve compensation amount, visibility and effective dates before real employee salary profiles activate; no wage default is specified."
       ],
       "externalBlockers": []
     },
@@ -220,14 +220,14 @@
         ]
       },
       "failureSemantics": [
-        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
-        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
-        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+        "Missing employment link, applicable approved policy, field grant or authoritative financial source fails closed; no invented monetary default is inferred.",
+        "Conflict, stale source revision, denied partition and dependency outage return distinct stable reasons without exposing salary, customer balance or employee PII.",
+        "Never log unredacted employee compensation, customer private documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
       ],
       "idempotencyConcurrency": [
-        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
-        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
-        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; conflicting policy interval or actor reassignment is rejected.",
+        "Historical financial and attribution versions are immutable; a correction appends a linked superseding or compensating revision, not an update to closed history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second monetary or assignment effect."
       ],
       "dependencies": [
         {
@@ -256,8 +256,8 @@
         }
       ],
       "tests": [
-        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
-        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, conflicting or stale revision, retry and unavailable authoritative source.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as working salary, booking markup, collection or earnings API."
       ],
       "testCases": [
         {
@@ -268,7 +268,7 @@
             "AC01",
             "AC02"
           ],
-          "evidence": "VS-E24-S01-ST02: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S01-ST02: S01 policy/source approval, partition denial and replay fixture report"
         },
         {
           "id": "TEST-02",
@@ -279,7 +279,7 @@
             "AC02",
             "AC03"
           ],
-          "evidence": "VS-E24-S01-ST02: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S01-ST02: S01 policy/source approval, partition denial and replay fixture report"
         }
       ],
       "observability": [
@@ -289,7 +289,7 @@
       "definitionOfDone": [
         "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
         "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
-        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+        "Record release rollback and applicable policy approval evidence; never treat proposed financial amounts or thresholds as approved defaults."
       ],
       "evidence": [
         "Repository PR and CI link.",
@@ -301,14 +301,14 @@
         "roadmap-v1-3",
         "source-vs-e24-s01-st02"
       ],
-      "decisionNoteVi": "service_booking owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "decisionNoteVi": "service_booking owns only the stated E24 S01 slice. Finance owns authoritative monetary policy, salary, verified collections and earning ledger; Booking owns frozen booking price and staff attribution; the checked-in Finance migrations V1–V4 contain no employee salary or commission tables.",
       "specStatus": "executable",
       "workKind": "service",
       "dispatchable": true,
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": [
-        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+        "Finance owner must explicitly approve compensation amount, visibility and effective dates before real employee salary profiles activate; no wage default is specified."
       ],
       "externalBlockers": []
     },
@@ -365,14 +365,14 @@
         ]
       },
       "failureSemantics": [
-        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
-        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
-        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+        "Missing employment link, applicable approved policy, field grant or authoritative financial source fails closed; no invented monetary default is inferred.",
+        "Conflict, stale source revision, denied partition and dependency outage return distinct stable reasons without exposing salary, customer balance or employee PII.",
+        "Never log unredacted employee compensation, customer private documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
       ],
       "idempotencyConcurrency": [
-        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
-        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
-        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; conflicting policy interval or actor reassignment is rejected.",
+        "Historical financial and attribution versions are immutable; a correction appends a linked superseding or compensating revision, not an update to closed history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second monetary or assignment effect."
       ],
       "dependencies": [
         {
@@ -401,8 +401,8 @@
         }
       ],
       "tests": [
-        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
-        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, conflicting or stale revision, retry and unavailable authoritative source.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as working salary, booking markup, collection or earnings API."
       ],
       "testCases": [
         {
@@ -413,7 +413,7 @@
             "AC01",
             "AC02"
           ],
-          "evidence": "VS-E24-S01-ST03: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S01-ST03: S01 policy/source approval, partition denial and replay fixture report"
         },
         {
           "id": "TEST-02",
@@ -424,7 +424,7 @@
             "AC02",
             "AC03"
           ],
-          "evidence": "VS-E24-S01-ST03: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S01-ST03: S01 policy/source approval, partition denial and replay fixture report"
         }
       ],
       "observability": [
@@ -434,7 +434,7 @@
       "definitionOfDone": [
         "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
         "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
-        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+        "Record release rollback and applicable policy approval evidence; never treat proposed financial amounts or thresholds as approved defaults."
       ],
       "evidence": [
         "Repository PR and CI link.",
@@ -446,14 +446,14 @@
         "roadmap-v1-3",
         "source-vs-e24-s01-st03"
       ],
-      "decisionNoteVi": "service_user owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "decisionNoteVi": "service_user owns only the stated E24 S01 slice. Finance owns authoritative monetary policy, salary, verified collections and earning ledger; Booking owns frozen booking price and staff attribution; the checked-in Finance migrations V1–V4 contain no employee salary or commission tables.",
       "specStatus": "executable",
       "workKind": "service",
       "dispatchable": true,
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": [
-        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+        "Finance owner must explicitly approve compensation amount, visibility and effective dates before real employee salary profiles activate; no wage default is specified."
       ],
       "externalBlockers": []
     },
@@ -512,14 +512,14 @@
         ]
       },
       "failureSemantics": [
-        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
-        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
-        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+        "Missing employment link, applicable approved policy, field grant or authoritative financial source fails closed; no invented monetary default is inferred.",
+        "Conflict, stale source revision, denied partition and dependency outage return distinct stable reasons without exposing salary, customer balance or employee PII.",
+        "Never log unredacted employee compensation, customer private documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
       ],
       "idempotencyConcurrency": [
-        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
-        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
-        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; conflicting policy interval or actor reassignment is rejected.",
+        "Historical financial and attribution versions are immutable; a correction appends a linked superseding or compensating revision, not an update to closed history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second monetary or assignment effect."
       ],
       "dependencies": [
         {
@@ -552,8 +552,8 @@
         }
       ],
       "tests": [
-        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
-        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, conflicting or stale revision, retry and unavailable authoritative source.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as working salary, booking markup, collection or earnings API."
       ],
       "testCases": [
         {
@@ -564,7 +564,7 @@
             "AC01",
             "AC02"
           ],
-          "evidence": "VS-E24-S01-ST04: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S01-ST04: S01 policy/source approval, partition denial and replay fixture report"
         },
         {
           "id": "TEST-02",
@@ -575,7 +575,7 @@
             "AC02",
             "AC03"
           ],
-          "evidence": "VS-E24-S01-ST04: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S01-ST04: S01 policy/source approval, partition denial and replay fixture report"
         }
       ],
       "observability": [
@@ -585,7 +585,7 @@
       "definitionOfDone": [
         "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
         "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
-        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+        "Record release rollback and applicable policy approval evidence; never treat proposed financial amounts or thresholds as approved defaults."
       ],
       "evidence": [
         "Repository PR and CI link.",
@@ -597,14 +597,14 @@
         "roadmap-v1-3",
         "source-vs-e24-s01-st04"
       ],
-      "decisionNoteVi": "frontend_admin owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "decisionNoteVi": "frontend_admin owns only the stated E24 S01 slice. Finance owns authoritative monetary policy, salary, verified collections and earning ledger; Booking owns frozen booking price and staff attribution; the checked-in Finance migrations V1–V4 contain no employee salary or commission tables.",
       "specStatus": "executable",
       "workKind": "web",
       "dispatchable": true,
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": [
-        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+        "Finance owner must explicitly approve compensation amount, visibility and effective dates before real employee salary profiles activate; no wage default is specified."
       ],
       "externalBlockers": []
     },
@@ -661,14 +661,14 @@
         ]
       },
       "failureSemantics": [
-        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
-        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
-        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+        "Missing employment link, applicable approved policy, field grant or authoritative financial source fails closed; no invented monetary default is inferred.",
+        "Conflict, stale source revision, denied partition and dependency outage return distinct stable reasons without exposing salary, customer balance or employee PII.",
+        "Never log unredacted employee compensation, customer private documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
       ],
       "idempotencyConcurrency": [
-        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
-        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
-        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; conflicting policy interval or actor reassignment is rejected.",
+        "Historical financial and attribution versions are immutable; a correction appends a linked superseding or compensating revision, not an update to closed history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second monetary or assignment effect."
       ],
       "dependencies": [],
       "acceptanceCriteria": [
@@ -692,8 +692,8 @@
         }
       ],
       "tests": [
-        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
-        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, conflicting or stale revision, retry and unavailable authoritative source.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as working salary, booking markup, collection or earnings API."
       ],
       "testCases": [
         {
@@ -704,7 +704,7 @@
             "AC01",
             "AC02"
           ],
-          "evidence": "VS-E24-S01-ST05: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S01-ST05: S01 policy/source approval, partition denial and replay fixture report"
         },
         {
           "id": "TEST-02",
@@ -715,7 +715,7 @@
             "AC02",
             "AC03"
           ],
-          "evidence": "VS-E24-S01-ST05: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S01-ST05: S01 policy/source approval, partition denial and replay fixture report"
         }
       ],
       "observability": [
@@ -725,7 +725,7 @@
       "definitionOfDone": [
         "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
         "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
-        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+        "Record release rollback and applicable policy approval evidence; never treat proposed financial amounts or thresholds as approved defaults."
       ],
       "evidence": [
         "Repository PR and CI link.",
@@ -739,14 +739,14 @@
         "policy-configurable",
         "business-review-needed"
       ],
-      "decisionNoteVi": "platform_contracts owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "decisionNoteVi": "platform_contracts owns only the stated E24 S01 slice. Finance owns authoritative monetary policy, salary, verified collections and earning ledger; Booking owns frozen booking price and staff attribution; the checked-in Finance migrations V1–V4 contain no employee salary or commission tables.",
       "specStatus": "executable",
       "workKind": "contract",
       "dispatchable": true,
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": [
-        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+        "Finance owner must explicitly approve compensation amount, visibility and effective dates before real employee salary profiles activate; no wage default is specified."
       ],
       "externalBlockers": []
     },
@@ -812,14 +812,14 @@
         ]
       },
       "failureSemantics": [
-        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
-        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
-        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+        "Missing employment link, applicable approved policy, field grant or authoritative financial source fails closed; no invented monetary default is inferred.",
+        "Conflict, stale source revision, denied partition and dependency outage return distinct stable reasons without exposing salary, customer balance or employee PII.",
+        "Never log unredacted employee compensation, customer private documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
       ],
       "idempotencyConcurrency": [
-        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
-        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
-        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; conflicting policy interval or actor reassignment is rejected.",
+        "Historical financial and attribution versions are immutable; a correction appends a linked superseding or compensating revision, not an update to closed history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second monetary or assignment effect."
       ],
       "dependencies": [
         {
@@ -852,8 +852,8 @@
         }
       ],
       "tests": [
-        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
-        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, conflicting or stale revision, retry and unavailable authoritative source.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as working salary, booking markup, collection or earnings API."
       ],
       "testCases": [
         {
@@ -864,7 +864,7 @@
             "AC01",
             "AC02"
           ],
-          "evidence": "VS-E24-S02-ST01: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S02-ST01: S02 policy/source approval, partition denial and replay fixture report"
         },
         {
           "id": "TEST-02",
@@ -875,7 +875,7 @@
             "AC02",
             "AC03"
           ],
-          "evidence": "VS-E24-S02-ST01: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S02-ST01: S02 policy/source approval, partition denial and replay fixture report"
         }
       ],
       "observability": [
@@ -885,7 +885,7 @@
       "definitionOfDone": [
         "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
         "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
-        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+        "Record release rollback and applicable policy approval evidence; never treat proposed financial amounts or thresholds as approved defaults."
       ],
       "evidence": [
         "Repository PR and CI link.",
@@ -899,14 +899,14 @@
         "policy-configurable",
         "business-review-needed"
       ],
-      "decisionNoteVi": "service_finance owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "decisionNoteVi": "service_finance owns only the stated E24 S02 slice. Finance owns authoritative monetary policy, salary, verified collections and earning ledger; Booking owns frozen booking price and staff attribution; the checked-in Finance migrations V1–V4 contain no employee salary or commission tables.",
       "specStatus": "executable",
       "workKind": "service",
       "dispatchable": true,
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": [
-        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+        "Finance owner must publish markup bounds/default, senior-admin approval grant and effective interval before real staff booking quotes activate; no markup value is specified."
       ],
       "externalBlockers": []
     },
@@ -964,14 +964,14 @@
         ]
       },
       "failureSemantics": [
-        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
-        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
-        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+        "Missing employment link, applicable approved policy, field grant or authoritative financial source fails closed; no invented monetary default is inferred.",
+        "Conflict, stale source revision, denied partition and dependency outage return distinct stable reasons without exposing salary, customer balance or employee PII.",
+        "Never log unredacted employee compensation, customer private documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
       ],
       "idempotencyConcurrency": [
-        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
-        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
-        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; conflicting policy interval or actor reassignment is rejected.",
+        "Historical financial and attribution versions are immutable; a correction appends a linked superseding or compensating revision, not an update to closed history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second monetary or assignment effect."
       ],
       "dependencies": [
         {
@@ -1008,8 +1008,8 @@
         }
       ],
       "tests": [
-        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
-        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, conflicting or stale revision, retry and unavailable authoritative source.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as working salary, booking markup, collection or earnings API."
       ],
       "testCases": [
         {
@@ -1020,7 +1020,7 @@
             "AC01",
             "AC02"
           ],
-          "evidence": "VS-E24-S02-ST02: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S02-ST02: S02 policy/source approval, partition denial and replay fixture report"
         },
         {
           "id": "TEST-02",
@@ -1031,7 +1031,7 @@
             "AC02",
             "AC03"
           ],
-          "evidence": "VS-E24-S02-ST02: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S02-ST02: S02 policy/source approval, partition denial and replay fixture report"
         }
       ],
       "observability": [
@@ -1041,7 +1041,7 @@
       "definitionOfDone": [
         "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
         "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
-        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+        "Record release rollback and applicable policy approval evidence; never treat proposed financial amounts or thresholds as approved defaults."
       ],
       "evidence": [
         "Repository PR and CI link.",
@@ -1054,14 +1054,14 @@
         "source-vs-e24-s02-st02",
         "policy-configurable"
       ],
-      "decisionNoteVi": "service_booking owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "decisionNoteVi": "service_booking owns only the stated E24 S02 slice. Finance owns authoritative monetary policy, salary, verified collections and earning ledger; Booking owns frozen booking price and staff attribution; the checked-in Finance migrations V1–V4 contain no employee salary or commission tables.",
       "specStatus": "executable",
       "workKind": "service",
       "dispatchable": true,
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": [
-        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+        "Finance owner must publish markup bounds/default, senior-admin approval grant and effective interval before real staff booking quotes activate; no markup value is specified."
       ],
       "externalBlockers": []
     },
@@ -1118,14 +1118,14 @@
         ]
       },
       "failureSemantics": [
-        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
-        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
-        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+        "Missing employment link, applicable approved policy, field grant or authoritative financial source fails closed; no invented monetary default is inferred.",
+        "Conflict, stale source revision, denied partition and dependency outage return distinct stable reasons without exposing salary, customer balance or employee PII.",
+        "Never log unredacted employee compensation, customer private documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
       ],
       "idempotencyConcurrency": [
-        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
-        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
-        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; conflicting policy interval or actor reassignment is rejected.",
+        "Historical financial and attribution versions are immutable; a correction appends a linked superseding or compensating revision, not an update to closed history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second monetary or assignment effect."
       ],
       "dependencies": [
         {
@@ -1154,8 +1154,8 @@
         }
       ],
       "tests": [
-        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
-        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, conflicting or stale revision, retry and unavailable authoritative source.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as working salary, booking markup, collection or earnings API."
       ],
       "testCases": [
         {
@@ -1166,7 +1166,7 @@
             "AC01",
             "AC02"
           ],
-          "evidence": "VS-E24-S02-ST03: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S02-ST03: S02 policy/source approval, partition denial and replay fixture report"
         },
         {
           "id": "TEST-02",
@@ -1177,7 +1177,7 @@
             "AC02",
             "AC03"
           ],
-          "evidence": "VS-E24-S02-ST03: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S02-ST03: S02 policy/source approval, partition denial and replay fixture report"
         }
       ],
       "observability": [
@@ -1187,7 +1187,7 @@
       "definitionOfDone": [
         "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
         "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
-        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+        "Record release rollback and applicable policy approval evidence; never treat proposed financial amounts or thresholds as approved defaults."
       ],
       "evidence": [
         "Repository PR and CI link.",
@@ -1199,14 +1199,14 @@
         "roadmap-v1-3",
         "source-vs-e24-s02-st03"
       ],
-      "decisionNoteVi": "service_user owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "decisionNoteVi": "service_user owns only the stated E24 S02 slice. Finance owns authoritative monetary policy, salary, verified collections and earning ledger; Booking owns frozen booking price and staff attribution; the checked-in Finance migrations V1–V4 contain no employee salary or commission tables.",
       "specStatus": "executable",
       "workKind": "service",
       "dispatchable": true,
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": [
-        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+        "Finance owner must publish markup bounds/default, senior-admin approval grant and effective interval before real staff booking quotes activate; no markup value is specified."
       ],
       "externalBlockers": []
     },
@@ -1265,14 +1265,14 @@
         ]
       },
       "failureSemantics": [
-        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
-        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
-        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+        "Missing employment link, applicable approved policy, field grant or authoritative financial source fails closed; no invented monetary default is inferred.",
+        "Conflict, stale source revision, denied partition and dependency outage return distinct stable reasons without exposing salary, customer balance or employee PII.",
+        "Never log unredacted employee compensation, customer private documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
       ],
       "idempotencyConcurrency": [
-        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
-        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
-        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; conflicting policy interval or actor reassignment is rejected.",
+        "Historical financial and attribution versions are immutable; a correction appends a linked superseding or compensating revision, not an update to closed history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second monetary or assignment effect."
       ],
       "dependencies": [
         {
@@ -1305,8 +1305,8 @@
         }
       ],
       "tests": [
-        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
-        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, conflicting or stale revision, retry and unavailable authoritative source.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as working salary, booking markup, collection or earnings API."
       ],
       "testCases": [
         {
@@ -1317,7 +1317,7 @@
             "AC01",
             "AC02"
           ],
-          "evidence": "VS-E24-S02-ST04: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S02-ST04: S02 policy/source approval, partition denial and replay fixture report"
         },
         {
           "id": "TEST-02",
@@ -1328,7 +1328,7 @@
             "AC02",
             "AC03"
           ],
-          "evidence": "VS-E24-S02-ST04: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S02-ST04: S02 policy/source approval, partition denial and replay fixture report"
         }
       ],
       "observability": [
@@ -1338,7 +1338,7 @@
       "definitionOfDone": [
         "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
         "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
-        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+        "Record release rollback and applicable policy approval evidence; never treat proposed financial amounts or thresholds as approved defaults."
       ],
       "evidence": [
         "Repository PR and CI link.",
@@ -1350,14 +1350,14 @@
         "roadmap-v1-3",
         "source-vs-e24-s02-st04"
       ],
-      "decisionNoteVi": "frontend_admin owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "decisionNoteVi": "frontend_admin owns only the stated E24 S02 slice. Finance owns authoritative monetary policy, salary, verified collections and earning ledger; Booking owns frozen booking price and staff attribution; the checked-in Finance migrations V1–V4 contain no employee salary or commission tables.",
       "specStatus": "executable",
       "workKind": "web",
       "dispatchable": true,
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": [
-        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+        "Finance owner must publish markup bounds/default, senior-admin approval grant and effective interval before real staff booking quotes activate; no markup value is specified."
       ],
       "externalBlockers": []
     },
@@ -1414,14 +1414,14 @@
         ]
       },
       "failureSemantics": [
-        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
-        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
-        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+        "Missing employment link, applicable approved policy, field grant or authoritative financial source fails closed; no invented monetary default is inferred.",
+        "Conflict, stale source revision, denied partition and dependency outage return distinct stable reasons without exposing salary, customer balance or employee PII.",
+        "Never log unredacted employee compensation, customer private documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
       ],
       "idempotencyConcurrency": [
-        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
-        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
-        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; conflicting policy interval or actor reassignment is rejected.",
+        "Historical financial and attribution versions are immutable; a correction appends a linked superseding or compensating revision, not an update to closed history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second monetary or assignment effect."
       ],
       "dependencies": [
         {
@@ -1450,8 +1450,8 @@
         }
       ],
       "tests": [
-        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
-        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, conflicting or stale revision, retry and unavailable authoritative source.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as working salary, booking markup, collection or earnings API."
       ],
       "testCases": [
         {
@@ -1462,7 +1462,7 @@
             "AC01",
             "AC02"
           ],
-          "evidence": "VS-E24-S02-ST05: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S02-ST05: S02 policy/source approval, partition denial and replay fixture report"
         },
         {
           "id": "TEST-02",
@@ -1473,7 +1473,7 @@
             "AC02",
             "AC03"
           ],
-          "evidence": "VS-E24-S02-ST05: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S02-ST05: S02 policy/source approval, partition denial and replay fixture report"
         }
       ],
       "observability": [
@@ -1483,7 +1483,7 @@
       "definitionOfDone": [
         "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
         "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
-        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+        "Record release rollback and applicable policy approval evidence; never treat proposed financial amounts or thresholds as approved defaults."
       ],
       "evidence": [
         "Repository PR and CI link.",
@@ -1497,14 +1497,14 @@
         "policy-configurable",
         "business-review-needed"
       ],
-      "decisionNoteVi": "platform_contracts owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "decisionNoteVi": "platform_contracts owns only the stated E24 S02 slice. Finance owns authoritative monetary policy, salary, verified collections and earning ledger; Booking owns frozen booking price and staff attribution; the checked-in Finance migrations V1–V4 contain no employee salary or commission tables.",
       "specStatus": "executable",
       "workKind": "contract",
       "dispatchable": true,
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": [
-        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+        "Finance owner must publish markup bounds/default, senior-admin approval grant and effective interval before real staff booking quotes activate; no markup value is specified."
       ],
       "externalBlockers": []
     },
@@ -1571,14 +1571,14 @@
         ]
       },
       "failureSemantics": [
-        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
-        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
-        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+        "Missing employment link, applicable approved policy, field grant or authoritative financial source fails closed; no invented monetary default is inferred.",
+        "Conflict, stale source revision, denied partition and dependency outage return distinct stable reasons without exposing salary, customer balance or employee PII.",
+        "Never log unredacted employee compensation, customer private documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
       ],
       "idempotencyConcurrency": [
-        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
-        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
-        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; conflicting policy interval or actor reassignment is rejected.",
+        "Historical financial and attribution versions are immutable; a correction appends a linked superseding or compensating revision, not an update to closed history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second monetary or assignment effect."
       ],
       "dependencies": [
         {
@@ -1619,8 +1619,8 @@
         }
       ],
       "tests": [
-        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
-        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, conflicting or stale revision, retry and unavailable authoritative source.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as working salary, booking markup, collection or earnings API."
       ],
       "testCases": [
         {
@@ -1631,7 +1631,7 @@
             "AC01",
             "AC02"
           ],
-          "evidence": "VS-E24-S03-ST01: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S03-ST01: S03 policy/source approval, partition denial and replay fixture report"
         },
         {
           "id": "TEST-02",
@@ -1642,7 +1642,7 @@
             "AC02",
             "AC03"
           ],
-          "evidence": "VS-E24-S03-ST01: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S03-ST01: S03 policy/source approval, partition denial and replay fixture report"
         }
       ],
       "observability": [
@@ -1652,7 +1652,7 @@
       "definitionOfDone": [
         "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
         "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
-        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+        "Record release rollback and applicable policy approval evidence; never treat proposed financial amounts or thresholds as approved defaults."
       ],
       "evidence": [
         "Repository PR and CI link.",
@@ -1666,14 +1666,14 @@
         "policy-configurable",
         "business-review-needed"
       ],
-      "decisionNoteVi": "service_finance owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "decisionNoteVi": "service_finance owns only the stated E24 S03 slice. Finance owns authoritative monetary policy, salary, verified collections and earning ledger; Booking owns frozen booking price and staff attribution; the checked-in Finance migrations V1–V4 contain no employee salary or commission tables.",
       "specStatus": "executable",
       "workKind": "service",
       "dispatchable": true,
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": [
-        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+        "Finance owner must publish the applicable internal sales/collection split and verify collection plus service completion before payable earnings activate; no split percentage is specified."
       ],
       "externalBlockers": []
     },
@@ -1730,14 +1730,14 @@
         ]
       },
       "failureSemantics": [
-        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
-        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
-        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+        "Missing employment link, applicable approved policy, field grant or authoritative financial source fails closed; no invented monetary default is inferred.",
+        "Conflict, stale source revision, denied partition and dependency outage return distinct stable reasons without exposing salary, customer balance or employee PII.",
+        "Never log unredacted employee compensation, customer private documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
       ],
       "idempotencyConcurrency": [
-        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
-        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
-        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; conflicting policy interval or actor reassignment is rejected.",
+        "Historical financial and attribution versions are immutable; a correction appends a linked superseding or compensating revision, not an update to closed history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second monetary or assignment effect."
       ],
       "dependencies": [
         {
@@ -1770,8 +1770,8 @@
         }
       ],
       "tests": [
-        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
-        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, conflicting or stale revision, retry and unavailable authoritative source.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as working salary, booking markup, collection or earnings API."
       ],
       "testCases": [
         {
@@ -1782,7 +1782,7 @@
             "AC01",
             "AC02"
           ],
-          "evidence": "VS-E24-S03-ST02: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S03-ST02: S03 policy/source approval, partition denial and replay fixture report"
         },
         {
           "id": "TEST-02",
@@ -1793,7 +1793,7 @@
             "AC02",
             "AC03"
           ],
-          "evidence": "VS-E24-S03-ST02: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S03-ST02: S03 policy/source approval, partition denial and replay fixture report"
         }
       ],
       "observability": [
@@ -1803,7 +1803,7 @@
       "definitionOfDone": [
         "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
         "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
-        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+        "Record release rollback and applicable policy approval evidence; never treat proposed financial amounts or thresholds as approved defaults."
       ],
       "evidence": [
         "Repository PR and CI link.",
@@ -1815,14 +1815,14 @@
         "roadmap-v1-3",
         "source-vs-e24-s03-st02"
       ],
-      "decisionNoteVi": "service_booking owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "decisionNoteVi": "service_booking owns only the stated E24 S03 slice. Finance owns authoritative monetary policy, salary, verified collections and earning ledger; Booking owns frozen booking price and staff attribution; the checked-in Finance migrations V1–V4 contain no employee salary or commission tables.",
       "specStatus": "executable",
       "workKind": "service",
       "dispatchable": true,
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": [
-        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+        "Finance owner must publish the applicable internal sales/collection split and verify collection plus service completion before payable earnings activate; no split percentage is specified."
       ],
       "externalBlockers": []
     },
@@ -1879,14 +1879,14 @@
         ]
       },
       "failureSemantics": [
-        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
-        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
-        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+        "Missing employment link, applicable approved policy, field grant or authoritative financial source fails closed; no invented monetary default is inferred.",
+        "Conflict, stale source revision, denied partition and dependency outage return distinct stable reasons without exposing salary, customer balance or employee PII.",
+        "Never log unredacted employee compensation, customer private documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
       ],
       "idempotencyConcurrency": [
-        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
-        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
-        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; conflicting policy interval or actor reassignment is rejected.",
+        "Historical financial and attribution versions are immutable; a correction appends a linked superseding or compensating revision, not an update to closed history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second monetary or assignment effect."
       ],
       "dependencies": [
         {
@@ -1919,8 +1919,8 @@
         }
       ],
       "tests": [
-        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
-        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, conflicting or stale revision, retry and unavailable authoritative source.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as working salary, booking markup, collection or earnings API."
       ],
       "testCases": [
         {
@@ -1931,7 +1931,7 @@
             "AC01",
             "AC02"
           ],
-          "evidence": "VS-E24-S03-ST03: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S03-ST03: S03 policy/source approval, partition denial and replay fixture report"
         },
         {
           "id": "TEST-02",
@@ -1942,7 +1942,7 @@
             "AC02",
             "AC03"
           ],
-          "evidence": "VS-E24-S03-ST03: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S03-ST03: S03 policy/source approval, partition denial and replay fixture report"
         }
       ],
       "observability": [
@@ -1952,7 +1952,7 @@
       "definitionOfDone": [
         "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
         "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
-        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+        "Record release rollback and applicable policy approval evidence; never treat proposed financial amounts or thresholds as approved defaults."
       ],
       "evidence": [
         "Repository PR and CI link.",
@@ -1964,14 +1964,14 @@
         "roadmap-v1-3",
         "source-vs-e24-s03-st03"
       ],
-      "decisionNoteVi": "service_user owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "decisionNoteVi": "service_user owns only the stated E24 S03 slice. Finance owns authoritative monetary policy, salary, verified collections and earning ledger; Booking owns frozen booking price and staff attribution; the checked-in Finance migrations V1–V4 contain no employee salary or commission tables.",
       "specStatus": "executable",
       "workKind": "service",
       "dispatchable": true,
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": [
-        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+        "Finance owner must publish the applicable internal sales/collection split and verify collection plus service completion before payable earnings activate; no split percentage is specified."
       ],
       "externalBlockers": []
     },
@@ -2027,14 +2027,14 @@
         ]
       },
       "failureSemantics": [
-        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
-        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
-        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+        "Missing employment link, applicable approved policy, field grant or authoritative financial source fails closed; no invented monetary default is inferred.",
+        "Conflict, stale source revision, denied partition and dependency outage return distinct stable reasons without exposing salary, customer balance or employee PII.",
+        "Never log unredacted employee compensation, customer private documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
       ],
       "idempotencyConcurrency": [
-        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
-        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
-        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; conflicting policy interval or actor reassignment is rejected.",
+        "Historical financial and attribution versions are immutable; a correction appends a linked superseding or compensating revision, not an update to closed history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second monetary or assignment effect."
       ],
       "dependencies": [
         {
@@ -2067,8 +2067,8 @@
         }
       ],
       "tests": [
-        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
-        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, conflicting or stale revision, retry and unavailable authoritative source.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as working salary, booking markup, collection or earnings API."
       ],
       "testCases": [
         {
@@ -2079,7 +2079,7 @@
             "AC01",
             "AC02"
           ],
-          "evidence": "VS-E24-S03-ST04: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S03-ST04: S03 policy/source approval, partition denial and replay fixture report"
         },
         {
           "id": "TEST-02",
@@ -2090,7 +2090,7 @@
             "AC02",
             "AC03"
           ],
-          "evidence": "VS-E24-S03-ST04: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S03-ST04: S03 policy/source approval, partition denial and replay fixture report"
         }
       ],
       "observability": [
@@ -2100,7 +2100,7 @@
       "definitionOfDone": [
         "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
         "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
-        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+        "Record release rollback and applicable policy approval evidence; never treat proposed financial amounts or thresholds as approved defaults."
       ],
       "evidence": [
         "Repository PR and CI link.",
@@ -2112,14 +2112,14 @@
         "roadmap-v1-3",
         "source-vs-e24-s03-st04"
       ],
-      "decisionNoteVi": "frontend_admin owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "decisionNoteVi": "frontend_admin owns only the stated E24 S03 slice. Finance owns authoritative monetary policy, salary, verified collections and earning ledger; Booking owns frozen booking price and staff attribution; the checked-in Finance migrations V1–V4 contain no employee salary or commission tables.",
       "specStatus": "executable",
       "workKind": "web",
       "dispatchable": true,
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": [
-        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+        "Finance owner must publish the applicable internal sales/collection split and verify collection plus service completion before payable earnings activate; no split percentage is specified."
       ],
       "externalBlockers": []
     },
@@ -2176,14 +2176,14 @@
         ]
       },
       "failureSemantics": [
-        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
-        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
-        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+        "Missing employment link, applicable approved policy, field grant or authoritative financial source fails closed; no invented monetary default is inferred.",
+        "Conflict, stale source revision, denied partition and dependency outage return distinct stable reasons without exposing salary, customer balance or employee PII.",
+        "Never log unredacted employee compensation, customer private documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
       ],
       "idempotencyConcurrency": [
-        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
-        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
-        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; conflicting policy interval or actor reassignment is rejected.",
+        "Historical financial and attribution versions are immutable; a correction appends a linked superseding or compensating revision, not an update to closed history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second monetary or assignment effect."
       ],
       "dependencies": [
         {
@@ -2216,8 +2216,8 @@
         }
       ],
       "tests": [
-        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
-        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, conflicting or stale revision, retry and unavailable authoritative source.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as working salary, booking markup, collection or earnings API."
       ],
       "testCases": [
         {
@@ -2228,7 +2228,7 @@
             "AC01",
             "AC02"
           ],
-          "evidence": "VS-E24-S03-ST05: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S03-ST05: S03 policy/source approval, partition denial and replay fixture report"
         },
         {
           "id": "TEST-02",
@@ -2239,7 +2239,7 @@
             "AC02",
             "AC03"
           ],
-          "evidence": "VS-E24-S03-ST05: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S03-ST05: S03 policy/source approval, partition denial and replay fixture report"
         }
       ],
       "observability": [
@@ -2249,7 +2249,7 @@
       "definitionOfDone": [
         "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
         "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
-        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+        "Record release rollback and applicable policy approval evidence; never treat proposed financial amounts or thresholds as approved defaults."
       ],
       "evidence": [
         "Repository PR and CI link.",
@@ -2263,14 +2263,14 @@
         "policy-configurable",
         "business-review-needed"
       ],
-      "decisionNoteVi": "platform_contracts owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "decisionNoteVi": "platform_contracts owns only the stated E24 S03 slice. Finance owns authoritative monetary policy, salary, verified collections and earning ledger; Booking owns frozen booking price and staff attribution; the checked-in Finance migrations V1–V4 contain no employee salary or commission tables.",
       "specStatus": "executable",
       "workKind": "contract",
       "dispatchable": true,
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": [
-        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+        "Finance owner must publish the applicable internal sales/collection split and verify collection plus service completion before payable earnings activate; no split percentage is specified."
       ],
       "externalBlockers": []
     },
@@ -2337,14 +2337,14 @@
         ]
       },
       "failureSemantics": [
-        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
-        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
-        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+        "Missing employment link, applicable approved policy, field grant or authoritative financial source fails closed; no invented monetary default is inferred.",
+        "Conflict, stale source revision, denied partition and dependency outage return distinct stable reasons without exposing salary, customer balance or employee PII.",
+        "Never log unredacted employee compensation, customer private documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
       ],
       "idempotencyConcurrency": [
-        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
-        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
-        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; conflicting policy interval or actor reassignment is rejected.",
+        "Historical financial and attribution versions are immutable; a correction appends a linked superseding or compensating revision, not an update to closed history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second monetary or assignment effect."
       ],
       "dependencies": [
         {
@@ -2385,8 +2385,8 @@
         }
       ],
       "tests": [
-        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
-        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, conflicting or stale revision, retry and unavailable authoritative source.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as working salary, booking markup, collection or earnings API."
       ],
       "testCases": [
         {
@@ -2397,7 +2397,7 @@
             "AC01",
             "AC02"
           ],
-          "evidence": "VS-E24-S04-ST01: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S04-ST01: S04 policy/source approval, partition denial and replay fixture report"
         },
         {
           "id": "TEST-02",
@@ -2408,7 +2408,7 @@
             "AC02",
             "AC03"
           ],
-          "evidence": "VS-E24-S04-ST01: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S04-ST01: S04 policy/source approval, partition denial and replay fixture report"
         }
       ],
       "observability": [
@@ -2418,7 +2418,7 @@
       "definitionOfDone": [
         "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
         "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
-        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+        "Record release rollback and applicable policy approval evidence; never treat proposed financial amounts or thresholds as approved defaults."
       ],
       "evidence": [
         "Repository PR and CI link.",
@@ -2431,14 +2431,14 @@
         "source-vs-e24-s04-st01",
         "policy-configurable"
       ],
-      "decisionNoteVi": "service_finance owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "decisionNoteVi": "service_finance owns only the stated E24 S04 slice. Finance owns authoritative monetary policy, salary, verified collections and earning ledger; Booking owns frozen booking price and staff attribution; the checked-in Finance migrations V1–V4 contain no employee salary or commission tables.",
       "specStatus": "executable",
       "workKind": "service",
       "dispatchable": true,
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": [
-        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+        "Finance owner must publish a customer receivable due/escalation policy and verify payment sources before automated follow-up activates; no due-day threshold is specified."
       ],
       "externalBlockers": []
     },
@@ -2496,14 +2496,14 @@
         ]
       },
       "failureSemantics": [
-        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
-        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
-        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+        "Missing employment link, applicable approved policy, field grant or authoritative financial source fails closed; no invented monetary default is inferred.",
+        "Conflict, stale source revision, denied partition and dependency outage return distinct stable reasons without exposing salary, customer balance or employee PII.",
+        "Never log unredacted employee compensation, customer private documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
       ],
       "idempotencyConcurrency": [
-        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
-        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
-        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; conflicting policy interval or actor reassignment is rejected.",
+        "Historical financial and attribution versions are immutable; a correction appends a linked superseding or compensating revision, not an update to closed history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second monetary or assignment effect."
       ],
       "dependencies": [
         {
@@ -2536,8 +2536,8 @@
         }
       ],
       "tests": [
-        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
-        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, conflicting or stale revision, retry and unavailable authoritative source.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as working salary, booking markup, collection or earnings API."
       ],
       "testCases": [
         {
@@ -2548,7 +2548,7 @@
             "AC01",
             "AC02"
           ],
-          "evidence": "VS-E24-S04-ST02: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S04-ST02: S04 policy/source approval, partition denial and replay fixture report"
         },
         {
           "id": "TEST-02",
@@ -2559,7 +2559,7 @@
             "AC02",
             "AC03"
           ],
-          "evidence": "VS-E24-S04-ST02: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S04-ST02: S04 policy/source approval, partition denial and replay fixture report"
         }
       ],
       "observability": [
@@ -2569,7 +2569,7 @@
       "definitionOfDone": [
         "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
         "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
-        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+        "Record release rollback and applicable policy approval evidence; never treat proposed financial amounts or thresholds as approved defaults."
       ],
       "evidence": [
         "Repository PR and CI link.",
@@ -2581,14 +2581,14 @@
         "roadmap-v1-3",
         "source-vs-e24-s04-st02"
       ],
-      "decisionNoteVi": "service_booking owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "decisionNoteVi": "service_booking owns only the stated E24 S04 slice. Finance owns authoritative monetary policy, salary, verified collections and earning ledger; Booking owns frozen booking price and staff attribution; the checked-in Finance migrations V1–V4 contain no employee salary or commission tables.",
       "specStatus": "executable",
       "workKind": "service",
       "dispatchable": true,
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": [
-        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+        "Finance owner must publish a customer receivable due/escalation policy and verify payment sources before automated follow-up activates; no due-day threshold is specified."
       ],
       "externalBlockers": []
     },
@@ -2646,14 +2646,14 @@
         ]
       },
       "failureSemantics": [
-        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
-        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
-        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+        "Missing employment link, applicable approved policy, field grant or authoritative financial source fails closed; no invented monetary default is inferred.",
+        "Conflict, stale source revision, denied partition and dependency outage return distinct stable reasons without exposing salary, customer balance or employee PII.",
+        "Never log unredacted employee compensation, customer private documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
       ],
       "idempotencyConcurrency": [
-        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
-        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
-        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; conflicting policy interval or actor reassignment is rejected.",
+        "Historical financial and attribution versions are immutable; a correction appends a linked superseding or compensating revision, not an update to closed history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second monetary or assignment effect."
       ],
       "dependencies": [
         {
@@ -2682,8 +2682,8 @@
         }
       ],
       "tests": [
-        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
-        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, conflicting or stale revision, retry and unavailable authoritative source.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as working salary, booking markup, collection or earnings API."
       ],
       "testCases": [
         {
@@ -2694,7 +2694,7 @@
             "AC01",
             "AC02"
           ],
-          "evidence": "VS-E24-S04-ST03: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S04-ST03: S04 policy/source approval, partition denial and replay fixture report"
         },
         {
           "id": "TEST-02",
@@ -2705,7 +2705,7 @@
             "AC02",
             "AC03"
           ],
-          "evidence": "VS-E24-S04-ST03: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S04-ST03: S04 policy/source approval, partition denial and replay fixture report"
         }
       ],
       "observability": [
@@ -2715,7 +2715,7 @@
       "definitionOfDone": [
         "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
         "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
-        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+        "Record release rollback and applicable policy approval evidence; never treat proposed financial amounts or thresholds as approved defaults."
       ],
       "evidence": [
         "Repository PR and CI link.",
@@ -2727,14 +2727,14 @@
         "roadmap-v1-3",
         "source-vs-e24-s04-st03"
       ],
-      "decisionNoteVi": "service_user owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "decisionNoteVi": "service_user owns only the stated E24 S04 slice. Finance owns authoritative monetary policy, salary, verified collections and earning ledger; Booking owns frozen booking price and staff attribution; the checked-in Finance migrations V1–V4 contain no employee salary or commission tables.",
       "specStatus": "executable",
       "workKind": "service",
       "dispatchable": true,
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": [
-        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+        "Finance owner must publish a customer receivable due/escalation policy and verify payment sources before automated follow-up activates; no due-day threshold is specified."
       ],
       "externalBlockers": []
     },
@@ -2792,14 +2792,14 @@
         ]
       },
       "failureSemantics": [
-        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
-        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
-        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+        "Missing employment link, applicable approved policy, field grant or authoritative financial source fails closed; no invented monetary default is inferred.",
+        "Conflict, stale source revision, denied partition and dependency outage return distinct stable reasons without exposing salary, customer balance or employee PII.",
+        "Never log unredacted employee compensation, customer private documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
       ],
       "idempotencyConcurrency": [
-        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
-        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
-        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; conflicting policy interval or actor reassignment is rejected.",
+        "Historical financial and attribution versions are immutable; a correction appends a linked superseding or compensating revision, not an update to closed history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second monetary or assignment effect."
       ],
       "dependencies": [
         {
@@ -2832,8 +2832,8 @@
         }
       ],
       "tests": [
-        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
-        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, conflicting or stale revision, retry and unavailable authoritative source.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as working salary, booking markup, collection or earnings API."
       ],
       "testCases": [
         {
@@ -2844,7 +2844,7 @@
             "AC01",
             "AC02"
           ],
-          "evidence": "VS-E24-S04-ST04: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S04-ST04: S04 policy/source approval, partition denial and replay fixture report"
         },
         {
           "id": "TEST-02",
@@ -2855,7 +2855,7 @@
             "AC02",
             "AC03"
           ],
-          "evidence": "VS-E24-S04-ST04: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S04-ST04: S04 policy/source approval, partition denial and replay fixture report"
         }
       ],
       "observability": [
@@ -2865,7 +2865,7 @@
       "definitionOfDone": [
         "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
         "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
-        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+        "Record release rollback and applicable policy approval evidence; never treat proposed financial amounts or thresholds as approved defaults."
       ],
       "evidence": [
         "Repository PR and CI link.",
@@ -2877,14 +2877,14 @@
         "roadmap-v1-3",
         "source-vs-e24-s04-st04"
       ],
-      "decisionNoteVi": "frontend_admin owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "decisionNoteVi": "frontend_admin owns only the stated E24 S04 slice. Finance owns authoritative monetary policy, salary, verified collections and earning ledger; Booking owns frozen booking price and staff attribution; the checked-in Finance migrations V1–V4 contain no employee salary or commission tables.",
       "specStatus": "executable",
       "workKind": "web",
       "dispatchable": true,
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": [
-        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+        "Finance owner must publish a customer receivable due/escalation policy and verify payment sources before automated follow-up activates; no due-day threshold is specified."
       ],
       "externalBlockers": []
     },
@@ -2941,14 +2941,14 @@
         ]
       },
       "failureSemantics": [
-        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
-        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
-        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+        "Missing employment link, applicable approved policy, field grant or authoritative financial source fails closed; no invented monetary default is inferred.",
+        "Conflict, stale source revision, denied partition and dependency outage return distinct stable reasons without exposing salary, customer balance or employee PII.",
+        "Never log unredacted employee compensation, customer private documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
       ],
       "idempotencyConcurrency": [
-        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
-        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
-        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; conflicting policy interval or actor reassignment is rejected.",
+        "Historical financial and attribution versions are immutable; a correction appends a linked superseding or compensating revision, not an update to closed history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second monetary or assignment effect."
       ],
       "dependencies": [
         {
@@ -2981,8 +2981,8 @@
         }
       ],
       "tests": [
-        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
-        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, conflicting or stale revision, retry and unavailable authoritative source.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as working salary, booking markup, collection or earnings API."
       ],
       "testCases": [
         {
@@ -2993,7 +2993,7 @@
             "AC01",
             "AC02"
           ],
-          "evidence": "VS-E24-S04-ST05: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S04-ST05: S04 policy/source approval, partition denial and replay fixture report"
         },
         {
           "id": "TEST-02",
@@ -3004,7 +3004,7 @@
             "AC02",
             "AC03"
           ],
-          "evidence": "VS-E24-S04-ST05: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S04-ST05: S04 policy/source approval, partition denial and replay fixture report"
         }
       ],
       "observability": [
@@ -3014,7 +3014,7 @@
       "definitionOfDone": [
         "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
         "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
-        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+        "Record release rollback and applicable policy approval evidence; never treat proposed financial amounts or thresholds as approved defaults."
       ],
       "evidence": [
         "Repository PR and CI link.",
@@ -3028,14 +3028,14 @@
         "policy-configurable",
         "business-review-needed"
       ],
-      "decisionNoteVi": "platform_contracts owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "decisionNoteVi": "platform_contracts owns only the stated E24 S04 slice. Finance owns authoritative monetary policy, salary, verified collections and earning ledger; Booking owns frozen booking price and staff attribution; the checked-in Finance migrations V1–V4 contain no employee salary or commission tables.",
       "specStatus": "executable",
       "workKind": "contract",
       "dispatchable": true,
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": [
-        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+        "Finance owner must publish a customer receivable due/escalation policy and verify payment sources before automated follow-up activates; no due-day threshold is specified."
       ],
       "externalBlockers": []
     },
@@ -3100,14 +3100,14 @@
         ]
       },
       "failureSemantics": [
-        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
-        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
-        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+        "Missing employment link, applicable approved policy, field grant or authoritative financial source fails closed; no invented monetary default is inferred.",
+        "Conflict, stale source revision, denied partition and dependency outage return distinct stable reasons without exposing salary, customer balance or employee PII.",
+        "Never log unredacted employee compensation, customer private documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
       ],
       "idempotencyConcurrency": [
-        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
-        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
-        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; conflicting policy interval or actor reassignment is rejected.",
+        "Historical financial and attribution versions are immutable; a correction appends a linked superseding or compensating revision, not an update to closed history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second monetary or assignment effect."
       ],
       "dependencies": [
         {
@@ -3152,8 +3152,8 @@
         }
       ],
       "tests": [
-        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
-        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, conflicting or stale revision, retry and unavailable authoritative source.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as working salary, booking markup, collection or earnings API."
       ],
       "testCases": [
         {
@@ -3164,7 +3164,7 @@
             "AC01",
             "AC02"
           ],
-          "evidence": "VS-E24-S05-ST01: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S05-ST01: S05 policy/source approval, partition denial and replay fixture report"
         },
         {
           "id": "TEST-02",
@@ -3175,7 +3175,7 @@
             "AC02",
             "AC03"
           ],
-          "evidence": "VS-E24-S05-ST01: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S05-ST01: S05 policy/source approval, partition denial and replay fixture report"
         }
       ],
       "observability": [
@@ -3185,7 +3185,7 @@
       "definitionOfDone": [
         "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
         "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
-        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+        "Record release rollback and applicable policy approval evidence; never treat proposed financial amounts or thresholds as approved defaults."
       ],
       "evidence": [
         "Repository PR and CI link.",
@@ -3197,14 +3197,14 @@
         "roadmap-v1-3",
         "source-vs-e24-s05-st01"
       ],
-      "decisionNoteVi": "service_finance owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "decisionNoteVi": "service_finance owns only the stated E24 S05 slice. Finance owns authoritative monetary policy, salary, verified collections and earning ledger; Booking owns frozen booking price and staff attribution; the checked-in Finance migrations V1–V4 contain no employee salary or commission tables.",
       "specStatus": "executable",
       "workKind": "service",
       "dispatchable": true,
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": [
-        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+        "Actual read projections require source-backed Finance earnings and receivables plus approved employee field grants; a mock dashboard is not evidence of live financial accuracy."
       ],
       "externalBlockers": []
     },
@@ -3260,14 +3260,14 @@
         ]
       },
       "failureSemantics": [
-        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
-        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
-        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+        "Missing employment link, applicable approved policy, field grant or authoritative financial source fails closed; no invented monetary default is inferred.",
+        "Conflict, stale source revision, denied partition and dependency outage return distinct stable reasons without exposing salary, customer balance or employee PII.",
+        "Never log unredacted employee compensation, customer private documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
       ],
       "idempotencyConcurrency": [
-        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
-        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
-        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; conflicting policy interval or actor reassignment is rejected.",
+        "Historical financial and attribution versions are immutable; a correction appends a linked superseding or compensating revision, not an update to closed history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second monetary or assignment effect."
       ],
       "dependencies": [
         {
@@ -3304,8 +3304,8 @@
         }
       ],
       "tests": [
-        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
-        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, conflicting or stale revision, retry and unavailable authoritative source.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as working salary, booking markup, collection or earnings API."
       ],
       "testCases": [
         {
@@ -3316,7 +3316,7 @@
             "AC01",
             "AC02"
           ],
-          "evidence": "VS-E24-S05-ST02: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S05-ST02: S05 policy/source approval, partition denial and replay fixture report"
         },
         {
           "id": "TEST-02",
@@ -3327,7 +3327,7 @@
             "AC02",
             "AC03"
           ],
-          "evidence": "VS-E24-S05-ST02: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S05-ST02: S05 policy/source approval, partition denial and replay fixture report"
         }
       ],
       "observability": [
@@ -3337,7 +3337,7 @@
       "definitionOfDone": [
         "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
         "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
-        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+        "Record release rollback and applicable policy approval evidence; never treat proposed financial amounts or thresholds as approved defaults."
       ],
       "evidence": [
         "Repository PR and CI link.",
@@ -3349,14 +3349,14 @@
         "roadmap-v1-3",
         "source-vs-e24-s05-st02"
       ],
-      "decisionNoteVi": "service_booking owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "decisionNoteVi": "service_booking owns only the stated E24 S05 slice. Finance owns authoritative monetary policy, salary, verified collections and earning ledger; Booking owns frozen booking price and staff attribution; the checked-in Finance migrations V1–V4 contain no employee salary or commission tables.",
       "specStatus": "executable",
       "workKind": "service",
       "dispatchable": true,
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": [
-        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+        "Actual read projections require source-backed Finance earnings and receivables plus approved employee field grants; a mock dashboard is not evidence of live financial accuracy."
       ],
       "externalBlockers": []
     },
@@ -3413,14 +3413,14 @@
         ]
       },
       "failureSemantics": [
-        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
-        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
-        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+        "Missing employment link, applicable approved policy, field grant or authoritative financial source fails closed; no invented monetary default is inferred.",
+        "Conflict, stale source revision, denied partition and dependency outage return distinct stable reasons without exposing salary, customer balance or employee PII.",
+        "Never log unredacted employee compensation, customer private documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
       ],
       "idempotencyConcurrency": [
-        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
-        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
-        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; conflicting policy interval or actor reassignment is rejected.",
+        "Historical financial and attribution versions are immutable; a correction appends a linked superseding or compensating revision, not an update to closed history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second monetary or assignment effect."
       ],
       "dependencies": [
         {
@@ -3453,8 +3453,8 @@
         }
       ],
       "tests": [
-        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
-        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, conflicting or stale revision, retry and unavailable authoritative source.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as working salary, booking markup, collection or earnings API."
       ],
       "testCases": [
         {
@@ -3465,7 +3465,7 @@
             "AC01",
             "AC02"
           ],
-          "evidence": "VS-E24-S05-ST03: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S05-ST03: S05 policy/source approval, partition denial and replay fixture report"
         },
         {
           "id": "TEST-02",
@@ -3476,7 +3476,7 @@
             "AC02",
             "AC03"
           ],
-          "evidence": "VS-E24-S05-ST03: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S05-ST03: S05 policy/source approval, partition denial and replay fixture report"
         }
       ],
       "observability": [
@@ -3486,7 +3486,7 @@
       "definitionOfDone": [
         "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
         "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
-        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+        "Record release rollback and applicable policy approval evidence; never treat proposed financial amounts or thresholds as approved defaults."
       ],
       "evidence": [
         "Repository PR and CI link.",
@@ -3498,14 +3498,14 @@
         "roadmap-v1-3",
         "source-vs-e24-s05-st03"
       ],
-      "decisionNoteVi": "service_user owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "decisionNoteVi": "service_user owns only the stated E24 S05 slice. Finance owns authoritative monetary policy, salary, verified collections and earning ledger; Booking owns frozen booking price and staff attribution; the checked-in Finance migrations V1–V4 contain no employee salary or commission tables.",
       "specStatus": "executable",
       "workKind": "service",
       "dispatchable": true,
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": [
-        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+        "Actual read projections require source-backed Finance earnings and receivables plus approved employee field grants; a mock dashboard is not evidence of live financial accuracy."
       ],
       "externalBlockers": []
     },
@@ -3562,14 +3562,14 @@
         ]
       },
       "failureSemantics": [
-        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
-        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
-        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+        "Missing employment link, applicable approved policy, field grant or authoritative financial source fails closed; no invented monetary default is inferred.",
+        "Conflict, stale source revision, denied partition and dependency outage return distinct stable reasons without exposing salary, customer balance or employee PII.",
+        "Never log unredacted employee compensation, customer private documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
       ],
       "idempotencyConcurrency": [
-        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
-        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
-        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; conflicting policy interval or actor reassignment is rejected.",
+        "Historical financial and attribution versions are immutable; a correction appends a linked superseding or compensating revision, not an update to closed history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second monetary or assignment effect."
       ],
       "dependencies": [
         {
@@ -3602,8 +3602,8 @@
         }
       ],
       "tests": [
-        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
-        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, conflicting or stale revision, retry and unavailable authoritative source.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as working salary, booking markup, collection or earnings API."
       ],
       "testCases": [
         {
@@ -3614,7 +3614,7 @@
             "AC01",
             "AC02"
           ],
-          "evidence": "VS-E24-S05-ST04: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S05-ST04: S05 policy/source approval, partition denial and replay fixture report"
         },
         {
           "id": "TEST-02",
@@ -3625,7 +3625,7 @@
             "AC02",
             "AC03"
           ],
-          "evidence": "VS-E24-S05-ST04: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S05-ST04: S05 policy/source approval, partition denial and replay fixture report"
         }
       ],
       "observability": [
@@ -3635,7 +3635,7 @@
       "definitionOfDone": [
         "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
         "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
-        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+        "Record release rollback and applicable policy approval evidence; never treat proposed financial amounts or thresholds as approved defaults."
       ],
       "evidence": [
         "Repository PR and CI link.",
@@ -3647,14 +3647,14 @@
         "roadmap-v1-3",
         "source-vs-e24-s05-st04"
       ],
-      "decisionNoteVi": "frontend_admin owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "decisionNoteVi": "frontend_admin owns only the stated E24 S05 slice. Finance owns authoritative monetary policy, salary, verified collections and earning ledger; Booking owns frozen booking price and staff attribution; the checked-in Finance migrations V1–V4 contain no employee salary or commission tables.",
       "specStatus": "executable",
       "workKind": "web",
       "dispatchable": true,
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": [
-        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+        "Actual read projections require source-backed Finance earnings and receivables plus approved employee field grants; a mock dashboard is not evidence of live financial accuracy."
       ],
       "externalBlockers": []
     },
@@ -3711,14 +3711,14 @@
         ]
       },
       "failureSemantics": [
-        "Missing employment link, active approved compensation policy, field grant or authoritative staff identity fails closed; no zero-salary or default commission is inferred.",
-        "Conflict, stale source revision, invalid compensation interval, denied partition and dependency outage return distinct stable reasons without exposing salary or employee PII.",
-        "Never log unredacted salary, private employee documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
+        "Missing employment link, applicable approved policy, field grant or authoritative financial source fails closed; no invented monetary default is inferred.",
+        "Conflict, stale source revision, denied partition and dependency outage return distinct stable reasons without exposing salary, customer balance or employee PII.",
+        "Never log unredacted employee compensation, customer private documents, bank details, JWT or cross-staff revenue; audit only authorized fingerprints."
       ],
       "idempotencyConcurrency": [
-        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; concurrent interval overlap or actor reassignment is rejected.",
-        "Historical effective-dated salary is immutable; a correction creates a new superseding revision, not an update to closed payroll history.",
-        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second compensation fact."
+        "Externally retried mutation uses scoped idempotency key and fingerprint with expected revision; conflicting policy interval or actor reassignment is rejected.",
+        "Historical financial and attribution versions are immutable; a correction appends a linked superseding or compensating revision, not an update to closed history.",
+        "Source events use outbox/inbox event ID and aggregate revision so duplicates/reorder cannot create a second monetary or assignment effect."
       ],
       "dependencies": [
         {
@@ -3751,8 +3751,8 @@
         }
       ],
       "tests": [
-        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, overlap or stale revision, retry and unavailable identity.",
-        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as a working payroll or salary API."
+        "Run the exact commands in testCases; cover valid, cross-branch/employee denial, conflicting or stale revision, retry and unavailable authoritative source.",
+        "Attach owner-specific CI evidence and versioned fixture; no stub-only response counts as working salary, booking markup, collection or earnings API."
       ],
       "testCases": [
         {
@@ -3763,7 +3763,7 @@
             "AC01",
             "AC02"
           ],
-          "evidence": "VS-E24-S05-ST05: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S05-ST05: S05 policy/source approval, partition denial and replay fixture report"
         },
         {
           "id": "TEST-02",
@@ -3774,7 +3774,7 @@
             "AC02",
             "AC03"
           ],
-          "evidence": "VS-E24-S05-ST05: salary/identity approval and overlap/denial/replay fixture report"
+          "evidence": "VS-E24-S05-ST05: S05 policy/source approval, partition denial and replay fixture report"
         }
       ],
       "observability": [
@@ -3784,7 +3784,7 @@
       "definitionOfDone": [
         "Named owner-specific artifact and migration/compatibility path are committed with passing tests and CI.",
         "Positive, field-level denial, concurrent edit/replay and role revocation outcomes are linked in Jira; E24 actual feature remains open until implemented.",
-        "Record release rollback and compensation-policy approval evidence; never treat a proposed salary value as an approved default."
+        "Record release rollback and applicable policy approval evidence; never treat proposed financial amounts or thresholds as approved defaults."
       ],
       "evidence": [
         "Repository PR and CI link.",
@@ -3797,14 +3797,14 @@
         "source-vs-e24-s05-st05",
         "business-review-needed"
       ],
-      "decisionNoteVi": "platform_contracts owns only the stated E24 S01 slice. Finance alone stores effective employee compensation and salary; the checked-in service_finance migrations V1–V4 do not yet include a salary/profile table.",
+      "decisionNoteVi": "platform_contracts owns only the stated E24 S05 slice. Finance owns authoritative monetary policy, salary, verified collections and earning ledger; Booking owns frozen booking price and staff attribution; the checked-in Finance migrations V1–V4 contain no employee salary or commission tables.",
       "specStatus": "executable",
       "workKind": "contract",
       "dispatchable": true,
       "decisions": [],
       "implementationBlockers": [],
       "activationBlockers": [
-        "A finance owner must explicitly approve compensation amounts, visibility and effective dates before activating real employee profiles; the specification does not set wages."
+        "Actual read projections require source-backed Finance earnings and receivables plus approved employee field grants; a mock dashboard is not evidence of live financial accuracy."
       ],
       "externalBlockers": []
     }
