@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/events/v1/user.loyalty-policy-published.payload.schema.json",
+  "title": "User loyalty policy published payload",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["programId", "version"],
+  "properties": {
+    "programId": { "type": "string", "format": "uuid" },
+    "version": { "type": "integer", "minimum": 1 }
+  }
+}

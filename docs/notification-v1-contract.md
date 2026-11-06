@@ -53,14 +53,14 @@ GraphQL operations declare the narrowest scope available:
 
 | Capability | Scope |
 | --- | --- |
-| inbox, stream, read state | `notifications:read` |
-| preference update | `notifications:preferences:manage` |
-| template listing | `notifications:template:read` |
-| template publication/retirement | `notifications:template:publish` |
-| delivery/provider operations | `notifications:operations:read` |
-| delivery retry | `notifications:delivery:retry` |
-| recipient exception listing | `notifications:recipient-exception:read` |
-| recipient exception repair | `notifications:recipient-exception:repair` |
+| inbox, stream, read state | `notification:read` |
+| preference update | `notification:update` |
+| template listing | `notification-template:read` |
+| template publication/retirement | `notification-template:publish` |
+| delivery/provider operations | `notification-delivery:read` |
+| delivery retry | `notification-delivery:retry` |
+| recipient exception listing | `notification-recipient-exception:read` |
+| recipient exception repair | `notification-recipient-exception:repair` |
 
 Response fields are grouped as `SUMMARY`, `DOCUMENT`, `PII`, `TRUST_DETAIL`,
 and `INTERNAL_AUDIT`. A caller's permission to read an object does not grant

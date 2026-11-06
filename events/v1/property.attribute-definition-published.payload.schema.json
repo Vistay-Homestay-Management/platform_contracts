@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/events/v1/property.attribute-definition-published.payload.schema.json",
+  "title": "Property attribute definition published payload",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["definitionId", "version"],
+  "properties": {
+    "definitionId": { "type": "string", "format": "uuid" },
+    "version": { "type": "integer", "minimum": 1 }
+  }
+}
