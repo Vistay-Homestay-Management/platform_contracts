@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/events/v1/booking.policy-published.payload.schema.json",
+  "title": "Booking policy published payload",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["policyId", "policyVersionId"],
+  "properties": {
+    "policyId": { "type": "string", "format": "uuid" },
+    "policyVersionId": { "type": "string", "format": "uuid" }
+  }
+}

@@ -9,6 +9,17 @@ option java_outer_classname = "PropertyPartitionProto";
 service PropertyPartitionService {
   rpc GetPropertyPartitionRecord(GetPropertyPartitionRecordRequest)
       returns (GetPropertyPartitionRecordResponse);
+  rpc GetPropertyPartitionRecords(GetPropertyPartitionRecordsRequest)
+      returns (GetPropertyPartitionRecordsResponse);
+}
+
+message GetPropertyPartitionRecordsRequest {
+  repeated string property_ids = 1;
+}
+
+message GetPropertyPartitionRecordsResponse {
+  repeated GetPropertyPartitionRecordResponse records = 1;
+  repeated string missing_property_ids = 2;
 }
 
 message GetPropertyPartitionRecordRequest {

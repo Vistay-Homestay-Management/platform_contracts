@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/events/v1/property.attribute-definition-published.event.schema.json",
+  "title": "Property attribute definition published event v1",
+  "allOf": [
+    { "$ref": "https://contracts.vistay.vn/events/v1/common-event-envelope.schema.json" },
+    {
+      "type": "object",
+      "properties": {
+        "type": { "const": "vistay.property.attribute-definition-published" },
+        "version": { "const": 1 },
+        "data": { "$ref": "https://contracts.vistay.vn/events/v1/property.attribute-definition-published.payload.schema.json" }
+      }
+    }
+  ]
+}

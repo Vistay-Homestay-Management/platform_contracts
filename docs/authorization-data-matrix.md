@@ -38,7 +38,7 @@ types fail closed.
 | Resource/action | Record predicates | Sensitive field permission | Owning service |
 | --- | --- | --- | --- |
 | `profile:read/update` | `SELF`, `ALL` | `profile:read_sensitive` for protected PII | User |
-| `booking:read` | customer participation (`OWN`), active admin assignment (`ASSIGNED`), property/group `PARTITION`, `ALL` | `booking:read_sensitive` for COMMERCIAL/PII | Booking |
+| `booking:read` | customer participation (`SELF`), host ownership (`OWN`), active admin assignment (`ASSIGNED`), branch `PARTITION`, `ALL` | `booking-sensitive:read` for COMMERCIAL/PII | Booking |
 | `booking:update/cancel/check-in/out` | Same record predicate plus lifecycle condition | Field-specific mutation permission where applicable | Booking |
 | `property:read/update` | host contract participation (`OWN`), explicit assignment, property/group partition, `ALL` | `property:read_sensitive` for internal/commercial fields | Property |
 | `operations:read/update/close` | assignee/team assignment, property partition, `ALL` | `operations:read_sensitive` for evidence/internal notes | Operations |

@@ -3,19 +3,19 @@
   "endpoint": "/graphql",
   "authorization": {
     "accessToken": "BACKOFFICE_REALM_JWT",
-    "notificationStreamRequiredScope": "notifications:read",
+    "notificationStreamRequiredScope": "notification:read",
     "fieldGroups": {
-      "summary": "notifications:read",
-      "document": "notifications:template:read",
-      "pii": "notifications:recipient-exception:read",
-      "trustDetail": "notifications:operations:read",
-      "internalAudit": "notifications:operations:read"
+      "summary": "notification:read",
+      "document": "notification-template:read",
+      "pii": "notification-recipient-exception:read",
+      "trustDetail": "notification-delivery:read",
+      "internalAudit": "notification-delivery:read"
     },
     "mutationScopes": {
-      "preferences": "notifications:preferences:manage",
-      "templatePublish": "notifications:template:publish",
-      "deliveryRetry": "notifications:delivery:retry",
-      "recipientRepair": "notifications:recipient-exception:repair"
+      "preferences": "notification:update",
+      "templatePublish": "notification-template:publish",
+      "deliveryRetry": "notification-delivery:retry",
+      "recipientRepair": "notification-recipient-exception:repair"
     }
   },
   "queryTransport": {

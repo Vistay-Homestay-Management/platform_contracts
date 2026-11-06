@@ -12,6 +12,6 @@
     "maximumAttempts": 5,
     "nextAttemptIsBounded": true,
     "rawProviderPayloadReturned": false,
-    "requiredScope": "notifications:delivery:retry"
+    "requiredScope": "notification-delivery:retry"
   }
 }

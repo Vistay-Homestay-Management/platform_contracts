@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/events/v1/user.role-policy-changed.payload.schema.json",
+  "title": "UserRolePolicyChangedPayloadV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["accountType", "roleCode", "roleVersion", "catalogVersion", "changedAt"],
+  "properties": {
+    "accountType": { "type": "string", "enum": ["CUSTOMER", "ADMIN", "HOST"] },
+    "roleCode": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{1,63}$" },
+    "roleVersion": { "type": "integer", "minimum": 1 },
+    "catalogVersion": { "type": "integer", "minimum": 1 },
+    "changedAt": { "type": "string", "format": "date-time" }
+  }
+}

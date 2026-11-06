@@ -23,6 +23,12 @@ service UserAuthorizationService {
   // DEADLINE_EXCEEDED.
   rpc GetAuthorizationSnapshot(GetAuthorizationSnapshotRequest)
       returns (GetAuthorizationSnapshotResponse);
+
+  // Returns role-owned action policies in one call. Unknown, inactive, or
+  // wrong-audience role codes are intentionally omitted and never grant
+  // access. Callers MUST treat an omitted requested role as deny-by-default.
+  rpc GetRolePolicies(GetRolePoliciesRequest)
+      returns (GetRolePoliciesResponse);
 }
 
 message GetAuthorizationSnapshotRequest {
@@ -37,4 +43,27 @@ message GetAuthorizationSnapshotResponse {
   repeated string permissions = 4;
   int64 authorization_version = 5;
   repeated vistay.common.v1.PermissionGrant grants = 6;
+}
+
+message GetRolePoliciesRequest {
+  vistay.common.v1.AccountType account_type = 1;
+  repeated string role_codes = 2;
+}
+
+message GetRolePoliciesResponse {
+  repeated RolePolicy policies = 1;
+  int64 catalog_version = 2;
+  int32 schema_version = 3;
+}
+
+message RolePolicy {
+  string role_code = 1;
+  int64 role_version = 2;
+  repeated RolePermissionPolicy permissions = 3;
+}
+
+message RolePermissionPolicy {
+  string permission_code = 1;
+  repeated vistay.common.v1.DataScopeType allowed_scopes = 2;
+  repeated string partition_types = 3;
 }
