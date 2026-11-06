@@ -28,7 +28,7 @@ assert.match(
   composition.supergraphSdl,
   /https:\/\/specs\.apollo\.dev\/authenticated\/v0\.1/,
 );
-assert.match(
+assert.doesNotMatch(
   composition.supergraphSdl,
   /https:\/\/specs\.apollo\.dev\/requiresScopes\/v0\.1/,
 );
@@ -77,7 +77,7 @@ assert.equal(transport.subscriptionTransport.accept, "text/event-stream");
 assert.equal(transport.subscriptionTransport.resumeArgument, "afterCursor");
 assert.equal(
   transport.authorization.notificationStreamRequiredScope,
-  "notifications:read",
+  "notification:read",
 );
 assert.equal(
   transport.subscriptionTransport.cursorPattern,

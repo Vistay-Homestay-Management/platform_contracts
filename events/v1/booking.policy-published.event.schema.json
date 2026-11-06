@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/events/v1/booking.policy-published.event.schema.json",
+  "title": "Booking policy published event v1",
+  "allOf": [
+    { "$ref": "https://contracts.vistay.vn/events/v1/common-event-envelope.schema.json" },
+    {
+      "type": "object",
+      "properties": {
+        "type": { "const": "vistay.booking.policy-published" },
+        "version": { "const": 1 },
+        "data": { "$ref": "https://contracts.vistay.vn/events/v1/booking.policy-published.payload.schema.json" }
+      }
+    }
+  ]
+}

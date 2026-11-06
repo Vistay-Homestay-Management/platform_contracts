@@ -9,6 +9,17 @@ option java_outer_classname = "BookingAuthorizationProto";
 service BookingAuthorizationService {
   rpc GetBookingAuthorizationRecord(GetBookingAuthorizationRecordRequest)
       returns (GetBookingAuthorizationRecordResponse);
+  rpc GetBookingAuthorizationRecords(GetBookingAuthorizationRecordsRequest)
+      returns (GetBookingAuthorizationRecordsResponse);
+}
+
+message GetBookingAuthorizationRecordsRequest {
+  repeated string booking_ids = 1;
+}
+
+message GetBookingAuthorizationRecordsResponse {
+  repeated GetBookingAuthorizationRecordResponse records = 1;
+  repeated string missing_booking_ids = 2;
 }
 
 enum BookingPartitionResolutionStatus {

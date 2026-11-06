@@ -1,7 +1,7 @@
 extend schema
   @link(
     url: "https://specs.apollo.dev/federation/v2.7"
-    import: ["@authenticated", "@requiresScopes"]
+    import: ["@authenticated"]
   )
 
 """
@@ -33,90 +33,76 @@ type Query {
   """List this viewer's durable inbox using an exclusive cursor."""
   notificationInbox(input: NotificationInboxInput): NotificationConnection!
     @authenticated
-    @requiresScopes(scopes: [["notifications:read"]])
 
   """Return the unread count at a durable inbox revision."""
   unreadNotificationCount: UnreadNotificationCount!
     @authenticated
-    @requiresScopes(scopes: [["notifications:read"]])
 
   """Read notification preferences for the authenticated recipient."""
   notificationPreferences: NotificationPreferenceConnection!
     @authenticated
-    @requiresScopes(scopes: [["notifications:read"]])
 
   """List template revisions visible to notification operators."""
   notificationTemplates(
     input: NotificationTemplateQueryInput
   ): NotificationTemplateConnection!
     @authenticated
-    @requiresScopes(scopes: [["notifications:template:read"]])
 
   """Inspect one delivery without exposing raw destination or provider payload."""
   notificationDelivery(id: ID!): NotificationDelivery!
     @authenticated
-    @requiresScopes(scopes: [["notifications:operations:read"]])
 
   """Inspect bounded provider health and circuit state."""
   notificationProviderHealth: [NotificationProviderHealth!]!
     @authenticated
-    @requiresScopes(scopes: [["notifications:operations:read"]])
 
   """List recipient exceptions for authorized support operations."""
   notificationRecipientExceptions(
     input: RecipientExceptionQueryInput
   ): RecipientExceptionConnection!
     @authenticated
-    @requiresScopes(scopes: [["notifications:recipient-exception:read"]])
 }
 
 type Mutation {
   """Mark one recipient-owned notification read with optimistic concurrency."""
   markNotificationRead(input: MarkNotificationReadInput!): Notification!
     @authenticated
-    @requiresScopes(scopes: [["notifications:read"]])
 
   """Mark all recipient-owned notifications through a durable cursor read."""
   markAllNotificationsRead(
     input: MarkAllNotificationsReadInput!
   ): MarkAllNotificationsReadPayload!
     @authenticated
-    @requiresScopes(scopes: [["notifications:read"]])
 
   """Update only the authenticated recipient's preferences."""
   updateNotificationPreferences(
     input: UpdateNotificationPreferencesInput!
   ): NotificationPreferenceConnection!
     @authenticated
-    @requiresScopes(scopes: [["notifications:preferences:manage"]])
 
   """Publish an immutable template revision after validation."""
   publishNotificationTemplate(
     input: PublishNotificationTemplateInput!
   ): NotificationTemplate!
     @authenticated
-    @requiresScopes(scopes: [["notifications:template:publish"]])
 
   """Retire a template without deleting its historical revisions."""
   retireNotificationTemplate(
     input: RetireNotificationTemplateInput!
   ): NotificationTemplate!
     @authenticated
-    @requiresScopes(scopes: [["notifications:template:publish"]])
 
   """Request one bounded delivery retry or repair action."""
   retryNotificationDelivery(
     input: RetryNotificationDeliveryInput!
   ): NotificationDelivery!
     @authenticated
-    @requiresScopes(scopes: [["notifications:delivery:retry"]])
 
   """Resolve a recipient exception through an auditable repair action."""
   resolveNotificationRecipientException(
     input: ResolveRecipientExceptionInput!
   ): NotificationRecipientException!
     @authenticated
-    @requiresScopes(scopes: [["notifications:recipient-exception:repair"]])
 }
 
 type Subscription {
@@ -128,7 +114,6 @@ type Subscription {
   """
   notificationStream(afterCursor: Cursor): NotificationStreamEvent!
     @authenticated
-    @requiresScopes(scopes: [["notifications:read"]])
 }
 
 type NotificationStreamEvent {
