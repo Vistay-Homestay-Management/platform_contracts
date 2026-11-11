@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/events/v1/user.profile-linked.payload.schema.json",
+  "title": "Profile linked payload v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["linkId", "profileId", "accountId", "profileType", "authorizationVersion"],
+  "properties": {
+    "linkId": { "type": "string", "format": "uuid" },
+    "profileId": { "type": "string", "format": "uuid" },
+    "accountId": { "type": "string", "format": "uuid" },
+    "profileType": { "enum": ["CUSTOMER", "ADMIN", "HOST"] },
+    "authorizationVersion": { "type": "integer", "minimum": 1 }
+  }
+}

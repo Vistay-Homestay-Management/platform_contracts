@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/events/v1/user.profile-link-challenge-delivered.payload.schema.json",
+  "title": "Profile link email challenge delivered payload v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "linkId", "challengeId", "profileType", "provider",
+    "providerMessageId", "deliveredAt"
+  ],
+  "properties": {
+    "linkId": { "type": "string", "format": "uuid" },
+    "challengeId": { "type": "string", "format": "uuid" },
+    "profileType": { "enum": ["CUSTOMER", "ADMIN", "HOST"] },
+    "provider": { "const": "SMTP" },
+    "providerMessageId": { "type": "string", "minLength": 1, "maxLength": 180 },
+    "deliveredAt": { "type": "string", "format": "date-time" }
+  }
+}

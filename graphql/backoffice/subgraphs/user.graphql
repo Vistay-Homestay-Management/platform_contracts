@@ -7,6 +7,16 @@ extend schema
 type Query {
   """The profile bound to the authenticated Backoffice access token."""
   viewer: BackofficeViewer! @authenticated
+  myProfileLinkStatus: ProfileAccountLink! @authenticated
+  profileLinkRequests(profileType: AccountType, status: String = "APPROVAL_PENDING", first: Int = 50): [ProfileLinkReview!]! @authenticated
+}
+
+type Mutation {
+  protectProfileIdentityDocument(input: ProtectProfileIdentityDocumentInput!): ProtectedIdentityDocument! @authenticated
+  requestMyProfileLink(input: RequestProfileLinkInput!): ProfileAccountLink! @authenticated
+  verifyMyProfileLink(input: VerifyProfileLinkInput!): ProfileAccountLink! @authenticated
+  approveProfileLink(input: ApproveProfileLinkInput!): ProfileAccountLink! @authenticated
+  rejectProfileLink(input: RejectProfileLinkInput!): ProfileAccountLink! @authenticated
 }
 
 type BackofficeViewer {
@@ -22,3 +32,52 @@ type BackofficeViewer {
   permissions: [String!]!
   authorizationVersion: Int!
 }
+
+enum AccountType { CUSTOMER ADMIN HOST }
+
+type ProtectedIdentityDocument {
+  id: ID!
+  profileType: AccountType!
+  profileId: ID!
+  lookupKeyVersion: Int!
+  encryptionKeyVersion: Int!
+  assuranceLevel: String!
+  rowVersion: String!
+  createdAt: String!
+}
+
+type ProfileAccountLink {
+  linkId: ID
+  challengeId: ID
+  profileType: AccountType!
+  status: String!
+  maskedRecipient: String
+  expiresAt: String
+  requiresApproval: Boolean!
+  replayed: Boolean!
+}
+
+type ProfileLinkReview {
+  linkId: ID!
+  profileType: AccountType!
+  profileId: ID!
+  authAccountId: ID!
+  status: String!
+  linkMethod: String!
+  requestedAt: String!
+  maskedRecipient: String
+  displayName: String
+}
+
+input ProtectProfileIdentityDocumentInput {
+  profileType: AccountType!
+  profileId: ID!
+  cccd: String!
+  expectedProfileVersion: String!
+  reason: String!
+}
+
+input RequestProfileLinkInput { displayName: String!, cccd: String! }
+input VerifyProfileLinkInput { challengeId: ID!, code: String! }
+input ApproveProfileLinkInput { linkId: ID!, reason: String! }
+input RejectProfileLinkInput { linkId: ID!, reason: String! }
