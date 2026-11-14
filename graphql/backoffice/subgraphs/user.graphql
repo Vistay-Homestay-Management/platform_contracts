@@ -9,6 +9,9 @@ type Query {
   viewer: BackofficeViewer! @authenticated
   myProfileLinkStatus: ProfileAccountLink! @authenticated
   profileLinkRequests(profileType: AccountType, status: String = "APPROVAL_PENDING", first: Int = 50): [ProfileLinkReview!]! @authenticated
+  userDirectory(accountType: AccountType!, search: String, first: Int = 25, after: String): UserDirectoryPage! @authenticated
+  userProfile(accountType: AccountType!, profileId: ID!): UserProfileDetails! @authenticated
+  identityPolicies: [IdentityPolicy!]! @authenticated
 }
 
 type Mutation {
@@ -17,6 +20,10 @@ type Mutation {
   verifyMyProfileLink(input: VerifyProfileLinkInput!): ProfileAccountLink! @authenticated
   approveProfileLink(input: ApproveProfileLinkInput!): ProfileAccountLink! @authenticated
   rejectProfileLink(input: RejectProfileLinkInput!): ProfileAccountLink! @authenticated
+  createCustomerProfile(input: CreateCustomerProfileInput!): UserProfileDetails! @authenticated
+  createAdminProfile(input: CreateAdminProfileInput!): UserProfileDetails! @authenticated
+  createHostProfile(input: CreateHostProfileInput!): UserProfileDetails! @authenticated
+  updateIdentityPolicy(input: UpdateIdentityPolicyInput!): IdentityPolicy! @authenticated
 }
 
 type BackofficeViewer {
@@ -81,3 +88,37 @@ input RequestProfileLinkInput { displayName: String!, cccd: String! }
 input VerifyProfileLinkInput { challengeId: ID!, code: String! }
 input ApproveProfileLinkInput { linkId: ID!, reason: String! }
 input RejectProfileLinkInput { linkId: ID!, reason: String! }
+
+type UserDirectoryPage { nodes: [UserDirectoryEntry!]!, totalCount: Int!, nextCursor: String }
+type UserDirectoryEntry {
+  profileId: ID!, accountId: ID, accountType: AccountType!, displayName: String!, email: String,
+  contactPhone: String, status: String!, referenceCode: String, subtype: String,
+  verificationStatus: String, joinedOn: String, createdAt: String!, updatedAt: String!
+}
+type UserProfileDetails {
+  profileId: ID!, accountId: ID, accountType: AccountType!, displayName: String!, email: String,
+  contactPhone: String, status: String!, referenceCode: String, subtype: String,
+  verificationStatus: String, relevantDate: String, address: String, taxCode: String,
+  version: Int!, createdAt: String!, updatedAt: String!
+}
+type IdentityPolicy {
+  accountType: AccountType!, policyVersion: Int!, registrationEnabled: Boolean!, linkMode: String!,
+  linkDeadlineSeconds: Int!, otpTtlSeconds: Int!, maxOtpAttempts: Int!,
+  disableGracePeriodSeconds: Int!, purgeAfterSeconds: Int!, active: Boolean!, updatedAt: String!
+}
+input CreateCustomerProfileInput {
+  fullName: String!, email: String, contactPhone: String, dateOfBirth: String,
+  address: String, reason: String!, idempotencyKey: String!
+}
+input CreateAdminProfileInput {
+  fullName: String!, email: String, contactPhone: String, employeeCode: String,
+  subtype: String! = "STAFF", hiredOn: String, reason: String!, idempotencyKey: String!
+}
+input CreateHostProfileInput {
+  fullName: String!, email: String, contactPhone: String, hostCode: String,
+  address: String, taxCode: String, reason: String!, idempotencyKey: String!
+}
+input UpdateIdentityPolicyInput {
+  accountType: AccountType!, registrationEnabled: Boolean!, linkMode: String!,
+  expectedPolicyVersion: Int!, reason: String!, idempotencyKey: String!
+}
