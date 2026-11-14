@@ -7,124 +7,174 @@
       "issueType": "Epic",
       "summary": "[VS-E26] Dynamic Configuration, Loyalty and Metadata Governance",
       "actor": "Platform administrator, customer, host and service owner",
-      "outcome": "Typed domain-owned configuration can evolve without hard-coded business variants or arbitrary runtime scripts.",
-      "context": "Authorization v2 supplies dynamic role policy. This epic extends the same versioned, maker-checker governance to loyalty tiers, property metadata and booking policy.",
+      "outcome": "Typed domain-owned configuration evolves without hard-coded business variants or arbitrary runtime scripts.",
+      "context": "Authorization v2 supplies dynamic role policy. This epic applies the same versioned, maker-checker governance to loyalty tiers, property metadata, booking policy and operational analytics.",
+      "inScope": [
+        "Publish versioned loyalty tiers and compute customer tier projections from qualifying points.",
+        "Publish typed property attributes and render them in Admin and Host without adding schema columns for each criterion.",
+        "Resolve effective booking policy by authoritative partition and freeze evaluated evidence with reservation decisions.",
+        "Expose permission-governed Admin operational analytics and rollout evidence."
+      ],
+      "outOfScope": [
+        "Arbitrary scripts or expressions executed from stored configuration.",
+        "Client-selected authorization scope or direct cross-service database reads.",
+        "Retroactive mutation of published policy, tier, attribute or booking evidence."
+      ],
       "businessRules": [
         "Each domain service is the only writer and source of truth for its configuration.",
-        "Published versions are immutable; corrections use a new version, retirement, or a compensating ledger entry.",
+        "Published versions are immutable; corrections use a new version, retirement or compensating record.",
         "Loyalty qualifying points are neither a Finance trust score nor a redeemable wallet.",
         "Runtime rules are typed and allow-listed; no arbitrary expression or script is stored or executed."
       ],
       "repositories": ["service_user", "service_property", "service_booking", "frontend_admin", "frontend_customer", "frontend_host", "platform_contracts", "platform_infrastructure"],
+      "interfaces": [
+        "Version GraphQL, gRPC, event and JSON-schema contracts before consumer implementation.",
+        "Configuration writes require expected version, idempotency key, maker-checker audit and transactional outbox.",
+        "Read projections filter fields and partitions at the owning service before returning data."
+      ],
+      "dataOwnership": [
+        "User owns loyalty programs and customer loyalty projection; Property owns attribute definitions and property values; Booking owns booking policy resolution and frozen booking evidence."
+      ],
+      "stateMachine": [
+        "Configuration changes move through DRAFT, PENDING_APPROVAL, APPROVED or REJECTED; approved versions may later be RETIRED.",
+        "The requester cannot approve the same change and every transition records actor, reason and expected version.",
+        "Published versions remain immutable and replay-safe."
+      ],
       "authorization": {
-        "actions": ["loyalty-program:change-approve", "property-attribute:publish", "booking-policy:change-approve"],
+        "actions": ["loyalty-program:change-approve", "property-attribute:publish", "booking-policy:change-approve", "analytics:read"],
         "dataPartitions": ["SELF, OWN, ASSIGNED, PARTITION and ALL are enforced by the owning domain using authoritative membership data."],
         "fieldGroups": ["Summary is default; sensitive booking commercial fields continue to require booking-sensitive:read."]
       },
+      "failureSemantics": [
+        "Return stable validation, forbidden, conflict, stale-version, dependency-unavailable and idempotency-conflict codes.",
+        "Fail closed when authorization or authoritative partition data is unavailable.",
+        "Never broaden access or silently fall back to a default policy after an invalid published version."
+      ],
+      "idempotencyConcurrency": [
+        "Every retried mutation uses a scoped idempotency key and canonical request fingerprint.",
+        "Approval and publication use compare-and-swap against the expected configuration version.",
+        "Event consumers deduplicate by event ID and aggregate version."
+      ],
+      "dependencies": [{"sourceId": "VS-E25", "relation": "is-blocked-by"}],
+      "acceptanceCriteria": [
+        {"id": "AC01", "given": "an authorized maker and a valid typed change", "when": "a different authorized checker approves it", "then": "one immutable version is published with audit and outbox evidence"},
+        {"id": "AC02", "given": "a stale version, replay mismatch or unauthorized partition", "when": "the operation is attempted", "then": "it fails with a stable code and no partial business effect"},
+        {"id": "AC03", "given": "a published configuration version", "when": "a domain decision is made", "then": "the owning service records the exact evaluated version and deterministic result"}
+      ],
+      "tests": [
+        "Unit tests cover typing, effective dates, version transitions and protected invariants.",
+        "Integration tests cover maker-checker, CAS, idempotency, partition filtering and outbox replay.",
+        "Postman/Newman covers create, propose, approve, consume, reject and rollback-safe flows."
+      ],
+      "observability": [
+        "Emit bounded metrics for publication, rejection, stale version, fallback prevention and reconciliation mismatch.",
+        "Propagate correlation IDs without logging secrets, PII or sensitive commercial fields.",
+        "Provide dashboards and runbooks for stuck requests and projection drift."
+      ],
+      "definitionOfDone": [
+        "Catalog validation and affected repository CI checks pass.",
+        "Contracts, migrations, compatibility path, Admin Web/Mobile parity and Newman evidence are merged.",
+        "Authorization-negative, replay, reconciliation and rollback evidence is linked in Jira."
+      ],
+      "evidence": ["Pull request and commit links per repository.", "Automated test and Newman report.", "Migration, rollback, audit and reconciliation artifacts."],
+      "externalBlockers": [],
       "labels": ["dynamic-configuration", "authorization-v2", "maker-checker", "graphql", "source-vs-e26"],
-      "specStatus": "needs-refinement",
+      "decisionNoteVi": "Cấu hình động phải có kiểu, version và chủ sở hữu miền; không lưu hoặc chạy script tùy ý và không sửa ngược lịch sử đã publish.",
+      "specStatus": "refined-parent",
       "workKind": "service",
       "dispatchable": false,
       "activationBlockers": ["Docker/Testcontainers migration evidence and live Newman flows are not yet attached."]
     },
     {
-      "templateSourceId": "VS-E24-S01",
+      "templateSourceId": "VS-E26",
       "sourceId": "VS-E26-S01",
       "jiraKey": "SCRUM-878",
       "issueType": "Story",
       "parentSourceId": "VS-E26",
       "summary": "[VS-E26-S01] Dynamic loyalty tiers and qualifying-point projection",
-      "outcome": "Admins publish effective loyalty tier thresholds and customers receive a server-computed tier projection.",
-      "repositories": ["service_user", "frontend_customer", "frontend_admin", "platform_contracts"],
-      "authorization": {
-        "actions": ["loyalty-program:read", "loyalty-program:change-request", "loyalty-program:change-approve", "loyalty-profile:read", "loyalty-point:adjust"],
-        "dataPartitions": ["Customer reads SELF; administrators use approved ALL/organization policy."],
-        "fieldGroups": ["Qualifying points and tier only; no Finance trust detail or wallet balance."]
-      },
-      "labels": ["dynamic-configuration", "loyalty", "owner-service-user", "source-vs-e26-s01"],
       "specStatus": "needs-refinement",
-      "workKind": "service",
-      "dispatchable": false,
+      "actor": "Loyalty administrator and customer",
+      "outcome": "Admins publish effective loyalty tier thresholds and customers receive a server-computed tier projection.",
+      "context": "The customer stores qualifying points; User Service resolves the active tier. Clients cannot assign their own tier.",
+      "inScope": ["Versioned tier thresholds and benefits metadata.", "Replay-safe qualifying-point projection from booking completion.", "Admin maker-checker and Customer SELF read."],
+      "repositories": ["service_user", "frontend_customer", "frontend_admin", "platform_contracts"],
+      "authorization": {"actions": ["loyalty-program:read", "loyalty-program:change-request", "loyalty-program:change-approve", "loyalty-profile:read", "loyalty-point:adjust"], "dataPartitions": ["Customer reads SELF; administrators use approved ALL or organization policy."], "fieldGroups": ["Qualifying points and tier only; no Finance trust detail or wallet balance."]},
+      "dependencies": [{"sourceId": "VS-E25-S04", "relation": "is-blocked-by"}],
+      "labels": ["dynamic-configuration", "loyalty", "owner-service-user", "source-vs-e26-s01"],
       "activationBlockers": ["Booking-completed replay-safe consumer and Testcontainers/Newman evidence remain required."]
     },
     {
-      "templateSourceId": "VS-E24-S02",
+      "templateSourceId": "VS-E26",
       "sourceId": "VS-E26-S02",
       "jiraKey": "SCRUM-876",
       "issueType": "Story",
       "parentSourceId": "VS-E26",
       "summary": "[VS-E26-S02] Typed property attribute catalog and generated host form",
-      "outcome": "Property criteria beyond fixed invariants are published as typed definitions and rendered dynamically for hosts.",
-      "repositories": ["service_property", "frontend_admin", "frontend_host", "platform_contracts"],
-      "authorization": {
-        "actions": ["property-attribute:read", "property-attribute:manage", "property-attribute:publish"],
-        "dataPartitions": ["OWN host relationships and admin PARTITION/ALL are verified from Property data."],
-        "fieldGroups": ["PUBLIC, HOST and ADMIN visibility is filtered at the source."]
-      },
-      "labels": ["dynamic-configuration", "property-metadata", "owner-service-property", "source-vs-e26-s02"],
       "specStatus": "needs-refinement",
-      "workKind": "service",
-      "dispatchable": false,
+      "actor": "Property administrator and host",
+      "outcome": "Property criteria beyond fixed invariants are published as typed definitions and rendered dynamically for hosts.",
+      "context": "Stable identity, ownership and location remain fixed fields; optional evolving criteria use typed definitions and validated values.",
+      "inScope": ["Typed attribute definition, validation and effective version.", "Host form generated from authorized definitions.", "Source-side PUBLIC, HOST and ADMIN field filtering."],
+      "repositories": ["service_property", "frontend_admin", "frontend_host", "platform_contracts"],
+      "authorization": {"actions": ["property-attribute:read", "property-attribute:manage", "property-attribute:publish"], "dataPartitions": ["OWN host relationships and Admin PARTITION or ALL are verified from Property data."], "fieldGroups": ["PUBLIC, HOST and ADMIN visibility is filtered at the source."]},
+      "dependencies": [{"sourceId": "VS-E25-S04", "relation": "is-blocked-by"}],
+      "labels": ["dynamic-configuration", "property-metadata", "owner-service-property", "source-vs-e26-s02"],
       "activationBlockers": ["Full authoring UI, query-plan evidence and live migration tests remain required."]
     },
     {
-      "templateSourceId": "VS-E24-S03",
+      "templateSourceId": "VS-E26",
       "sourceId": "VS-E26-S03",
       "jiraKey": "SCRUM-877",
       "issueType": "Story",
       "parentSourceId": "VS-E26",
       "summary": "[VS-E26-S03] Versioned booking policy resolution and immutable evidence",
-      "outcome": "Booking resolves effective policy deterministically and freezes the evaluated policy evidence with each reservation decision.",
-      "repositories": ["service_booking", "frontend_admin", "platform_contracts", "platform_infrastructure"],
-      "authorization": {
-        "actions": ["booking-policy:read", "booking-policy:change-request", "booking-policy:change-approve", "booking-policy:simulate"],
-        "dataPartitions": ["Resolution precedence is PROPERTY, BRANCH, ORGANIZATION, then GLOBAL; client input cannot select scope."],
-        "fieldGroups": ["Policy summary is readable separately from commercial booking data."]
-      },
-      "labels": ["dynamic-configuration", "booking-policy", "owner-service-booking", "source-vs-e26-s03"],
       "specStatus": "needs-refinement",
-      "workKind": "service",
-      "dispatchable": false,
+      "actor": "Booking policy administrator and booking actor",
+      "outcome": "Booking resolves effective policy deterministically and freezes evaluated policy evidence with each reservation decision.",
+      "context": "Booking policy is selected from authoritative property and branch data, never from a client-provided scope selector.",
+      "inScope": ["Effective policy lookup with PROPERTY, BRANCH, ORGANIZATION and GLOBAL precedence.", "Quote, hold and confirm integration.", "Immutable policy version and result stored with booking evidence."],
+      "repositories": ["service_booking", "frontend_admin", "platform_contracts", "platform_infrastructure"],
+      "authorization": {"actions": ["booking-policy:read", "booking-policy:change-request", "booking-policy:change-approve", "booking-policy:simulate"], "dataPartitions": ["Resolution precedence is PROPERTY, BRANCH, ORGANIZATION, then GLOBAL; client input cannot select scope."], "fieldGroups": ["Policy summary is readable separately from commercial booking data."]},
+      "dependencies": [{"sourceId": "VS-E25-S05", "relation": "is-blocked-by"}],
+      "labels": ["dynamic-configuration", "booking-policy", "owner-service-booking", "source-vs-e26-s03"],
       "activationBlockers": ["Quote/hold/confirm wiring and live Testcontainers/Newman evidence remain required."]
     },
     {
-      "templateSourceId": "VS-E24-S04",
+      "templateSourceId": "VS-E26",
       "sourceId": "VS-E26-S04",
       "jiraKey": "SCRUM-875",
       "issueType": "Story",
       "parentSourceId": "VS-E26",
       "summary": "[VS-E26-S04] Dynamic configuration workspace, contracts and rollout evidence",
-      "outcome": "Admin, customer and host surfaces consume validated versioned contracts with repeatable rollout evidence.",
-      "repositories": ["frontend_admin", "frontend_customer", "frontend_host", "platform_contracts", "platform_infrastructure"],
-      "authorization": {
-        "actions": ["loyalty-program:read", "property-attribute:read", "booking-policy:read"],
-        "dataPartitions": ["Each UI receives only domain-authorized data; UI state never expands server scope."],
-        "fieldGroups": ["Catalog and checker queue fields are separated from sensitive customer and commercial data."]
-      },
-      "labels": ["dynamic-configuration", "graphql", "postman", "rollout", "source-vs-e26-s04"],
       "specStatus": "needs-refinement",
+      "actor": "Admin Web/Mobile operator and release owner",
+      "outcome": "Admin, customer and host surfaces consume validated versioned contracts with repeatable rollout evidence.",
+      "context": "All clients share domain APIs; Mobile does not introduce separate authorization or business endpoints.",
+      "inScope": ["Admin maker and checker queues.", "Generated Customer and Host projections.", "Contract, migration, Newman and rollback evidence."],
+      "repositories": ["frontend_admin", "frontend_customer", "frontend_host", "platform_contracts", "platform_infrastructure"],
+      "authorization": {"actions": ["loyalty-program:read", "property-attribute:read", "booking-policy:read"], "dataPartitions": ["Each UI receives only domain-authorized data; UI state never expands server scope."], "fieldGroups": ["Catalog and checker queue fields are separated from sensitive customer and commercial data."]},
+      "dependencies": [{"sourceId": "VS-E26-S01", "relation": "is-blocked-by"}, {"sourceId": "VS-E26-S02", "relation": "is-blocked-by"}, {"sourceId": "VS-E26-S03", "relation": "is-blocked-by"}],
+      "labels": ["dynamic-configuration", "graphql", "postman", "rollout", "source-vs-e26-s04"],
       "workKind": "web",
-      "dispatchable": false,
       "activationBlockers": ["Admin Mobile parity, Newman and zero-diff catalog synchronization remain required."]
     },
     {
-      "templateSourceId": "VS-E24-S04",
+      "templateSourceId": "VS-E26",
       "sourceId": "VS-E26-S05",
       "jiraKey": "SCRUM-879",
       "issueType": "Story",
       "parentSourceId": "VS-E26",
       "summary": "[VS-E26-S05] Governed Admin operations analytics",
-      "outcome": "Administrators see real, permission-governed operational and commercial statistics in Overview and a dedicated Analytics workspace.",
-      "repositories": ["service_user", "service_booking", "frontend_admin", "platform_contracts", "platform_infrastructure"],
-      "authorization": {
-        "actions": ["analytics:read"],
-        "dataPartitions": ["Cross-property analytics requires ALL; narrower partition projections must be introduced explicitly."],
-        "fieldGroups": ["Revenue is aggregated separately by currency and never mixed into an invalid combined total."]
-      },
-      "labels": ["analytics", "graphql", "authorization-v2", "frontend-admin", "owner-service-booking", "source-vs-e26-s05"],
       "specStatus": "needs-refinement",
+      "actor": "Authorized operations administrator",
+      "outcome": "Administrators see real, permission-governed operational and commercial statistics in Overview and a dedicated Analytics workspace.",
+      "context": "Analytics is a server-authorized projection over owned domain data; the frontend never synthesizes a broader partition.",
+      "inScope": ["Overview and dedicated Analytics projections.", "Stable empty and dependency-degraded states.", "Currency-safe revenue aggregation and permission-negative tests."],
+      "repositories": ["service_user", "service_booking", "frontend_admin", "platform_contracts", "platform_infrastructure"],
+      "authorization": {"actions": ["analytics:read"], "dataPartitions": ["Cross-property analytics requires ALL; narrower partition projections must be introduced explicitly."], "fieldGroups": ["Revenue is aggregated separately by currency and never mixed into an invalid combined total."]},
+      "dependencies": [{"sourceId": "VS-E25-S05", "relation": "is-blocked-by"}],
+      "labels": ["analytics", "graphql", "authorization-v2", "frontend-admin", "owner-service-booking", "source-vs-e26-s05"],
       "workKind": "web",
-      "dispatchable": false,
       "activationBlockers": ["PR CI and live environment smoke evidence remain required."]
     }
   ],
