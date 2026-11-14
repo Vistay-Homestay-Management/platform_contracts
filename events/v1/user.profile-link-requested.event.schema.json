@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/events/v1/user.profile-link-requested.event.schema.json",
+  "title": "Profile link requested event v1",
+  "allOf": [
+    { "$ref": "https://contracts.vistay.vn/events/v1/common-event-envelope.schema.json" },
+    {
+      "type": "object",
+      "properties": {
+        "type": { "const": "vistay.user.profile-link-requested" },
+        "version": { "const": 1 },
+        "data": { "$ref": "https://contracts.vistay.vn/events/v1/user.profile-link-requested.payload.schema.json" }
+      }
+    }
+  ]
+}
