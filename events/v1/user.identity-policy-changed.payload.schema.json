@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.vistay.vn/events/v1/user.identity-policy-changed.payload.schema.json",
+  "title": "UserIdentityPolicyChangedPayloadV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "accountType", "policyVersion", "registrationEnabled", "linkMode",
+    "actorAccountId", "changedAt"
+  ],
+  "properties": {
+    "accountType": { "type": "string", "enum": ["CUSTOMER", "ADMIN", "HOST"] },
+    "policyVersion": { "type": "integer", "minimum": 1 },
+    "registrationEnabled": { "type": "boolean" },
+    "linkMode": { "type": "string", "enum": ["AUTO_LINK", "REQUIRE_APPROVAL"] },
+    "actorAccountId": { "type": "string", "format": "uuid" },
+    "changedAt": { "type": "string", "format": "date-time" }
+  }
+}
