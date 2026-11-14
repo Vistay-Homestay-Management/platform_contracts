@@ -88183,26 +88183,987 @@
       ]
     },
     {
+      "sourceId": "VS-E25",
+      "issueType": "Epic",
+      "summary": "[VS-E25] Authorization v2 and GraphQL Data Access Hardening",
+      "manageDescription": true,
+      "actor": "Security administrator, service owner and authenticated platform actor",
+      "outcome": "Every protected resolver enforces a dynamic, role-based action policy and authoritative domain partition without per-user authorization snapshots or N+1 calls.",
+      "context": "User Service is the sole source of role policy. JWT carries identity and client roles only; services resolve role policies once per request and verify ownership, assignment and branch membership from domain data.",
+      "inScope": [
+        "Canonical permission registry and JWT client-role contract.",
+        "Dynamic role lifecycle with maker-checker, CAS and idempotency.",
+        "User to Keycloak role projection, expiry and reconciliation.",
+        "Shared Redis role-policy cache and resolver-bound authorization.",
+        "Scope-specific GraphQL projections, batching and N+1 remediation.",
+        "Admin Web/Mobile workspace, Newman and dual-read rollout evidence."
+      ],
+      "outOfScope": [
+        "Permission, scope or partition snapshots embedded in JWT.",
+        "Client-selected authorization scope.",
+        "Per-user authorization snapshots as the final action decision.",
+        "Direct cross-service database access."
+      ],
+      "businessRules": [
+        "User Service is the only writer and source of truth for roles, permissions and role policy.",
+        "Access tokens expire after five minutes; role revoke or expiry revokes session and refresh token immediately.",
+        "Every non-public GraphQL resolver declares its required permission and CI rejects missing annotations.",
+        "Unrecognized or inactive roles grant no permission and authorization fails closed when both Redis and User are unavailable.",
+        "System roles cannot be renamed, deleted or deactivated; protected rescue paths remain intact."
+      ],
+      "repositories": [
+        "service_user",
+        "service_authentication",
+        "service_booking",
+        "service_property",
+        "frontend_admin",
+        "platform_contracts",
+        "platform_infrastructure"
+      ],
+      "interfaces": [
+        "GetRolePolicies(accountType, roleCodes) returns a batch of active role policies.",
+        "user.role-policy-changed.v1 invalidates the exact changed role.",
+        "GraphQL authorization context performs at most one Redis MGET and one User gRPC batch fallback per request."
+      ],
+      "dataOwnership": [
+        "User owns role, permission, role policy and subject assignment; each domain owns authoritative ownership, assignment and partition membership."
+      ],
+      "stateMachine": [
+        "Role changes move through PENDING_APPROVAL, APPROVED or REJECTED; custom roles may later become INACTIVE.",
+        "Requester cannot approve the same request; approval uses expected role version and idempotency key.",
+        "Approval updates policy, audit, outbox and invalidation atomically."
+      ],
+      "authorization": {
+        "actions": [
+          "role:read",
+          "role:change-request",
+          "role:change-approve"
+        ],
+        "dataPartitions": [
+          "SELF, OWN, ASSIGNED, PARTITION and ALL are verified from authoritative domain records."
+        ],
+        "fieldGroups": [
+          "booking-sensitive:read is required independently for commercial booking fields."
+        ]
+      },
+      "failureSemantics": [
+        "AUTHORIZATION_UNAVAILABLE when Redis and User policy lookup are both unavailable.",
+        "Unrecognized or inactive roles grant no permission.",
+        "Denied resolvers perform no database query, event or side effect."
+      ],
+      "idempotencyConcurrency": [
+        "Role mutations use scoped idempotency keys and request fingerprints.",
+        "Approval uses expectedRoleVersion compare-and-swap.",
+        "Out-of-order invalidation events cannot replace a newer roleVersion or catalogVersion."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "a protected resolver and an authenticated actor",
+          "when": "the resolver is invoked",
+          "then": "the required action and minimum server-selected scope are checked before domain access"
+        },
+        {
+          "id": "AC02",
+          "given": "multiple aliases, fragments or root fields in one request",
+          "when": "authorization is evaluated",
+          "then": "role lookup uses at most one Redis batch and one User gRPC batch"
+        },
+        {
+          "id": "AC03",
+          "given": "a role is revoked or expires",
+          "when": "the projection and token lifecycle run",
+          "then": "refresh access is revoked immediately and the old access token expires within five minutes"
+        }
+      ],
+      "tests": [
+        "Role management tests cover atomic add/remove, self-approval denial, stale version, replay and protected-role invariants.",
+        "Redis tests cover warm/cold cache, batch lookup, invalidation, out-of-order events and fail-closed fallback.",
+        "GraphQL tests cover aliases, fragments, multi-root partial response, nested sensitive fields and denial before side effects.",
+        "N+1 tests prove constant database and downstream calls for 1, 10 and 100 nodes."
+      ],
+      "observability": [
+        "Measure cache hit, fallback, policy version, denial reason and authorization-unavailable without logging token or PII.",
+        "Track dual-read decision mismatches and never widen access on mismatch.",
+        "Publish query-count and downstream batch evidence per release."
+      ],
+      "definitionOfDone": [
+        "Contracts, User/DB, Auth/Keycloak, Redis guard, services and frontend are promoted in that order.",
+        "Repository CI, Newman, authorization-negative and Compose smoke evidence are linked.",
+        "Snapshot RPCs and compatibility tables remain until reconciliation mismatch reaches zero."
+      ],
+      "evidence": [
+        "PR and commit links per repository.",
+        "Schema, migration, unit, integration, query-count and Newman reports.",
+        "Keycloak reconciliation, cache failure and dual-read mismatch artifacts."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "authorization-v2",
+        "graphql",
+        "redis-policy-cache",
+        "n-plus-one",
+        "security-remediation",
+        "source-vs-e25"
+      ],
+      "decisionNoteVi": "Quyền hành động lấy từ policy động theo role; phạm vi dữ liệu thực tế luôn được service sở hữu miền kiểm tra từ dữ liệu nghiệp vụ.",
+      "jiraKey": "SCRUM-881",
+      "specStatus": "refined-parent",
+      "workKind": "service",
+      "dispatchable": false,
+      "testCases": [],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [
+        "Live Host Newman evidence and zero-mismatch dual-read reconciliation remain release gates."
+      ]
+    },
+    {
+      "sourceId": "VS-E25-S01",
+      "issueType": "Story",
+      "summary": "[VS-E25-S01] Permission registry, JWT and role-policy contracts",
+      "manageDescription": true,
+      "actor": "Security administrator, service owner and authenticated platform actor",
+      "outcome": "Services share one canonical permission catalog, a minimal JWT client-role claim and versioned batch role-policy contracts.",
+      "context": "User Service is the sole source of role policy. JWT carries identity and client roles only; services resolve role policies once per request and verify ownership, assignment and branch membership from domain data.",
+      "inScope": [
+        "Canonical permission registry and JWT client-role contract.",
+        "Dynamic role lifecycle with maker-checker, CAS and idempotency.",
+        "User to Keycloak role projection, expiry and reconciliation.",
+        "Shared Redis role-policy cache and resolver-bound authorization.",
+        "Scope-specific GraphQL projections, batching and N+1 remediation.",
+        "Admin Web/Mobile workspace, Newman and dual-read rollout evidence."
+      ],
+      "outOfScope": [
+        "Permission, scope or partition snapshots embedded in JWT.",
+        "Client-selected authorization scope.",
+        "Per-user authorization snapshots as the final action decision.",
+        "Direct cross-service database access."
+      ],
+      "businessRules": [
+        "User Service is the only writer and source of truth for roles, permissions and role policy.",
+        "Access tokens expire after five minutes; role revoke or expiry revokes session and refresh token immediately.",
+        "Every non-public GraphQL resolver declares its required permission and CI rejects missing annotations.",
+        "Unrecognized or inactive roles grant no permission and authorization fails closed when both Redis and User are unavailable.",
+        "System roles cannot be renamed, deleted or deactivated; protected rescue paths remain intact."
+      ],
+      "repositories": [
+        "platform_contracts",
+        "service_user",
+        "platform_infrastructure"
+      ],
+      "interfaces": [
+        "GetRolePolicies(accountType, roleCodes) returns a batch of active role policies.",
+        "user.role-policy-changed.v1 invalidates the exact changed role.",
+        "GraphQL authorization context performs at most one Redis MGET and one User gRPC batch fallback per request."
+      ],
+      "dataOwnership": [
+        "User owns role, permission, role policy and subject assignment; each domain owns authoritative ownership, assignment and partition membership."
+      ],
+      "stateMachine": [
+        "Role changes move through PENDING_APPROVAL, APPROVED or REJECTED; custom roles may later become INACTIVE.",
+        "Requester cannot approve the same request; approval uses expected role version and idempotency key.",
+        "Approval updates policy, audit, outbox and invalidation atomically."
+      ],
+      "authorization": {
+        "actions": [
+          "role:read"
+        ],
+        "dataPartitions": [
+          "Policy catalog is administrative; runtime domains still verify their own partitions."
+        ],
+        "fieldGroups": [
+          "JWT contains no permission, scope or partition fields."
+        ]
+      },
+      "failureSemantics": [
+        "AUTHORIZATION_UNAVAILABLE when Redis and User policy lookup are both unavailable.",
+        "Unrecognized or inactive roles grant no permission.",
+        "Denied resolvers perform no database query, event or side effect."
+      ],
+      "idempotencyConcurrency": [
+        "Role mutations use scoped idempotency keys and request fingerprints.",
+        "Approval uses expectedRoleVersion compare-and-swap.",
+        "Out-of-order invalidation events cannot replace a newer roleVersion or catalogVersion."
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "a protected resolver and an authenticated actor",
+          "when": "the resolver is invoked",
+          "then": "the required action and minimum server-selected scope are checked before domain access"
+        },
+        {
+          "id": "AC02",
+          "given": "multiple aliases, fragments or root fields in one request",
+          "when": "authorization is evaluated",
+          "then": "role lookup uses at most one Redis batch and one User gRPC batch"
+        },
+        {
+          "id": "AC03",
+          "given": "a role is revoked or expires",
+          "when": "the projection and token lifecycle run",
+          "then": "refresh access is revoked immediately and the old access token expires within five minutes"
+        }
+      ],
+      "tests": [
+        "Role management tests cover atomic add/remove, self-approval denial, stale version, replay and protected-role invariants.",
+        "Redis tests cover warm/cold cache, batch lookup, invalidation, out-of-order events and fail-closed fallback.",
+        "GraphQL tests cover aliases, fragments, multi-root partial response, nested sensitive fields and denial before side effects.",
+        "N+1 tests prove constant database and downstream calls for 1, 10 and 100 nodes."
+      ],
+      "observability": [
+        "Measure cache hit, fallback, policy version, denial reason and authorization-unavailable without logging token or PII.",
+        "Track dual-read decision mismatches and never widen access on mismatch.",
+        "Publish query-count and downstream batch evidence per release."
+      ],
+      "definitionOfDone": [
+        "Contracts, User/DB, Auth/Keycloak, Redis guard, services and frontend are promoted in that order.",
+        "Repository CI, Newman, authorization-negative and Compose smoke evidence are linked.",
+        "Snapshot RPCs and compatibility tables remain until reconciliation mismatch reaches zero."
+      ],
+      "evidence": [
+        "PR and commit links per repository.",
+        "Schema, migration, unit, integration, query-count and Newman reports.",
+        "Keycloak reconciliation, cache failure and dual-read mismatch artifacts."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "authorization-v2",
+        "graphql",
+        "owner-platform-contracts",
+        "source-vs-e25-s01"
+      ],
+      "decisionNoteVi": "Quyền hành động lấy từ policy động theo role; phạm vi dữ liệu thực tế luôn được service sở hữu miền kiểm tra từ dữ liệu nghiệp vụ.",
+      "jiraKey": "SCRUM-882",
+      "specStatus": "needs-refinement",
+      "workKind": "service",
+      "dispatchable": false,
+      "testCases": [],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [
+        "Compatibility alias removal waits for all consumers to use canonical kebab-case resource:action codes."
+      ],
+      "parentSourceId": "VS-E25"
+    },
+    {
+      "sourceId": "VS-E25-S02",
+      "issueType": "Story",
+      "summary": "[VS-E25-S02] Dynamic role lifecycle and maker-checker",
+      "manageDescription": true,
+      "actor": "Security administrator, service owner and authenticated platform actor",
+      "outcome": "Admins create, change and deactivate custom roles through audited maker-checker requests with CAS and replay safety.",
+      "context": "User Service is the sole source of role policy. JWT carries identity and client roles only; services resolve role policies once per request and verify ownership, assignment and branch membership from domain data.",
+      "inScope": [
+        "Canonical permission registry and JWT client-role contract.",
+        "Dynamic role lifecycle with maker-checker, CAS and idempotency.",
+        "User to Keycloak role projection, expiry and reconciliation.",
+        "Shared Redis role-policy cache and resolver-bound authorization.",
+        "Scope-specific GraphQL projections, batching and N+1 remediation.",
+        "Admin Web/Mobile workspace, Newman and dual-read rollout evidence."
+      ],
+      "outOfScope": [
+        "Permission, scope or partition snapshots embedded in JWT.",
+        "Client-selected authorization scope.",
+        "Per-user authorization snapshots as the final action decision.",
+        "Direct cross-service database access."
+      ],
+      "businessRules": [
+        "User Service is the only writer and source of truth for roles, permissions and role policy.",
+        "Access tokens expire after five minutes; role revoke or expiry revokes session and refresh token immediately.",
+        "Every non-public GraphQL resolver declares its required permission and CI rejects missing annotations.",
+        "Unrecognized or inactive roles grant no permission and authorization fails closed when both Redis and User are unavailable.",
+        "System roles cannot be renamed, deleted or deactivated; protected rescue paths remain intact."
+      ],
+      "repositories": [
+        "service_user",
+        "frontend_admin",
+        "platform_contracts"
+      ],
+      "interfaces": [
+        "GetRolePolicies(accountType, roleCodes) returns a batch of active role policies.",
+        "user.role-policy-changed.v1 invalidates the exact changed role.",
+        "GraphQL authorization context performs at most one Redis MGET and one User gRPC batch fallback per request."
+      ],
+      "dataOwnership": [
+        "User owns role, permission, role policy and subject assignment; each domain owns authoritative ownership, assignment and partition membership."
+      ],
+      "stateMachine": [
+        "Role changes move through PENDING_APPROVAL, APPROVED or REJECTED; custom roles may later become INACTIVE.",
+        "Requester cannot approve the same request; approval uses expected role version and idempotency key.",
+        "Approval updates policy, audit, outbox and invalidation atomically."
+      ],
+      "authorization": {
+        "actions": [
+          "role:read",
+          "role:change-request",
+          "role:change-approve"
+        ],
+        "dataPartitions": [
+          "Role administration uses the approved administrative audience and partition."
+        ],
+        "fieldGroups": [
+          "Audit detail is separated from the public role catalog."
+        ]
+      },
+      "failureSemantics": [
+        "AUTHORIZATION_UNAVAILABLE when Redis and User policy lookup are both unavailable.",
+        "Unrecognized or inactive roles grant no permission.",
+        "Denied resolvers perform no database query, event or side effect."
+      ],
+      "idempotencyConcurrency": [
+        "Role mutations use scoped idempotency keys and request fingerprints.",
+        "Approval uses expectedRoleVersion compare-and-swap.",
+        "Out-of-order invalidation events cannot replace a newer roleVersion or catalogVersion."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E25-S01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "a protected resolver and an authenticated actor",
+          "when": "the resolver is invoked",
+          "then": "the required action and minimum server-selected scope are checked before domain access"
+        },
+        {
+          "id": "AC02",
+          "given": "multiple aliases, fragments or root fields in one request",
+          "when": "authorization is evaluated",
+          "then": "role lookup uses at most one Redis batch and one User gRPC batch"
+        },
+        {
+          "id": "AC03",
+          "given": "a role is revoked or expires",
+          "when": "the projection and token lifecycle run",
+          "then": "refresh access is revoked immediately and the old access token expires within five minutes"
+        }
+      ],
+      "tests": [
+        "Role management tests cover atomic add/remove, self-approval denial, stale version, replay and protected-role invariants.",
+        "Redis tests cover warm/cold cache, batch lookup, invalidation, out-of-order events and fail-closed fallback.",
+        "GraphQL tests cover aliases, fragments, multi-root partial response, nested sensitive fields and denial before side effects.",
+        "N+1 tests prove constant database and downstream calls for 1, 10 and 100 nodes."
+      ],
+      "observability": [
+        "Measure cache hit, fallback, policy version, denial reason and authorization-unavailable without logging token or PII.",
+        "Track dual-read decision mismatches and never widen access on mismatch.",
+        "Publish query-count and downstream batch evidence per release."
+      ],
+      "definitionOfDone": [
+        "Contracts, User/DB, Auth/Keycloak, Redis guard, services and frontend are promoted in that order.",
+        "Repository CI, Newman, authorization-negative and Compose smoke evidence are linked.",
+        "Snapshot RPCs and compatibility tables remain until reconciliation mismatch reaches zero."
+      ],
+      "evidence": [
+        "PR and commit links per repository.",
+        "Schema, migration, unit, integration, query-count and Newman reports.",
+        "Keycloak reconciliation, cache failure and dual-read mismatch artifacts."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "authorization-v2",
+        "maker-checker",
+        "owner-service-user",
+        "source-vs-e25-s02"
+      ],
+      "decisionNoteVi": "Quyền hành động lấy từ policy động theo role; phạm vi dữ liệu thực tế luôn được service sở hữu miền kiểm tra từ dữ liệu nghiệp vụ.",
+      "jiraKey": "SCRUM-883",
+      "specStatus": "needs-refinement",
+      "workKind": "service",
+      "dispatchable": false,
+      "testCases": [],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [
+        "Live maker-checker and protected rescue-role invariant evidence remain required."
+      ],
+      "parentSourceId": "VS-E25"
+    },
+    {
+      "sourceId": "VS-E25-S03",
+      "issueType": "Story",
+      "summary": "[VS-E25-S03] User to Keycloak role projection, expiry and reconciliation",
+      "manageDescription": true,
+      "actor": "Security administrator, service owner and authenticated platform actor",
+      "outcome": "Keycloak client roles exactly mirror active User assignments and revoke refresh access on removal or expiry.",
+      "context": "User Service is the sole source of role policy. JWT carries identity and client roles only; services resolve role policies once per request and verify ownership, assignment and branch membership from domain data.",
+      "inScope": [
+        "Canonical permission registry and JWT client-role contract.",
+        "Dynamic role lifecycle with maker-checker, CAS and idempotency.",
+        "User to Keycloak role projection, expiry and reconciliation.",
+        "Shared Redis role-policy cache and resolver-bound authorization.",
+        "Scope-specific GraphQL projections, batching and N+1 remediation.",
+        "Admin Web/Mobile workspace, Newman and dual-read rollout evidence."
+      ],
+      "outOfScope": [
+        "Permission, scope or partition snapshots embedded in JWT.",
+        "Client-selected authorization scope.",
+        "Per-user authorization snapshots as the final action decision.",
+        "Direct cross-service database access."
+      ],
+      "businessRules": [
+        "User Service is the only writer and source of truth for roles, permissions and role policy.",
+        "Access tokens expire after five minutes; role revoke or expiry revokes session and refresh token immediately.",
+        "Every non-public GraphQL resolver declares its required permission and CI rejects missing annotations.",
+        "Unrecognized or inactive roles grant no permission and authorization fails closed when both Redis and User are unavailable.",
+        "System roles cannot be renamed, deleted or deactivated; protected rescue paths remain intact."
+      ],
+      "repositories": [
+        "service_user",
+        "service_authentication",
+        "platform_infrastructure"
+      ],
+      "interfaces": [
+        "GetRolePolicies(accountType, roleCodes) returns a batch of active role policies.",
+        "user.role-policy-changed.v1 invalidates the exact changed role.",
+        "GraphQL authorization context performs at most one Redis MGET and one User gRPC batch fallback per request."
+      ],
+      "dataOwnership": [
+        "User owns role, permission, role policy and subject assignment; each domain owns authoritative ownership, assignment and partition membership."
+      ],
+      "stateMachine": [
+        "Role changes move through PENDING_APPROVAL, APPROVED or REJECTED; custom roles may later become INACTIVE.",
+        "Requester cannot approve the same request; approval uses expected role version and idempotency key.",
+        "Approval updates policy, audit, outbox and invalidation atomically."
+      ],
+      "authorization": {
+        "actions": [
+          "role:read"
+        ],
+        "dataPartitions": [
+          "Projection is keyed by account type, profile and API client audience."
+        ],
+        "fieldGroups": [
+          "Only identity and canonical role codes enter the token."
+        ]
+      },
+      "failureSemantics": [
+        "AUTHORIZATION_UNAVAILABLE when Redis and User policy lookup are both unavailable.",
+        "Unrecognized or inactive roles grant no permission.",
+        "Denied resolvers perform no database query, event or side effect."
+      ],
+      "idempotencyConcurrency": [
+        "Role mutations use scoped idempotency keys and request fingerprints.",
+        "Approval uses expectedRoleVersion compare-and-swap.",
+        "Out-of-order invalidation events cannot replace a newer roleVersion or catalogVersion."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E25-S01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "a protected resolver and an authenticated actor",
+          "when": "the resolver is invoked",
+          "then": "the required action and minimum server-selected scope are checked before domain access"
+        },
+        {
+          "id": "AC02",
+          "given": "multiple aliases, fragments or root fields in one request",
+          "when": "authorization is evaluated",
+          "then": "role lookup uses at most one Redis batch and one User gRPC batch"
+        },
+        {
+          "id": "AC03",
+          "given": "a role is revoked or expires",
+          "when": "the projection and token lifecycle run",
+          "then": "refresh access is revoked immediately and the old access token expires within five minutes"
+        }
+      ],
+      "tests": [
+        "Role management tests cover atomic add/remove, self-approval denial, stale version, replay and protected-role invariants.",
+        "Redis tests cover warm/cold cache, batch lookup, invalidation, out-of-order events and fail-closed fallback.",
+        "GraphQL tests cover aliases, fragments, multi-root partial response, nested sensitive fields and denial before side effects.",
+        "N+1 tests prove constant database and downstream calls for 1, 10 and 100 nodes."
+      ],
+      "observability": [
+        "Measure cache hit, fallback, policy version, denial reason and authorization-unavailable without logging token or PII.",
+        "Track dual-read decision mismatches and never widen access on mismatch.",
+        "Publish query-count and downstream batch evidence per release."
+      ],
+      "definitionOfDone": [
+        "Contracts, User/DB, Auth/Keycloak, Redis guard, services and frontend are promoted in that order.",
+        "Repository CI, Newman, authorization-negative and Compose smoke evidence are linked.",
+        "Snapshot RPCs and compatibility tables remain until reconciliation mismatch reaches zero."
+      ],
+      "evidence": [
+        "PR and commit links per repository.",
+        "Schema, migration, unit, integration, query-count and Newman reports.",
+        "Keycloak reconciliation, cache failure and dual-read mismatch artifacts."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "authorization-v2",
+        "keycloak",
+        "owner-service-authentication",
+        "source-vs-e25-s03"
+      ],
+      "decisionNoteVi": "Quyền hành động lấy từ policy động theo role; phạm vi dữ liệu thực tế luôn được service sở hữu miền kiểm tra từ dữ liệu nghiệp vụ.",
+      "jiraKey": "SCRUM-885",
+      "specStatus": "needs-refinement",
+      "workKind": "service",
+      "dispatchable": false,
+      "testCases": [],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [
+        "Existing-user reconciliation and five-minute expiry evidence remain required."
+      ],
+      "parentSourceId": "VS-E25"
+    },
+    {
+      "sourceId": "VS-E25-S04",
+      "issueType": "Story",
+      "summary": "[VS-E25-S04] Shared Redis cache and resolver-bound authorization",
+      "manageDescription": true,
+      "actor": "Security administrator, service owner and authenticated platform actor",
+      "outcome": "Each request resolves dynamic role policies once and every protected resolver fails closed before domain work when permission is absent.",
+      "context": "User Service is the sole source of role policy. JWT carries identity and client roles only; services resolve role policies once per request and verify ownership, assignment and branch membership from domain data.",
+      "inScope": [
+        "Canonical permission registry and JWT client-role contract.",
+        "Dynamic role lifecycle with maker-checker, CAS and idempotency.",
+        "User to Keycloak role projection, expiry and reconciliation.",
+        "Shared Redis role-policy cache and resolver-bound authorization.",
+        "Scope-specific GraphQL projections, batching and N+1 remediation.",
+        "Admin Web/Mobile workspace, Newman and dual-read rollout evidence."
+      ],
+      "outOfScope": [
+        "Permission, scope or partition snapshots embedded in JWT.",
+        "Client-selected authorization scope.",
+        "Per-user authorization snapshots as the final action decision.",
+        "Direct cross-service database access."
+      ],
+      "businessRules": [
+        "User Service is the only writer and source of truth for roles, permissions and role policy.",
+        "Access tokens expire after five minutes; role revoke or expiry revokes session and refresh token immediately.",
+        "Every non-public GraphQL resolver declares its required permission and CI rejects missing annotations.",
+        "Unrecognized or inactive roles grant no permission and authorization fails closed when both Redis and User are unavailable.",
+        "System roles cannot be renamed, deleted or deactivated; protected rescue paths remain intact."
+      ],
+      "repositories": [
+        "service_user",
+        "service_booking",
+        "service_property",
+        "platform_contracts",
+        "platform_infrastructure"
+      ],
+      "interfaces": [
+        "GetRolePolicies(accountType, roleCodes) returns a batch of active role policies.",
+        "user.role-policy-changed.v1 invalidates the exact changed role.",
+        "GraphQL authorization context performs at most one Redis MGET and one User gRPC batch fallback per request."
+      ],
+      "dataOwnership": [
+        "User owns role, permission, role policy and subject assignment; each domain owns authoritative ownership, assignment and partition membership."
+      ],
+      "stateMachine": [
+        "Role changes move through PENDING_APPROVAL, APPROVED or REJECTED; custom roles may later become INACTIVE.",
+        "Requester cannot approve the same request; approval uses expected role version and idempotency key.",
+        "Approval updates policy, audit, outbox and invalidation atomically."
+      ],
+      "authorization": {
+        "actions": [
+          "role:read"
+        ],
+        "dataPartitions": [
+          "Role policy narrows allowed scope types; domain data proves actual ownership or membership."
+        ],
+        "fieldGroups": [
+          "Sensitive fields require explicit independent permissions."
+        ]
+      },
+      "failureSemantics": [
+        "AUTHORIZATION_UNAVAILABLE when Redis and User policy lookup are both unavailable.",
+        "Unrecognized or inactive roles grant no permission.",
+        "Denied resolvers perform no database query, event or side effect."
+      ],
+      "idempotencyConcurrency": [
+        "Role mutations use scoped idempotency keys and request fingerprints.",
+        "Approval uses expectedRoleVersion compare-and-swap.",
+        "Out-of-order invalidation events cannot replace a newer roleVersion or catalogVersion."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E25-S01",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "a protected resolver and an authenticated actor",
+          "when": "the resolver is invoked",
+          "then": "the required action and minimum server-selected scope are checked before domain access"
+        },
+        {
+          "id": "AC02",
+          "given": "multiple aliases, fragments or root fields in one request",
+          "when": "authorization is evaluated",
+          "then": "role lookup uses at most one Redis batch and one User gRPC batch"
+        },
+        {
+          "id": "AC03",
+          "given": "a role is revoked or expires",
+          "when": "the projection and token lifecycle run",
+          "then": "refresh access is revoked immediately and the old access token expires within five minutes"
+        }
+      ],
+      "tests": [
+        "Role management tests cover atomic add/remove, self-approval denial, stale version, replay and protected-role invariants.",
+        "Redis tests cover warm/cold cache, batch lookup, invalidation, out-of-order events and fail-closed fallback.",
+        "GraphQL tests cover aliases, fragments, multi-root partial response, nested sensitive fields and denial before side effects.",
+        "N+1 tests prove constant database and downstream calls for 1, 10 and 100 nodes."
+      ],
+      "observability": [
+        "Measure cache hit, fallback, policy version, denial reason and authorization-unavailable without logging token or PII.",
+        "Track dual-read decision mismatches and never widen access on mismatch.",
+        "Publish query-count and downstream batch evidence per release."
+      ],
+      "definitionOfDone": [
+        "Contracts, User/DB, Auth/Keycloak, Redis guard, services and frontend are promoted in that order.",
+        "Repository CI, Newman, authorization-negative and Compose smoke evidence are linked.",
+        "Snapshot RPCs and compatibility tables remain until reconciliation mismatch reaches zero."
+      ],
+      "evidence": [
+        "PR and commit links per repository.",
+        "Schema, migration, unit, integration, query-count and Newman reports.",
+        "Keycloak reconciliation, cache failure and dual-read mismatch artifacts."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "authorization-v2",
+        "redis-policy-cache",
+        "graphql",
+        "owner-service-user",
+        "source-vs-e25-s04"
+      ],
+      "decisionNoteVi": "Quyền hành động lấy từ policy động theo role; phạm vi dữ liệu thực tế luôn được service sở hữu miền kiểm tra từ dữ liệu nghiệp vụ.",
+      "jiraKey": "SCRUM-884",
+      "specStatus": "needs-refinement",
+      "workKind": "service",
+      "dispatchable": false,
+      "testCases": [],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [
+        "Redis outage, dual dependency outage and exact invalidation integration evidence remain required."
+      ],
+      "parentSourceId": "VS-E25"
+    },
+    {
+      "sourceId": "VS-E25-S05",
+      "issueType": "Story",
+      "summary": "[VS-E25-S05] Scope projections, batching and N+1 remediation",
+      "manageDescription": true,
+      "actor": "Security administrator, service owner and authenticated platform actor",
+      "outcome": "Booking and Property apply SQL-first actor scopes, source masking and request-scoped batching with constant call counts.",
+      "context": "User Service is the sole source of role policy. JWT carries identity and client roles only; services resolve role policies once per request and verify ownership, assignment and branch membership from domain data.",
+      "inScope": [
+        "Canonical permission registry and JWT client-role contract.",
+        "Dynamic role lifecycle with maker-checker, CAS and idempotency.",
+        "User to Keycloak role projection, expiry and reconciliation.",
+        "Shared Redis role-policy cache and resolver-bound authorization.",
+        "Scope-specific GraphQL projections, batching and N+1 remediation.",
+        "Admin Web/Mobile workspace, Newman and dual-read rollout evidence."
+      ],
+      "outOfScope": [
+        "Permission, scope or partition snapshots embedded in JWT.",
+        "Client-selected authorization scope.",
+        "Per-user authorization snapshots as the final action decision.",
+        "Direct cross-service database access."
+      ],
+      "businessRules": [
+        "User Service is the only writer and source of truth for roles, permissions and role policy.",
+        "Access tokens expire after five minutes; role revoke or expiry revokes session and refresh token immediately.",
+        "Every non-public GraphQL resolver declares its required permission and CI rejects missing annotations.",
+        "Unrecognized or inactive roles grant no permission and authorization fails closed when both Redis and User are unavailable.",
+        "System roles cannot be renamed, deleted or deactivated; protected rescue paths remain intact."
+      ],
+      "repositories": [
+        "service_booking",
+        "service_property",
+        "platform_contracts"
+      ],
+      "interfaces": [
+        "GetRolePolicies(accountType, roleCodes) returns a batch of active role policies.",
+        "user.role-policy-changed.v1 invalidates the exact changed role.",
+        "GraphQL authorization context performs at most one Redis MGET and one User gRPC batch fallback per request."
+      ],
+      "dataOwnership": [
+        "User owns role, permission, role policy and subject assignment; each domain owns authoritative ownership, assignment and partition membership."
+      ],
+      "stateMachine": [
+        "Role changes move through PENDING_APPROVAL, APPROVED or REJECTED; custom roles may later become INACTIVE.",
+        "Requester cannot approve the same request; approval uses expected role version and idempotency key.",
+        "Approval updates policy, audit, outbox and invalidation atomically."
+      ],
+      "authorization": {
+        "actions": [
+          "booking:read",
+          "booking-sensitive:read"
+        ],
+        "dataPartitions": [
+          "SELF, OWN, ASSIGNED, PARTITION and ALL use separate entry points or one server-composed row policy."
+        ],
+        "fieldGroups": [
+          "Commercial fields are filtered at source unless booking-sensitive:read is granted."
+        ]
+      },
+      "failureSemantics": [
+        "AUTHORIZATION_UNAVAILABLE when Redis and User policy lookup are both unavailable.",
+        "Unrecognized or inactive roles grant no permission.",
+        "Denied resolvers perform no database query, event or side effect."
+      ],
+      "idempotencyConcurrency": [
+        "Role mutations use scoped idempotency keys and request fingerprints.",
+        "Approval uses expectedRoleVersion compare-and-swap.",
+        "Out-of-order invalidation events cannot replace a newer roleVersion or catalogVersion."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E25-S04",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "a protected resolver and an authenticated actor",
+          "when": "the resolver is invoked",
+          "then": "the required action and minimum server-selected scope are checked before domain access"
+        },
+        {
+          "id": "AC02",
+          "given": "multiple aliases, fragments or root fields in one request",
+          "when": "authorization is evaluated",
+          "then": "role lookup uses at most one Redis batch and one User gRPC batch"
+        },
+        {
+          "id": "AC03",
+          "given": "a role is revoked or expires",
+          "when": "the projection and token lifecycle run",
+          "then": "refresh access is revoked immediately and the old access token expires within five minutes"
+        }
+      ],
+      "tests": [
+        "Role management tests cover atomic add/remove, self-approval denial, stale version, replay and protected-role invariants.",
+        "Redis tests cover warm/cold cache, batch lookup, invalidation, out-of-order events and fail-closed fallback.",
+        "GraphQL tests cover aliases, fragments, multi-root partial response, nested sensitive fields and denial before side effects.",
+        "N+1 tests prove constant database and downstream calls for 1, 10 and 100 nodes."
+      ],
+      "observability": [
+        "Measure cache hit, fallback, policy version, denial reason and authorization-unavailable without logging token or PII.",
+        "Track dual-read decision mismatches and never widen access on mismatch.",
+        "Publish query-count and downstream batch evidence per release."
+      ],
+      "definitionOfDone": [
+        "Contracts, User/DB, Auth/Keycloak, Redis guard, services and frontend are promoted in that order.",
+        "Repository CI, Newman, authorization-negative and Compose smoke evidence are linked.",
+        "Snapshot RPCs and compatibility tables remain until reconciliation mismatch reaches zero."
+      ],
+      "evidence": [
+        "PR and commit links per repository.",
+        "Schema, migration, unit, integration, query-count and Newman reports.",
+        "Keycloak reconciliation, cache failure and dual-read mismatch artifacts."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "authorization-v2",
+        "n-plus-one",
+        "graphql",
+        "owner-service-booking",
+        "source-vs-e25-s05"
+      ],
+      "decisionNoteVi": "Quyền hành động lấy từ policy động theo role; phạm vi dữ liệu thực tế luôn được service sở hữu miền kiểm tra từ dữ liệu nghiệp vụ.",
+      "jiraKey": "SCRUM-886",
+      "specStatus": "needs-refinement",
+      "workKind": "service",
+      "dispatchable": false,
+      "testCases": [],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [
+        "1/10/100 query-count and cross-user/cross-branch isolation evidence remain required."
+      ],
+      "parentSourceId": "VS-E25"
+    },
+    {
+      "sourceId": "VS-E25-S06",
+      "issueType": "Story",
+      "summary": "[VS-E25-S06] Admin workspace, Newman and migration rollout",
+      "manageDescription": true,
+      "actor": "Security administrator, service owner and authenticated platform actor",
+      "outcome": "Admin Web/Mobile manages role policy and the release has repeatable allow, deny, approve, revoke and rollback evidence.",
+      "context": "User Service is the sole source of role policy. JWT carries identity and client roles only; services resolve role policies once per request and verify ownership, assignment and branch membership from domain data.",
+      "inScope": [
+        "Canonical permission registry and JWT client-role contract.",
+        "Dynamic role lifecycle with maker-checker, CAS and idempotency.",
+        "User to Keycloak role projection, expiry and reconciliation.",
+        "Shared Redis role-policy cache and resolver-bound authorization.",
+        "Scope-specific GraphQL projections, batching and N+1 remediation.",
+        "Admin Web/Mobile workspace, Newman and dual-read rollout evidence."
+      ],
+      "outOfScope": [
+        "Permission, scope or partition snapshots embedded in JWT.",
+        "Client-selected authorization scope.",
+        "Per-user authorization snapshots as the final action decision.",
+        "Direct cross-service database access."
+      ],
+      "businessRules": [
+        "User Service is the only writer and source of truth for roles, permissions and role policy.",
+        "Access tokens expire after five minutes; role revoke or expiry revokes session and refresh token immediately.",
+        "Every non-public GraphQL resolver declares its required permission and CI rejects missing annotations.",
+        "Unrecognized or inactive roles grant no permission and authorization fails closed when both Redis and User are unavailable.",
+        "System roles cannot be renamed, deleted or deactivated; protected rescue paths remain intact."
+      ],
+      "repositories": [
+        "frontend_admin",
+        "platform_infrastructure",
+        "platform_contracts"
+      ],
+      "interfaces": [
+        "GetRolePolicies(accountType, roleCodes) returns a batch of active role policies.",
+        "user.role-policy-changed.v1 invalidates the exact changed role.",
+        "GraphQL authorization context performs at most one Redis MGET and one User gRPC batch fallback per request."
+      ],
+      "dataOwnership": [
+        "User owns role, permission, role policy and subject assignment; each domain owns authoritative ownership, assignment and partition membership."
+      ],
+      "stateMachine": [
+        "Role changes move through PENDING_APPROVAL, APPROVED or REJECTED; custom roles may later become INACTIVE.",
+        "Requester cannot approve the same request; approval uses expected role version and idempotency key.",
+        "Approval updates policy, audit, outbox and invalidation atomically."
+      ],
+      "authorization": {
+        "actions": [
+          "role:read",
+          "role:change-request",
+          "role:change-approve"
+        ],
+        "dataPartitions": [
+          "UI never widens the server-authorized administrative partition."
+        ],
+        "fieldGroups": [
+          "Permission diff and audit evidence are shown only to authorized administrators."
+        ]
+      },
+      "failureSemantics": [
+        "AUTHORIZATION_UNAVAILABLE when Redis and User policy lookup are both unavailable.",
+        "Unrecognized or inactive roles grant no permission.",
+        "Denied resolvers perform no database query, event or side effect."
+      ],
+      "idempotencyConcurrency": [
+        "Role mutations use scoped idempotency keys and request fingerprints.",
+        "Approval uses expectedRoleVersion compare-and-swap.",
+        "Out-of-order invalidation events cannot replace a newer roleVersion or catalogVersion."
+      ],
+      "dependencies": [
+        {
+          "sourceId": "VS-E25-S02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E25-S03",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E25-S05",
+          "relation": "is-blocked-by"
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC01",
+          "given": "a protected resolver and an authenticated actor",
+          "when": "the resolver is invoked",
+          "then": "the required action and minimum server-selected scope are checked before domain access"
+        },
+        {
+          "id": "AC02",
+          "given": "multiple aliases, fragments or root fields in one request",
+          "when": "authorization is evaluated",
+          "then": "role lookup uses at most one Redis batch and one User gRPC batch"
+        },
+        {
+          "id": "AC03",
+          "given": "a role is revoked or expires",
+          "when": "the projection and token lifecycle run",
+          "then": "refresh access is revoked immediately and the old access token expires within five minutes"
+        }
+      ],
+      "tests": [
+        "Role management tests cover atomic add/remove, self-approval denial, stale version, replay and protected-role invariants.",
+        "Redis tests cover warm/cold cache, batch lookup, invalidation, out-of-order events and fail-closed fallback.",
+        "GraphQL tests cover aliases, fragments, multi-root partial response, nested sensitive fields and denial before side effects.",
+        "N+1 tests prove constant database and downstream calls for 1, 10 and 100 nodes."
+      ],
+      "observability": [
+        "Measure cache hit, fallback, policy version, denial reason and authorization-unavailable without logging token or PII.",
+        "Track dual-read decision mismatches and never widen access on mismatch.",
+        "Publish query-count and downstream batch evidence per release."
+      ],
+      "definitionOfDone": [
+        "Contracts, User/DB, Auth/Keycloak, Redis guard, services and frontend are promoted in that order.",
+        "Repository CI, Newman, authorization-negative and Compose smoke evidence are linked.",
+        "Snapshot RPCs and compatibility tables remain until reconciliation mismatch reaches zero."
+      ],
+      "evidence": [
+        "PR and commit links per repository.",
+        "Schema, migration, unit, integration, query-count and Newman reports.",
+        "Keycloak reconciliation, cache failure and dual-read mismatch artifacts."
+      ],
+      "externalBlockers": [],
+      "labels": [
+        "authorization-v2",
+        "frontend-admin",
+        "postman",
+        "rollout",
+        "source-vs-e25-s06"
+      ],
+      "decisionNoteVi": "Quyền hành động lấy từ policy động theo role; phạm vi dữ liệu thực tế luôn được service sở hữu miền kiểm tra từ dữ liệu nghiệp vụ.",
+      "jiraKey": "SCRUM-887",
+      "specStatus": "needs-refinement",
+      "workKind": "web",
+      "dispatchable": false,
+      "testCases": [],
+      "decisions": [],
+      "implementationBlockers": [],
+      "activationBlockers": [
+        "Live Host Newman with a short-lived credential and zero-diff dual-read evidence remain required."
+      ],
+      "parentSourceId": "VS-E25"
+    },
+    {
       "sourceId": "VS-E26",
       "issueType": "Epic",
       "summary": "[VS-E26] Dynamic Configuration, Loyalty and Metadata Governance",
       "manageDescription": true,
       "actor": "Platform administrator, customer, host and service owner",
-      "outcome": "Typed domain-owned configuration can evolve without hard-coded business variants or arbitrary runtime scripts.",
-      "context": "Authorization v2 supplies dynamic role policy. This epic extends the same versioned, maker-checker governance to loyalty tiers, property metadata and booking policy.",
+      "outcome": "Typed domain-owned configuration evolves without hard-coded business variants or arbitrary runtime scripts.",
+      "context": "Authorization v2 supplies dynamic role policy. This epic applies the same versioned, maker-checker governance to loyalty tiers, property metadata, booking policy and operational analytics.",
       "inScope": [
-        "Implement and verify: Employee Earnings, Commission and Collection Accountability.",
-        "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
-        "Provide repository-specific automated tests and Postman/Newman evidence for callable APIs."
+        "Publish versioned loyalty tiers and compute customer tier projections from qualifying points.",
+        "Publish typed property attributes and render them in Admin and Host without adding schema columns for each criterion.",
+        "Resolve effective booking policy by authoritative partition and freeze evaluated evidence with reservation decisions.",
+        "Expose permission-governed Admin operational analytics and rollout evidence."
       ],
       "outOfScope": [
-        "Unlisted provider credentials and production policy values.",
-        "Direct cross-service database reads or duplicated ownership.",
-        "Unreviewed workflow transitions, historical rewrites, or destructive migration shortcuts."
+        "Arbitrary scripts or expressions executed from stored configuration.",
+        "Client-selected authorization scope or direct cross-service database reads.",
+        "Retroactive mutation of published policy, tier, attribute or booking evidence."
       ],
       "businessRules": [
         "Each domain service is the only writer and source of truth for its configuration.",
-        "Published versions are immutable; corrections use a new version, retirement, or a compensating ledger entry.",
+        "Published versions are immutable; corrections use a new version, retirement or compensating record.",
         "Loyalty qualifying points are neither a Finance trust score nor a redeemable wallet.",
         "Runtime rules are typed and allow-listed; no arbitrary expression or script is stored or executed."
       ],
@@ -88217,23 +89178,24 @@
         "platform_infrastructure"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Version GraphQL, gRPC, event and JSON-schema contracts before consumer implementation.",
+        "Configuration writes require expected version, idempotency key, maker-checker audit and transactional outbox.",
+        "Read projections filter fields and partitions at the owning service before returning data."
       ],
       "dataOwnership": [
-        "Finance owns effective-dated base salary, commission/bonus rules, accrual/reversal, collection accountability, and personal-revenue projection; Booking owns sales attribution and frozen markup."
+        "User owns loyalty programs and customer loyalty projection; Property owns attribute definitions and property values; Booking owns booking policy resolution and frozen booking evidence."
       ],
       "stateMachine": [
-        "Model legal states and transitions for Employee Earnings, Commission and Collection Accountability; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "Configuration changes move through DRAFT, PENDING_APPROVAL, APPROVED or REJECTED; approved versions may later be RETIRED.",
+        "The requester cannot approve the same change and every transition records actor, reason and expected version.",
+        "Published versions remain immutable and replay-safe."
       ],
       "authorization": {
         "actions": [
           "loyalty-program:change-approve",
           "property-attribute:publish",
-          "booking-policy:change-approve"
+          "booking-policy:change-approve",
+          "analytics:read"
         ],
         "dataPartitions": [
           "SELF, OWN, ASSIGNED, PARTITION and ALL are enforced by the owning domain using authoritative membership data."
@@ -88243,57 +89205,60 @@
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Return stable validation, forbidden, conflict, stale-version, dependency-unavailable and idempotency-conflict codes.",
+        "Fail closed when authorization or authoritative partition data is unavailable.",
+        "Never broaden access or silently fall back to a default policy after an invalid published version."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Every retried mutation uses a scoped idempotency key and canonical request fingerprint.",
+        "Approval and publication use compare-and-swap against the expected configuration version.",
+        "Event consumers deduplicate by event ID and aggregate version."
       ],
-      "dependencies": [],
+      "dependencies": [
+        {
+          "sourceId": "VS-E25",
+          "relation": "is-blocked-by"
+        }
+      ],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for Employee Earnings, Commission and Collection Accountability",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "an authorized maker and a valid typed change",
+          "when": "a different authorized checker approves it",
+          "then": "one immutable version is published with audit and outbox evidence"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "a stale version, replay mismatch or unauthorized partition",
+          "when": "the operation is attempted",
+          "then": "it fails with a stable code and no partial business effect"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "a published configuration version",
+          "when": "a domain decision is made",
+          "then": "the owning service records the exact evaluated version and deterministic result"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Unit tests cover typing, effective dates, version transitions and protected invariants.",
+        "Integration tests cover maker-checker, CAS, idempotency, partition filtering and outbox replay.",
+        "Postman/Newman covers create, propose, approve, consume, reject and rollback-safe flows."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Emit bounded metrics for publication, rejection, stale version, fallback prevention and reconciliation mismatch.",
+        "Propagate correlation IDs without logging secrets, PII or sensitive commercial fields.",
+        "Provide dashboards and runbooks for stuck requests and projection drift."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "Catalog validation and affected repository CI checks pass.",
+        "Contracts, migrations, compatibility path, Admin Web/Mobile parity and Newman evidence are merged.",
+        "Authorization-negative, replay, reconciliation and rollback evidence is linked in Jira."
       ],
       "evidence": [
         "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "Automated test and Newman report.",
+        "Migration, rollback, audit and reconciliation artifacts."
       ],
       "externalBlockers": [],
       "labels": [
@@ -88303,9 +89268,9 @@
         "graphql",
         "source-vs-e26"
       ],
-      "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
+      "decisionNoteVi": "Cấu hình động phải có kiểu, version và chủ sở hữu miền; không lưu hoặc chạy script tùy ý và không sửa ngược lịch sử đã publish.",
       "jiraKey": "SCRUM-874",
-      "specStatus": "needs-refinement",
+      "specStatus": "refined-parent",
       "workKind": "service",
       "dispatchable": false,
       "testCases": [],
@@ -88319,27 +89284,25 @@
       "sourceId": "VS-E26-S01",
       "issueType": "Story",
       "summary": "[VS-E26-S01] Dynamic loyalty tiers and qualifying-point projection",
-      "parentSourceId": "VS-E26",
       "manageDescription": true,
-      "actor": "Employee, finance administrator, and collection manager",
+      "actor": "Loyalty administrator and customer",
       "outcome": "Admins publish effective loyalty tier thresholds and customers receive a server-computed tier projection.",
-      "context": "This story is part of the ViStay VS-E24 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "context": "The customer stores qualifying points; User Service resolves the active tier. Clients cannot assign their own tier.",
       "inScope": [
-        "Implement and verify: Maintain effective employee compensation profiles with restricted access.",
-        "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
-        "Provide repository-specific automated tests and Postman/Newman evidence for callable APIs."
+        "Versioned tier thresholds and benefits metadata.",
+        "Replay-safe qualifying-point projection from booking completion.",
+        "Admin maker-checker and Customer SELF read."
       ],
       "outOfScope": [
-        "Unlisted provider credentials and production policy values.",
-        "Direct cross-service database reads or duplicated ownership.",
-        "Unreviewed workflow transitions, historical rewrites, or destructive migration shortcuts."
+        "Arbitrary scripts or expressions executed from stored configuration.",
+        "Client-selected authorization scope or direct cross-service database reads.",
+        "Retroactive mutation of published policy, tier, attribute or booking evidence."
       ],
       "businessRules": [
-        "The customer remains debtor; the assigned employee is collection owner/KPI accountable, never the debtor.",
-        "Customer-facing staff markup is separate from internal commission and belongs to the sales owner only after verified collection and service completion.",
-        "Refunds and reversals produce compensating earning entries; records are never deleted.",
-        "Sales and collection commission may be split only by a published effective policy.",
-        "Scope excludes tax, insurance, net payroll, and bank payroll execution."
+        "Each domain service is the only writer and source of truth for its configuration.",
+        "Published versions are immutable; corrections use a new version, retirement or compensating record.",
+        "Loyalty qualifying points are neither a Finance trust score nor a redeemable wallet.",
+        "Runtime rules are typed and allow-listed; no arbitrary expression or script is stored or executed."
       ],
       "repositories": [
         "service_user",
@@ -88348,17 +89311,17 @@
         "platform_contracts"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Version GraphQL, gRPC, event and JSON-schema contracts before consumer implementation.",
+        "Configuration writes require expected version, idempotency key, maker-checker audit and transactional outbox.",
+        "Read projections filter fields and partitions at the owning service before returning data."
       ],
       "dataOwnership": [
-        "Finance owns effective-dated base salary, commission/bonus rules, accrual/reversal, collection accountability, and personal-revenue projection; Booking owns sales attribution and frozen markup."
+        "User owns loyalty programs and customer loyalty projection; Property owns attribute definitions and property values; Booking owns booking policy resolution and frozen booking evidence."
       ],
       "stateMachine": [
-        "Model legal states and transitions for Maintain effective employee compensation profiles with restricted access; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "Configuration changes move through DRAFT, PENDING_APPROVAL, APPROVED or REJECTED; approved versions may later be RETIRED.",
+        "The requester cannot approve the same change and every transition records actor, reason and expected version.",
+        "Published versions remain immutable and replay-safe."
       ],
       "authorization": {
         "actions": [
@@ -88369,64 +89332,67 @@
           "loyalty-point:adjust"
         ],
         "dataPartitions": [
-          "Customer reads SELF; administrators use approved ALL/organization policy."
+          "Customer reads SELF; administrators use approved ALL or organization policy."
         ],
         "fieldGroups": [
           "Qualifying points and tier only; no Finance trust detail or wallet balance."
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Return stable validation, forbidden, conflict, stale-version, dependency-unavailable and idempotency-conflict codes.",
+        "Fail closed when authorization or authoritative partition data is unavailable.",
+        "Never broaden access or silently fall back to a default policy after an invalid published version."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Every retried mutation uses a scoped idempotency key and canonical request fingerprint.",
+        "Approval and publication use compare-and-swap against the expected configuration version.",
+        "Event consumers deduplicate by event ID and aggregate version."
       ],
-      "dependencies": [],
+      "dependencies": [
+        {
+          "sourceId": "VS-E25-S04",
+          "relation": "is-blocked-by"
+        }
+      ],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for Maintain effective employee compensation profiles with restricted access",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "an authorized maker and a valid typed change",
+          "when": "a different authorized checker approves it",
+          "then": "one immutable version is published with audit and outbox evidence"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "a stale version, replay mismatch or unauthorized partition",
+          "when": "the operation is attempted",
+          "then": "it fails with a stable code and no partial business effect"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "a published configuration version",
+          "when": "a domain decision is made",
+          "then": "the owning service records the exact evaluated version and deterministic result"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Unit tests cover typing, effective dates, version transitions and protected invariants.",
+        "Integration tests cover maker-checker, CAS, idempotency, partition filtering and outbox replay.",
+        "Postman/Newman covers create, propose, approve, consume, reject and rollback-safe flows."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Emit bounded metrics for publication, rejection, stale version, fallback prevention and reconciliation mismatch.",
+        "Propagate correlation IDs without logging secrets, PII or sensitive commercial fields.",
+        "Provide dashboards and runbooks for stuck requests and projection drift."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "Catalog validation and affected repository CI checks pass.",
+        "Contracts, migrations, compatibility path, Admin Web/Mobile parity and Newman evidence are merged.",
+        "Authorization-negative, replay, reconciliation and rollback evidence is linked in Jira."
       ],
       "evidence": [
         "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "Automated test and Newman report.",
+        "Migration, rollback, audit and reconciliation artifacts."
       ],
       "externalBlockers": [],
       "labels": [
@@ -88435,7 +89401,7 @@
         "owner-service-user",
         "source-vs-e26-s01"
       ],
-      "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
+      "decisionNoteVi": "Cấu hình động phải có kiểu, version và chủ sở hữu miền; không lưu hoặc chạy script tùy ý và không sửa ngược lịch sử đã publish.",
       "jiraKey": "SCRUM-878",
       "specStatus": "needs-refinement",
       "workKind": "service",
@@ -88445,33 +89411,32 @@
       "implementationBlockers": [],
       "activationBlockers": [
         "Booking-completed replay-safe consumer and Testcontainers/Newman evidence remain required."
-      ]
+      ],
+      "parentSourceId": "VS-E26"
     },
     {
       "sourceId": "VS-E26-S02",
       "issueType": "Story",
       "summary": "[VS-E26-S02] Typed property attribute catalog and generated host form",
-      "parentSourceId": "VS-E26",
       "manageDescription": true,
-      "actor": "Employee, finance administrator, and collection manager",
+      "actor": "Property administrator and host",
       "outcome": "Property criteria beyond fixed invariants are published as typed definitions and rendered dynamically for hosts.",
-      "context": "This story is part of the ViStay VS-E24 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "context": "Stable identity, ownership and location remain fixed fields; optional evolving criteria use typed definitions and validated values.",
       "inScope": [
-        "Implement and verify: Configure staff markup limits and booking attribution rules.",
-        "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
-        "Provide repository-specific automated tests and Postman/Newman evidence for callable APIs."
+        "Typed attribute definition, validation and effective version.",
+        "Host form generated from authorized definitions.",
+        "Source-side PUBLIC, HOST and ADMIN field filtering."
       ],
       "outOfScope": [
-        "Unlisted provider credentials and production policy values.",
-        "Direct cross-service database reads or duplicated ownership.",
-        "Unreviewed workflow transitions, historical rewrites, or destructive migration shortcuts."
+        "Arbitrary scripts or expressions executed from stored configuration.",
+        "Client-selected authorization scope or direct cross-service database reads.",
+        "Retroactive mutation of published policy, tier, attribute or booking evidence."
       ],
       "businessRules": [
-        "The customer remains debtor; the assigned employee is collection owner/KPI accountable, never the debtor.",
-        "Customer-facing staff markup is separate from internal commission and belongs to the sales owner only after verified collection and service completion.",
-        "Refunds and reversals produce compensating earning entries; records are never deleted.",
-        "Sales and collection commission may be split only by a published effective policy.",
-        "Scope excludes tax, insurance, net payroll, and bank payroll execution."
+        "Each domain service is the only writer and source of truth for its configuration.",
+        "Published versions are immutable; corrections use a new version, retirement or compensating record.",
+        "Loyalty qualifying points are neither a Finance trust score nor a redeemable wallet.",
+        "Runtime rules are typed and allow-listed; no arbitrary expression or script is stored or executed."
       ],
       "repositories": [
         "service_property",
@@ -88480,17 +89445,17 @@
         "platform_contracts"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Version GraphQL, gRPC, event and JSON-schema contracts before consumer implementation.",
+        "Configuration writes require expected version, idempotency key, maker-checker audit and transactional outbox.",
+        "Read projections filter fields and partitions at the owning service before returning data."
       ],
       "dataOwnership": [
-        "Finance owns effective-dated base salary, commission/bonus rules, accrual/reversal, collection accountability, and personal-revenue projection; Booking owns sales attribution and frozen markup."
+        "User owns loyalty programs and customer loyalty projection; Property owns attribute definitions and property values; Booking owns booking policy resolution and frozen booking evidence."
       ],
       "stateMachine": [
-        "Model legal states and transitions for Configure staff markup limits and booking attribution rules; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "Configuration changes move through DRAFT, PENDING_APPROVAL, APPROVED or REJECTED; approved versions may later be RETIRED.",
+        "The requester cannot approve the same change and every transition records actor, reason and expected version.",
+        "Published versions remain immutable and replay-safe."
       ],
       "authorization": {
         "actions": [
@@ -88499,69 +89464,67 @@
           "property-attribute:publish"
         ],
         "dataPartitions": [
-          "OWN host relationships and admin PARTITION/ALL are verified from Property data."
+          "OWN host relationships and Admin PARTITION or ALL are verified from Property data."
         ],
         "fieldGroups": [
           "PUBLIC, HOST and ADMIN visibility is filtered at the source."
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Return stable validation, forbidden, conflict, stale-version, dependency-unavailable and idempotency-conflict codes.",
+        "Fail closed when authorization or authoritative partition data is unavailable.",
+        "Never broaden access or silently fall back to a default policy after an invalid published version."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Every retried mutation uses a scoped idempotency key and canonical request fingerprint.",
+        "Approval and publication use compare-and-swap against the expected configuration version.",
+        "Event consumers deduplicate by event ID and aggregate version."
       ],
       "dependencies": [
         {
-          "sourceId": "VS-E05-T01",
+          "sourceId": "VS-E25-S04",
           "relation": "is-blocked-by"
         }
       ],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for Configure staff markup limits and booking attribution rules",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "an authorized maker and a valid typed change",
+          "when": "a different authorized checker approves it",
+          "then": "one immutable version is published with audit and outbox evidence"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "a stale version, replay mismatch or unauthorized partition",
+          "when": "the operation is attempted",
+          "then": "it fails with a stable code and no partial business effect"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "a published configuration version",
+          "when": "a domain decision is made",
+          "then": "the owning service records the exact evaluated version and deterministic result"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Unit tests cover typing, effective dates, version transitions and protected invariants.",
+        "Integration tests cover maker-checker, CAS, idempotency, partition filtering and outbox replay.",
+        "Postman/Newman covers create, propose, approve, consume, reject and rollback-safe flows."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Emit bounded metrics for publication, rejection, stale version, fallback prevention and reconciliation mismatch.",
+        "Propagate correlation IDs without logging secrets, PII or sensitive commercial fields.",
+        "Provide dashboards and runbooks for stuck requests and projection drift."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "Catalog validation and affected repository CI checks pass.",
+        "Contracts, migrations, compatibility path, Admin Web/Mobile parity and Newman evidence are merged.",
+        "Authorization-negative, replay, reconciliation and rollback evidence is linked in Jira."
       ],
       "evidence": [
         "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "Automated test and Newman report.",
+        "Migration, rollback, audit and reconciliation artifacts."
       ],
       "externalBlockers": [],
       "labels": [
@@ -88570,7 +89533,7 @@
         "owner-service-property",
         "source-vs-e26-s02"
       ],
-      "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
+      "decisionNoteVi": "Cấu hình động phải có kiểu, version và chủ sở hữu miền; không lưu hoặc chạy script tùy ý và không sửa ngược lịch sử đã publish.",
       "jiraKey": "SCRUM-876",
       "specStatus": "needs-refinement",
       "workKind": "service",
@@ -88580,33 +89543,32 @@
       "implementationBlockers": [],
       "activationBlockers": [
         "Full authoring UI, query-plan evidence and live migration tests remain required."
-      ]
+      ],
+      "parentSourceId": "VS-E26"
     },
     {
       "sourceId": "VS-E26-S03",
       "issueType": "Story",
       "summary": "[VS-E26-S03] Versioned booking policy resolution and immutable evidence",
-      "parentSourceId": "VS-E26",
       "manageDescription": true,
-      "actor": "Employee, finance administrator, and collection manager",
-      "outcome": "Booking resolves effective policy deterministically and freezes the evaluated policy evidence with each reservation decision.",
-      "context": "This story is part of the ViStay VS-E24 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "actor": "Booking policy administrator and booking actor",
+      "outcome": "Booking resolves effective policy deterministically and freezes evaluated policy evidence with each reservation decision.",
+      "context": "Booking policy is selected from authoritative property and branch data, never from a client-provided scope selector.",
       "inScope": [
-        "Implement and verify: Accrue split and reverse employee commission deterministically.",
-        "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
-        "Provide repository-specific automated tests and Postman/Newman evidence for callable APIs."
+        "Effective policy lookup with PROPERTY, BRANCH, ORGANIZATION and GLOBAL precedence.",
+        "Quote, hold and confirm integration.",
+        "Immutable policy version and result stored with booking evidence."
       ],
       "outOfScope": [
-        "Unlisted provider credentials and production policy values.",
-        "Direct cross-service database reads or duplicated ownership.",
-        "Unreviewed workflow transitions, historical rewrites, or destructive migration shortcuts."
+        "Arbitrary scripts or expressions executed from stored configuration.",
+        "Client-selected authorization scope or direct cross-service database reads.",
+        "Retroactive mutation of published policy, tier, attribute or booking evidence."
       ],
       "businessRules": [
-        "The customer remains debtor; the assigned employee is collection owner/KPI accountable, never the debtor.",
-        "Customer-facing staff markup is separate from internal commission and belongs to the sales owner only after verified collection and service completion.",
-        "Refunds and reversals produce compensating earning entries; records are never deleted.",
-        "Sales and collection commission may be split only by a published effective policy.",
-        "Scope excludes tax, insurance, net payroll, and bank payroll execution."
+        "Each domain service is the only writer and source of truth for its configuration.",
+        "Published versions are immutable; corrections use a new version, retirement or compensating record.",
+        "Loyalty qualifying points are neither a Finance trust score nor a redeemable wallet.",
+        "Runtime rules are typed and allow-listed; no arbitrary expression or script is stored or executed."
       ],
       "repositories": [
         "service_booking",
@@ -88615,17 +89577,17 @@
         "platform_infrastructure"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Version GraphQL, gRPC, event and JSON-schema contracts before consumer implementation.",
+        "Configuration writes require expected version, idempotency key, maker-checker audit and transactional outbox.",
+        "Read projections filter fields and partitions at the owning service before returning data."
       ],
       "dataOwnership": [
-        "Finance owns effective-dated base salary, commission/bonus rules, accrual/reversal, collection accountability, and personal-revenue projection; Booking owns sales attribution and frozen markup."
+        "User owns loyalty programs and customer loyalty projection; Property owns attribute definitions and property values; Booking owns booking policy resolution and frozen booking evidence."
       ],
       "stateMachine": [
-        "Model legal states and transitions for Accrue split and reverse employee commission deterministically; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "Configuration changes move through DRAFT, PENDING_APPROVAL, APPROVED or REJECTED; approved versions may later be RETIRED.",
+        "The requester cannot approve the same change and every transition records actor, reason and expected version.",
+        "Published versions remain immutable and replay-safe."
       ],
       "authorization": {
         "actions": [
@@ -88642,70 +89604,60 @@
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Return stable validation, forbidden, conflict, stale-version, dependency-unavailable and idempotency-conflict codes.",
+        "Fail closed when authorization or authoritative partition data is unavailable.",
+        "Never broaden access or silently fall back to a default policy after an invalid published version."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Every retried mutation uses a scoped idempotency key and canonical request fingerprint.",
+        "Approval and publication use compare-and-swap against the expected configuration version.",
+        "Event consumers deduplicate by event ID and aggregate version."
       ],
       "dependencies": [
         {
-          "sourceId": "VS-E24-S01",
-          "relation": "is-blocked-by"
-        },
-        {
-          "sourceId": "VS-E24-S02",
-          "relation": "is-blocked-by"
-        },
-        {
-          "sourceId": "VS-E09-T08",
+          "sourceId": "VS-E25-S05",
           "relation": "is-blocked-by"
         }
       ],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for Accrue split and reverse employee commission deterministically",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "an authorized maker and a valid typed change",
+          "when": "a different authorized checker approves it",
+          "then": "one immutable version is published with audit and outbox evidence"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "a stale version, replay mismatch or unauthorized partition",
+          "when": "the operation is attempted",
+          "then": "it fails with a stable code and no partial business effect"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "a published configuration version",
+          "when": "a domain decision is made",
+          "then": "the owning service records the exact evaluated version and deterministic result"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Unit tests cover typing, effective dates, version transitions and protected invariants.",
+        "Integration tests cover maker-checker, CAS, idempotency, partition filtering and outbox replay.",
+        "Postman/Newman covers create, propose, approve, consume, reject and rollback-safe flows."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Emit bounded metrics for publication, rejection, stale version, fallback prevention and reconciliation mismatch.",
+        "Propagate correlation IDs without logging secrets, PII or sensitive commercial fields.",
+        "Provide dashboards and runbooks for stuck requests and projection drift."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "Catalog validation and affected repository CI checks pass.",
+        "Contracts, migrations, compatibility path, Admin Web/Mobile parity and Newman evidence are merged.",
+        "Authorization-negative, replay, reconciliation and rollback evidence is linked in Jira."
       ],
       "evidence": [
         "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "Automated test and Newman report.",
+        "Migration, rollback, audit and reconciliation artifacts."
       ],
       "externalBlockers": [],
       "labels": [
@@ -88714,7 +89666,7 @@
         "owner-service-booking",
         "source-vs-e26-s03"
       ],
-      "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
+      "decisionNoteVi": "Cấu hình động phải có kiểu, version và chủ sở hữu miền; không lưu hoặc chạy script tùy ý và không sửa ngược lịch sử đã publish.",
       "jiraKey": "SCRUM-877",
       "specStatus": "needs-refinement",
       "workKind": "service",
@@ -88724,33 +89676,32 @@
       "implementationBlockers": [],
       "activationBlockers": [
         "Quote/hold/confirm wiring and live Testcontainers/Newman evidence remain required."
-      ]
+      ],
+      "parentSourceId": "VS-E26"
     },
     {
       "sourceId": "VS-E26-S04",
       "issueType": "Story",
       "summary": "[VS-E26-S04] Dynamic configuration workspace, contracts and rollout evidence",
-      "parentSourceId": "VS-E26",
       "manageDescription": true,
-      "actor": "Employee, finance administrator, and collection manager",
+      "actor": "Admin Web/Mobile operator and release owner",
       "outcome": "Admin, customer and host surfaces consume validated versioned contracts with repeatable rollout evidence.",
-      "context": "This story is part of the ViStay VS-E24 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "context": "All clients share domain APIs; Mobile does not introduce separate authorization or business endpoints.",
       "inScope": [
-        "Implement and verify: Assign monitor and escalate employee collection accountability.",
-        "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
-        "Provide repository-specific automated tests and Postman/Newman evidence for callable APIs."
+        "Admin maker and checker queues.",
+        "Generated Customer and Host projections.",
+        "Contract, migration, Newman and rollback evidence."
       ],
       "outOfScope": [
-        "Unlisted provider credentials and production policy values.",
-        "Direct cross-service database reads or duplicated ownership.",
-        "Unreviewed workflow transitions, historical rewrites, or destructive migration shortcuts."
+        "Arbitrary scripts or expressions executed from stored configuration.",
+        "Client-selected authorization scope or direct cross-service database reads.",
+        "Retroactive mutation of published policy, tier, attribute or booking evidence."
       ],
       "businessRules": [
-        "The customer remains debtor; the assigned employee is collection owner/KPI accountable, never the debtor.",
-        "Customer-facing staff markup is separate from internal commission and belongs to the sales owner only after verified collection and service completion.",
-        "Refunds and reversals produce compensating earning entries; records are never deleted.",
-        "Sales and collection commission may be split only by a published effective policy.",
-        "Scope excludes tax, insurance, net payroll, and bank payroll execution."
+        "Each domain service is the only writer and source of truth for its configuration.",
+        "Published versions are immutable; corrections use a new version, retirement or compensating record.",
+        "Loyalty qualifying points are neither a Finance trust score nor a redeemable wallet.",
+        "Runtime rules are typed and allow-listed; no arbitrary expression or script is stored or executed."
       ],
       "repositories": [
         "frontend_admin",
@@ -88760,17 +89711,17 @@
         "platform_infrastructure"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Version GraphQL, gRPC, event and JSON-schema contracts before consumer implementation.",
+        "Configuration writes require expected version, idempotency key, maker-checker audit and transactional outbox.",
+        "Read projections filter fields and partitions at the owning service before returning data."
       ],
       "dataOwnership": [
-        "Finance owns effective-dated base salary, commission/bonus rules, accrual/reversal, collection accountability, and personal-revenue projection; Booking owns sales attribution and frozen markup."
+        "User owns loyalty programs and customer loyalty projection; Property owns attribute definitions and property values; Booking owns booking policy resolution and frozen booking evidence."
       ],
       "stateMachine": [
-        "Model legal states and transitions for Assign monitor and escalate employee collection accountability; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "Configuration changes move through DRAFT, PENDING_APPROVAL, APPROVED or REJECTED; approved versions may later be RETIRED.",
+        "The requester cannot approve the same change and every transition records actor, reason and expected version.",
+        "Published versions remain immutable and replay-safe."
       ],
       "authorization": {
         "actions": [
@@ -88786,62 +89737,68 @@
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Return stable validation, forbidden, conflict, stale-version, dependency-unavailable and idempotency-conflict codes.",
+        "Fail closed when authorization or authoritative partition data is unavailable.",
+        "Never broaden access or silently fall back to a default policy after an invalid published version."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Every retried mutation uses a scoped idempotency key and canonical request fingerprint.",
+        "Approval and publication use compare-and-swap against the expected configuration version.",
+        "Event consumers deduplicate by event ID and aggregate version."
       ],
       "dependencies": [
         {
-          "sourceId": "VS-E09-S09",
-          "relation": "relates-to"
+          "sourceId": "VS-E26-S01",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E26-S02",
+          "relation": "is-blocked-by"
+        },
+        {
+          "sourceId": "VS-E26-S03",
+          "relation": "is-blocked-by"
         }
       ],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for Assign monitor and escalate employee collection accountability",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "an authorized maker and a valid typed change",
+          "when": "a different authorized checker approves it",
+          "then": "one immutable version is published with audit and outbox evidence"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "a stale version, replay mismatch or unauthorized partition",
+          "when": "the operation is attempted",
+          "then": "it fails with a stable code and no partial business effect"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "a published configuration version",
+          "when": "a domain decision is made",
+          "then": "the owning service records the exact evaluated version and deterministic result"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Unit tests cover typing, effective dates, version transitions and protected invariants.",
+        "Integration tests cover maker-checker, CAS, idempotency, partition filtering and outbox replay.",
+        "Postman/Newman covers create, propose, approve, consume, reject and rollback-safe flows."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Emit bounded metrics for publication, rejection, stale version, fallback prevention and reconciliation mismatch.",
+        "Propagate correlation IDs without logging secrets, PII or sensitive commercial fields.",
+        "Provide dashboards and runbooks for stuck requests and projection drift."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "Catalog validation and affected repository CI checks pass.",
+        "Contracts, migrations, compatibility path, Admin Web/Mobile parity and Newman evidence are merged.",
+        "Authorization-negative, replay, reconciliation and rollback evidence is linked in Jira."
       ],
       "evidence": [
         "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "Automated test and Newman report.",
+        "Migration, rollback, audit and reconciliation artifacts."
       ],
       "externalBlockers": [],
       "labels": [
@@ -88851,7 +89808,7 @@
         "rollout",
         "source-vs-e26-s04"
       ],
-      "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
+      "decisionNoteVi": "Cấu hình động phải có kiểu, version và chủ sở hữu miền; không lưu hoặc chạy script tùy ý và không sửa ngược lịch sử đã publish.",
       "jiraKey": "SCRUM-875",
       "specStatus": "needs-refinement",
       "workKind": "web",
@@ -88861,33 +89818,32 @@
       "implementationBlockers": [],
       "activationBlockers": [
         "Admin Mobile parity, Newman and zero-diff catalog synchronization remain required."
-      ]
+      ],
+      "parentSourceId": "VS-E26"
     },
     {
       "sourceId": "VS-E26-S05",
       "issueType": "Story",
       "summary": "[VS-E26-S05] Governed Admin operations analytics",
-      "parentSourceId": "VS-E26",
       "manageDescription": true,
-      "actor": "Employee, finance administrator, and collection manager",
+      "actor": "Authorized operations administrator",
       "outcome": "Administrators see real, permission-governed operational and commercial statistics in Overview and a dedicated Analytics workspace.",
-      "context": "This story is part of the ViStay VS-E24 delivery boundary. The specification is canonical for implementation detail; Jira remains canonical for workflow and delivery evidence.",
+      "context": "Analytics is a server-authorized projection over owned domain data; the frontend never synthesizes a broader partition.",
       "inScope": [
-        "Implement and verify: Assign monitor and escalate employee collection accountability.",
-        "Version contract, persistence, authorization, failure, audit, and operator behavior needed by this outcome.",
-        "Provide repository-specific automated tests and Postman/Newman evidence for callable APIs."
+        "Overview and dedicated Analytics projections.",
+        "Stable empty and dependency-degraded states.",
+        "Currency-safe revenue aggregation and permission-negative tests."
       ],
       "outOfScope": [
-        "Unlisted provider credentials and production policy values.",
-        "Direct cross-service database reads or duplicated ownership.",
-        "Unreviewed workflow transitions, historical rewrites, or destructive migration shortcuts."
+        "Arbitrary scripts or expressions executed from stored configuration.",
+        "Client-selected authorization scope or direct cross-service database reads.",
+        "Retroactive mutation of published policy, tier, attribute or booking evidence."
       ],
       "businessRules": [
-        "The customer remains debtor; the assigned employee is collection owner/KPI accountable, never the debtor.",
-        "Customer-facing staff markup is separate from internal commission and belongs to the sales owner only after verified collection and service completion.",
-        "Refunds and reversals produce compensating earning entries; records are never deleted.",
-        "Sales and collection commission may be split only by a published effective policy.",
-        "Scope excludes tax, insurance, net payroll, and bank payroll execution."
+        "Each domain service is the only writer and source of truth for its configuration.",
+        "Published versions are immutable; corrections use a new version, retirement or compensating record.",
+        "Loyalty qualifying points are neither a Finance trust score nor a redeemable wallet.",
+        "Runtime rules are typed and allow-listed; no arbitrary expression or script is stored or executed."
       ],
       "repositories": [
         "service_user",
@@ -88897,17 +89853,17 @@
         "platform_infrastructure"
       ],
       "interfaces": [
-        "Version GraphQL/gRPC/Kafka/OpenAPI contracts before consumer implementation; document owner, caller, schema version, timeout, and compatibility.",
-        "Callable HTTP/GraphQL workflows include success, authorization-negative, validation, conflict, replay, and dependency-failure Postman examples.",
-        "Events use transactional outbox/inbox, stable aggregate identity, event ID, occurred-at time, producer schema version, and replay-safe consumers."
+        "Version GraphQL, gRPC, event and JSON-schema contracts before consumer implementation.",
+        "Configuration writes require expected version, idempotency key, maker-checker audit and transactional outbox.",
+        "Read projections filter fields and partitions at the owning service before returning data."
       ],
       "dataOwnership": [
-        "Finance owns effective-dated base salary, commission/bonus rules, accrual/reversal, collection accountability, and personal-revenue projection; Booking owns sales attribution and frozen markup."
+        "User owns loyalty programs and customer loyalty projection; Property owns attribute definitions and property values; Booking owns booking policy resolution and frozen booking evidence."
       ],
       "stateMachine": [
-        "Model legal states and transitions for Assign monitor and escalate employee collection accountability; reject illegal transitions with stable error codes.",
-        "Persist actor, reason, source, policy/contract version, expected revision, and timestamps for every material transition.",
-        "Terminal or superseded records are retained; corrections use a new revision or compensating record."
+        "Configuration changes move through DRAFT, PENDING_APPROVAL, APPROVED or REJECTED; approved versions may later be RETIRED.",
+        "The requester cannot approve the same change and every transition records actor, reason and expected version.",
+        "Published versions remain immutable and replay-safe."
       ],
       "authorization": {
         "actions": [
@@ -88921,62 +89877,60 @@
         ]
       },
       "failureSemantics": [
-        "Return stable validation, forbidden, not-found, conflict, stale-revision, dependency-unavailable, and rate-limit codes without leaking PII.",
-        "Fail closed when authorization, authoritative projection, policy version, or required dependency is unavailable.",
-        "Retry only transient operations with bounded exponential backoff; route exhausted asynchronous work to a visible repair queue."
+        "Return stable validation, forbidden, conflict, stale-version, dependency-unavailable and idempotency-conflict codes.",
+        "Fail closed when authorization or authoritative partition data is unavailable.",
+        "Never broaden access or silently fall back to a default policy after an invalid published version."
       ],
       "idempotencyConcurrency": [
-        "Every externally retried mutation requires a scoped idempotency key, canonical request fingerprint, durable result, and mismatch rejection.",
-        "Use expected revision or equivalent compare-and-swap; concurrent winners are deterministic and losers receive conflict with current revision.",
-        "Consumers deduplicate by event ID and business key and support replay without duplicating money, inventory, notification, or audit effects."
+        "Every retried mutation uses a scoped idempotency key and canonical request fingerprint.",
+        "Approval and publication use compare-and-swap against the expected configuration version.",
+        "Event consumers deduplicate by event ID and aggregate version."
       ],
       "dependencies": [
         {
-          "sourceId": "VS-E09-S09",
-          "relation": "relates-to"
+          "sourceId": "VS-E25-S05",
+          "relation": "is-blocked-by"
         }
       ],
       "acceptanceCriteria": [
         {
           "id": "AC01",
-          "given": "an authorized actor with a valid partition and a complete request for Assign monitor and escalate employee collection accountability",
-          "when": "the command or query is executed",
-          "then": "the documented outcome, state revision, audit record, and contract response are produced deterministically"
+          "given": "an authorized maker and a valid typed change",
+          "when": "a different authorized checker approves it",
+          "then": "one immutable version is published with audit and outbox evidence"
         },
         {
           "id": "AC02",
-          "given": "a caller missing the action, partition, or requested field-group grant",
-          "when": "the same operation is attempted",
-          "then": "access is denied without leaking existence or restricted fields and the denial is auditable"
+          "given": "a stale version, replay mismatch or unauthorized partition",
+          "when": "the operation is attempted",
+          "then": "it fails with a stable code and no partial business effect"
         },
         {
           "id": "AC03",
-          "given": "the same mutation is replayed or two requests use the same expected revision",
-          "when": "processing overlaps or retries occur",
-          "then": "at most one business effect is committed and all responses are stable, explainable, and reconciled"
+          "given": "a published configuration version",
+          "when": "a domain decision is made",
+          "then": "the owning service records the exact evaluated version and deterministic result"
         }
       ],
       "tests": [
-        "Unit tests cover rule boundaries, legal/illegal transitions, rounding/timezone where relevant, and stable error mapping.",
-        "Integration tests cover persistence constraints, authorization action+partition+field groups, outbox/inbox replay, and dependency failure.",
-        "Postman/Newman flow covers happy path, negative authorization, validation, conflict, idempotent replay, and a cleanup-safe deterministic fixture."
+        "Unit tests cover typing, effective dates, version transitions and protected invariants.",
+        "Integration tests cover maker-checker, CAS, idempotency, partition filtering and outbox replay.",
+        "Postman/Newman covers create, propose, approve, consume, reject and rollback-safe flows."
       ],
       "observability": [
-        "Propagate trace and correlation IDs across GraphQL/gRPC/Kafka/webhook boundaries without logging secrets or protected fields.",
-        "Emit transition, latency, error-code, replay/deduplication, dependency, and repair-queue metrics with bounded-cardinality labels.",
-        "Provide dashboard/alert thresholds and a runbook for stuck states, reconciliation mismatch, and rollback."
+        "Emit bounded metrics for publication, rejection, stale version, fallback prevention and reconciliation mismatch.",
+        "Propagate correlation IDs without logging secrets, PII or sensitive commercial fields.",
+        "Provide dashboards and runbooks for stuck requests and projection drift."
       ],
       "definitionOfDone": [
-        "Catalog validation and all affected repository CI checks pass.",
-        "Contracts, migrations, compatibility path, implementation, Admin Web/Mobile parity where applicable, and Postman/Newman evidence are merged.",
-        "Security-negative, concurrency/replay, observability, reconciliation, and rollback evidence is linked in Jira.",
-        "No production secret or unapproved monetary/policy default is committed; ServiceOwner acceptance evidence is attached before Done."
+        "Catalog validation and affected repository CI checks pass.",
+        "Contracts, migrations, compatibility path, Admin Web/Mobile parity and Newman evidence are merged.",
+        "Authorization-negative, replay, reconciliation and rollback evidence is linked in Jira."
       ],
       "evidence": [
         "Pull request and commit links per repository.",
-        "Automated test and Newman report with fixture version.",
-        "Migration/rollback or compatibility evidence where data/contracts change.",
-        "Dashboard, trace, audit, and reconciliation screenshots or machine-readable artifacts."
+        "Automated test and Newman report.",
+        "Migration, rollback, audit and reconciliation artifacts."
       ],
       "externalBlockers": [],
       "labels": [
@@ -88987,7 +89941,7 @@
         "owner-service-booking",
         "source-vs-e26-s05"
       ],
-      "decisionNoteVi": "Các quy tắc nghiệp vụ và ranh giới dữ liệu trong catalog v1.2 đã được chốt; thay đổi sau này phải tạo phiên bản policy/contract mới, không sửa ngược lịch sử.",
+      "decisionNoteVi": "Cấu hình động phải có kiểu, version và chủ sở hữu miền; không lưu hoặc chạy script tùy ý và không sửa ngược lịch sử đã publish.",
       "jiraKey": "SCRUM-879",
       "specStatus": "needs-refinement",
       "workKind": "web",
@@ -88997,7 +89951,8 @@
       "implementationBlockers": [],
       "activationBlockers": [
         "PR CI and live environment smoke evidence remain required."
-      ]
+      ],
+      "parentSourceId": "VS-E26"
     }
   ]
 }
